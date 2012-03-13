@@ -158,7 +158,7 @@ if __name__ == '__main__':
   hub = BFEngine()
   
   m0 = BFModule()
-  m1 = PlotWindow()
+  m1 = BFModule()
   
   hub.registerModule(m0)
   hub.registerModule(m1)
