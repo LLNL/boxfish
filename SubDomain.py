@@ -6,7 +6,10 @@ class SubDomain(list):
 
     def __init__(self,copy = list()):
        list.__init__(self,copy)
-    
+
+    def __getslice__(self,i,j):
+        return self.__class__(list.__getslice__(self,i,j))
+            
     def subdomain(self):
         return self.domain() + "_" + self.typename()
     
@@ -31,16 +34,16 @@ class SubDomain(list):
 
         return ret
 
-    def instantiate(self,subdomain):
+    def instantiate(self,subdomain,data=list()):
 
         if len(self.__class__.__subclasses__()) == 0:
             if self.subdomain() == subdomain:
-                return self.__class__()
+                return self.__class__(data)
             else:
                 return None
         else:
             for s in self.__class__.__subclasses__():
-                result = s().instantiate(subdomain)
+                result = s().instantiate(subdomain,data)
                 if result != None:
                     return result
             return None

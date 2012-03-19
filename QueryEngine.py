@@ -69,3 +69,8 @@ class QueryEngine(object):
     print "Warning: Could not evalute the query: ", query
     return [0] * len(query.subdomain), False
   
+
+  def getSubDomain(self,name):
+    """Return the complete subdomain corresponding to the given name"""
+
+    return self.dataStore.getSubDomain(name)

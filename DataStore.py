@@ -1,4 +1,5 @@
 from BFTable import *
+from SubDomain import *
 
 class DataStore(object):
   """A data store is a collection of tables keyed by subdomain. It is designed
@@ -70,7 +71,20 @@ class DataStore(object):
 
     return data.evaluate(query)
             
-        
+
+  def getSubDomain(self,name):
+    
+    if name in self._tables:
+      t = self._tables[name][0]
+      result = SubDomain().instantiate(name,np.unique(t._data[t._key]))
+
+      return result, True
+    
+    else:
+      result = SubDomain().instantiate(name)
+      return result, False
+    
+
 if __name__ == '__main__':
   from YamlLoader import *
   from DataObject import *

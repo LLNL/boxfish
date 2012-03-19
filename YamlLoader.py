@@ -34,24 +34,7 @@ def load_yaml(filename):
     while input.readline().split()[0] != "...":
         continue
 
-    # Map information is required
-    if not 'x' in np.dtype(dtype).names or \
-        not 'y' in np.dtype(dtype).names or \
-        not 'z' in np.dtype(dtype).names:
-        return None
-
-    # If not present, mpirank is assumed
-    if not 'mpirank' in np.dtype(dtype).names:
-       recs = []
-       dtype.append(('mpirank', 'int32'))
-       for i, line in enumerate(input):
-         newrec = line.split()
-         newrec.append(i)
-         newrec = tuple(newrec)
-         recs.append(newrec)
-       data = np.array(recs, dtype)
-    else: 
-       data = np.loadtxt(input, dtype=np.dtype(dtype))
+    data = np.loadtxt(input, dtype=np.dtype(dtype))
 
     return data
 

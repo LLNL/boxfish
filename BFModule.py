@@ -14,6 +14,7 @@ class BFModule(QFrame):
     registerTableSignal      = Signal(BFTable)
     registerProjectionSignal = Signal(Projection)
     evaluateSignal           = Signal(Query)
+    getSubDomainSignal       = Signal(object,str)
     
     def __init__(self,parent=None):
 
@@ -34,9 +35,18 @@ class BFModule(QFrame):
 
     def evaluate(self,query):
         self.evaluateSignal.emit(query)
+
+    def highlight(self,subdomain):
+        self.highlightSignal.emit(subdomain)
+
+    def getSubDomain(self,subdomain):
+        self.getSubDomainSignal.emit(self,subdomain)
+
+    def setSubDomain(self,subdomain):
+        self.subdomain = subdomain
     
     @Slot(SubDomain)
-    def highlight(self,subdomain):
+    def highlightChanged(self,subdomain):
         print "Highlight", subdomain.subdomain()
 
     @Slot(Query,np.ndarray)
@@ -50,5 +60,5 @@ class BFModule(QFrame):
         """
         print "BFModule.updateAttributes ", attributes, "\n\n"
         self.attributes = attributes
-
+    
         

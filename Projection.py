@@ -38,8 +38,7 @@ class Identity(Projection):
 
   def project(self,subdomain,destination):
 
-    result = SubDomain().instantiate(destination)
-    result.append(subdomain)
+    result = SubDomain().instantiate(destination,subdomain)
     return result
 
   

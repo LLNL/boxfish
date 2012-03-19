@@ -12,7 +12,8 @@ class BFTable(object):
     'max'   : np.max,
     'min'   : np.min,
     'var'   : np.var,
-    'count' : np.size
+    'count' : np.size,
+    'N.A.'  : lambda x: x,
     }
 
   def __init__(self):

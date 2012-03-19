@@ -56,6 +56,7 @@ class BFEngine(QObject):
         module.registerTableSignal.connect(self.registerTable)
         module.registerProjectionSignal.connect(self.registerProjection)
         module.evaluateSignal.connect(self.evaluate)
+        module.getSubDomainSignal.connect(self.getSubDomain)
 
         self.attributesChanged.connect(module.attributesChanged)
     
@@ -112,7 +113,8 @@ class BFEngine(QObject):
 
     @Slot(BFTable)
     def registerTable(self,table):
-
+        print "BFEngine: registerTable"
+        
         self.queryEngine.addTable(table)
 
         self.attributesChanged.emit(self.queryEngine.attributes)
@@ -128,16 +130,23 @@ class BFEngine(QObject):
         answer, success = self.queryEngine.evaluate(query,self.context)
         if success:
             self.publish[query.subdomain.subdomain()].emit(query,answer)
-      
+
+    @Slot(BFModule,str)
+    def getSubDomain(self,module,subdomain):
+
+        data,success = self.queryEngine.getSubDomain(subdomain)
+        if success:
+            module.setSubDomain(data)
+    
     def connectSubscription(self,module,name):
 
-        self.highlights[name].connect(module.highlight)
+        self.highlights[name].connect(module.highlightChanged)
         self.publish[name].connect(module.receive)
 
 
     def disconnectSubscription(self,module,name):
 
-        self.highlights[name].disconnect(module.highlight)
+        self.highlights[name].disconnect(module.highlightChanged)
         self.publish[name].disconnect(module.receive)
 
         
