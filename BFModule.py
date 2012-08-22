@@ -1,4 +1,6 @@
-from PySide.QtCore import Slot,Signal,QObject
+from PySide.QtCore import Slot,Signal,QObject,QMimeData,Qt
+from PySide.QtGui import QWidget,QMainWindow,QDockWidget,QToolBar,\
+    QLabel,QDrag,QPixmap
 import numpy as np
 from SubDomain import *
 from BFTable import *
@@ -7,6 +9,7 @@ from Projection import *
 from DataModel import *
 from BFColumn import *
 import BFMaps
+from BFSceneInfo import *
 
 class BFModule(QObject):
 
@@ -126,11 +129,11 @@ class BFModule(QObject):
     # data model as well as handle other Scenegraph changes
     @Slot(SubDomain)
     def highlight(self,subdomain):
-        """This slot is called whenever a child module changed a highlight. The
-           engine will cycle through all subscribed listeners and try to map
-           the set of highlighted elements to the corresponding set elements
-           in the target domain. For all type for which the context provides
-           such a projection the engine will emit a highlight signal.
+        """This slot is called whenever a child module changes
+           subdomain-dependent scene information. The module cycles through
+           all subscribed listeners. Those of the same subdomain will
+           get all of the scene info. For those of different domains, we
+           check the highlight set to see if we can project.
         """
 
         # For all possible listeners
@@ -207,18 +210,18 @@ class BFModule(QObject):
         self.highlights[name].disconnect(module.highlightChanged)
         self.publish[name].disconnect(module.receive)
 
-    def subscribe(self,name):
-        self.subscribeSignal.emit(self,name)
+    #def subscribe(self,name):
+    #    self.subscribeSignal.emit(self,name)
 
-    def unsubscribe(self,name):
-        self.unsubscribeSignal.emit(self,name)
+    #def unsubscribe(self,name):
+    #    self.unsubscribeSignal.emit(self,name)
 
     def evaluate(self,query):
         pass
         #self.evaluateSignal.emit(query)
 
-    def highlight(self,subdomain):
-        self.highlightSignal.emit(subdomain)
+    #def highlight(self,subdomain):
+    #    self.highlightSignal.emit(subdomain)
 
     def getSubDomain(self,subdomain):
         self.getSubDomainSignal.emit(self,subdomain)
@@ -248,38 +251,6 @@ class BFModule(QObject):
 BFModule.subscribe = Slot(BFModule, str)(BFModule.subscribe)
 BFModule.unsubscribe = Slot(BFModule, str)(BFModule.unsubscribe)
 BFModule.getSubDomain = Slot(BFModule, str)(BFModule.getSubDomain)
-
-
-# Note, windows that have children need to manage SceneInfo objects whether
-# or not they can make the projection themselves. We need some policy on
-# that. Perhaps there will be a different SceneInfo for the module and
-# for the Window itself? The Window will listen to the Module's SceneInfo.
-# In some cases, like FilterWidnow, where it doesn't care about SceneInfo,
-# it won't register any SceneInfo.
-class BFSceneInfo(QObject):
-    """This holds all of the scene information that we might want to
-       propogate among views.
-    """
-
-    changeSignal = Signal(QObject)
-
-    def __init__(self, parent = None):
-        super(BFSceneInfo, self).__init__()
-
-        self.parent = parent # parent ModuleWindow
-        self.color_map = BFMaps.getMap('gist_earth_r')
-        self.color_range = (0.0, 1.0) # color extents
-        self.model_view = None
-        self.highlight_set = list() # list of values to be highlighted
-        self.subdomains = None # upchain will check if it can project here
-        self.permissive = True # allow upchain to change me
-
-        # Module specific scene info, only passed to modules that
-        # are instances of the type associated with them
-        self.other = list()
-
-    def announceChange(self):
-        self.changeSignal.emit(self)
 
 
 class BFModuleWindow(QMainWindow):

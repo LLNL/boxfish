@@ -56,7 +56,7 @@ def getMap(colormap):
     if hasMap(colormap):
         return boxfish_maps[colormap]
     else:
-        return cm.get_map(colormap)
+        return cm.get_cmap(colormap)
 
 def mapNames():
     map_names = []
