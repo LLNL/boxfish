@@ -1,0 +1,118 @@
+#!/usr/bin/env python
+
+import sys
+from PySide.QtCore import *
+from PySide.QtGui import *
+from FilterBox import *
+from DataModel import *
+
+class BFMainWindow(QMainWindow):
+
+    def __init__(self, parent=None):
+        super(BFMainWindow, self).__init__(parent)
+
+        self.model = BFDataModel()
+        self.module = self
+        self.centralWidget = QSplitter(Qt.Horizontal)
+
+        # Control Frame
+        self.control_frame = QFrame(self)
+        self.makeControlFrame()
+        self.centralWidget.addWidget(self.control_frame)
+        self.centralWidget.setStretchFactor(0, 0)
+
+        # Filter group
+        self.filter_group = FilterBoxWindow(parent = self, \
+            title = "Boxfish", parent_view = self)
+        self.centralWidget.addWidget(self.filter_group)
+        self.centralWidget.setStretchFactor(1, 1)
+
+        self.setCentralWidget(self.centralWidget)
+
+        self.createMenus()
+        self.setWindowTitle("Boxfish")
+        self.resize(1000, 800)
+
+    # TODO: Instead of this nonsense, do a new Module just
+    # for the top level
+    def registerChild(self, child):
+        pass
+
+    def unregisterChild(self, child):
+        pass
+
+
+    def makeControlFrame(self):
+        layout = QVBoxLayout(self.control_frame)
+        self.toolbox = QToolBox(self.control_frame)
+
+        # Data tree
+        self.data_view = QTreeView(self.control_frame)
+        self.data_view.setModel(self.model)
+        self.data_view.setDragEnabled(True)
+        self.data_view.setDropIndicatorShown(True)
+        self.data_view.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.data_view.setHeaderHidden(True)
+        self.toolbox.addItem(self.data_view, "Data")
+
+        # Projection tree
+        projection_view = QListView(self.control_frame)
+        self.toolbox.addItem(projection_view, "Projections")
+
+        # Module list
+        module_view = QListView(self.control_frame)
+        module_model = ModuleListModel(self.findModules())
+        module_view.setModel(module_model)
+        module_view.setDragEnabled(True)
+        module_view.setDropIndicatorShown(True)
+        self.toolbox.addItem(module_view, "Modules")
+
+
+        layout.addWidget(self.toolbox)
+        self.control_frame.setLayout(layout)
+
+    def createMenus(self):
+        self.fileMenu = self.menuBar().addMenu("&File")
+        self.fileMenu.addAction(QAction("&Open Run", self,
+            shortcut = QKeySequence.Open, triggered=self.runOpen))
+        self.fileMenu.addAction(QAction("&Quit", self,
+            shortcut = "Ctrl+Q", triggered = self.close))
+
+    def runOpen(self):
+        filename, filtr = QFileDialog.getOpenFileName(self)
+        if filename == u'':
+            return
+
+        self.model.insertRun(filename)
+
+    def findModules(self):
+        modules = list()
+
+        # Import the modules package
+        saved_syspath = sys.path[:] # Save true sys.path
+        sys.path.insert(0, os.path.dirname(__file__)) # Set sys.path to boxfish filedir
+        __import__("mods") # import!
+        sys.path = saved_syspath # Revert true sys.path
+
+        modules = BFModuleWindow().subclassList()
+        return modules
+
+
+
+class ModuleListModel(QStringListModel):
+
+    def __init__(self, slist):
+        super(ModuleListModel, self).__init__(slist)
+        pass
+
+    def mimeData(self, index):
+        return ModuleNameMime(self.data(index[0], 0))
+
+
+if __name__ == "__main__":
+
+    app = QApplication(sys.argv)
+    #app.setStyle('plastique')
+    bf = BFMainWindow()
+    bf.show()
+    sys.exit(app.exec_())

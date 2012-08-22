@@ -10,7 +10,7 @@ class Query(object):
 
     if not issubclass(sub.__class__,SubDomain):
       raise ValueError("The first argument of a query must be a subdomain.")
-    
+
     self.subdomain = sub
     self.attribute = attribute
     self.aggregator = aggregator
@@ -18,4 +18,4 @@ class Query(object):
   def __str__(self):
 
     return self.subdomain.subdomain() + ": " + self.subdomain.__str__() + " attr: \"%s\", agg: \"%s\"" % (self.attribute,self.aggregator)
-  
+

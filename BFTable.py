@@ -60,6 +60,27 @@ class BFTable(object):
 
     self._data = np.array(data)
 
+  def fromRecArray(self,domain_type,primary_key, data):
+    """Load a table from a given numpy recarray. The function will make
+       a copy of the given data. The domain type provides the context for the
+       attributes and the primary key the corresponding string key used in the
+       table.
+       Parameters:
+
+         domain_type   a SubDomain type or corresponding to the primary key
+                       of this table
+         primary_key   the string key used in the file for the primary domain
+         data          the numpy array of records
+    """
+
+    if primary_key not in data.dtype.names:
+      raise ValueError("This table does not contain the given key.")
+
+    self._domainType = domain_type
+    self._key = primary_key
+
+    self._data = data
+
 
   def fromExisting(self, domain_type, primary_key, table):
     """Load a table using a different (potentially) different domain_type and key.
@@ -72,29 +93,34 @@ class BFTable(object):
          primary_key   the string key used in the file for the primary domain
          table         the reference table
      """
-         
+
     self._domainType = domain_type
     self._key = primary_key
 
     self._data = table._data
 
-  def attributes(self):
-    """Return a set of attributes of this table. Note that the attributes do
-    *not* contain the primary key which is considered special.
+
+  def identifiers(self):
+    """Return some representation of all the rows in the table.
     """
-    
+    return set(range(len(self._data)))
+
+
+  def attributes(self):
+    """Return a list of attributes of this table.
+    """
+
     try:
       self._data
     except:
-      return set()
+      return list()
 
-    result = set()
+    result = list()
     for d in self._data.dtype.names:
-      if d != self._key:
-        result.add(d)
+        result.append(d)
 
     return result
-      
+
   def domain(self):
 
     try:
@@ -116,14 +142,15 @@ class BFTable(object):
     except:
       raise ValueError("Using an uninitialized table.")
 
+
   def evaluate(self, query):
     """Evalue the query. If the table is not initialized or does not contain the
-       attribute asked for in the query a list of 0's will be returned 
+       attribute asked for in the query a list of 0's will be returned
        Paramters:
 
          query  the query to evaluate
     """
-    
+
     result = [0] * len(query.subdomain)
 
     try:
@@ -156,11 +183,17 @@ class BFTable(object):
 
     return result, True
 
+  def subset(self, query, identifiers):
+    """Determine the subset of valid identifiers based on some query given the
+       initial set of identifiers.
+    """
+    pass
+
 
 if __name__ == '__main__':
   from YamlLoader import *
   from DataObject import *
-  from Query import *
+  #from Query import *
 
   data = load_yaml("bgpcounter_data.yaml")
 
@@ -168,7 +201,6 @@ if __name__ == '__main__':
   table.fromArray(Ranks,'mpirank',data)
 
   r = Ranks([[0,1,2],[1,2,3],2])
-  q = Query(r,'x','max')
-  print table.reduce(q)
+  #q = Query(r,'x','max')
+  #print table.reduce(q)
 
-      
