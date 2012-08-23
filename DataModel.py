@@ -323,8 +323,8 @@ class BFDataModel(QAbstractItemModel):
         #Create attributes
         self.beginInsertRows(self.createIndex(position, 0, projectionItem), \
             0, 2)
-        attItem = BFAttributeItem(projection.getSource(), projectionItem)
-        attItem = BFAttributeItem(projection.getDestination(), projectionItem)
+        attItem = BFAttributeItem(projection.source, projectionItem)
+        attItem = BFAttributeItem(projection.destination, projectionItem)
         self.endInsertRows()
 
         return True
@@ -398,6 +398,7 @@ class BFDataModel(QAbstractItemModel):
             elif filedict['filetype'].upper() == "PROJECTION":
                 domainlist = filedict['subdomain']
                 mydomains = list()
+                mykeys = list()
                 for subdomaindict in domainlist:
                     type_string = subdomaindict['domain'] + "_" \
                         + subdomaindict['type']
@@ -408,6 +409,7 @@ class BFDataModel(QAbstractItemModel):
                         continue
                     else:
                         mydomains.append(data_type)
+                        mykeys.append(subdomaindict['field'])
 
                 if len(mydomains) != 2:
                     print "Not enough domains for projection. Skipping..."
@@ -418,7 +420,10 @@ class BFDataModel(QAbstractItemModel):
                 if filedict['type'].upper() == "FILE":
                     metadata, data = yl.load_table(os.path.dirname(filename) \
                         + "/" + filedict['filename'])
-                    aprojection = TableBased(mydomains[0], mydomains[1], data)
+                    atable = BFTable()
+                    atable.fromRecArray(mydomains[0], mykeys[0], data)
+                    aprojection = TableProjection(mydomains[0], mydomains[1], \
+                            mykeys[0], mykeys[1], atable)
                     self.insertProjection(mydomains[0].typename() + "<->" \
                         + mydomains[1].typename(), aprojection, metadata, \
                         parent = self.createIndex(position, 0, projectionsItem))
@@ -426,7 +431,7 @@ class BFDataModel(QAbstractItemModel):
 
         return True
 
-    # TODO: Remove functionality.
+    # TODO: Add the ability to remove elements
     def removeTable(self, position, rows, parent=QModelIndex()):
         pass
 

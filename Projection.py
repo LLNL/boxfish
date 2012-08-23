@@ -25,14 +25,8 @@ class Projection(object):
     return (((self.source == source) and (self.destination == destination)) or
             ((self.source == destination) and (self.destination == source)))
 
-  def getSource(self):
-    return self.source
 
-  def getDestination(self):
-    return self.destination
-
-
-class Identity(Projection):
+class IdentityProjection(Projection):
   """A default identify mapping, for example, for the standard MPI rank <-> core
      mapping
   """
@@ -47,20 +41,35 @@ class Identity(Projection):
     return result
 
 
-class TableBased(Projection):
-  """Mapping defined by file.
+class TableProjection(Projection):
+  """Mapping defined by BFTable.
   """
 
-  def __init__(self, source = "undefined", destination = "undefined", table = None):
-    super(TableBased, self).__init__(source, destination)
+  def __init__(self, source = "undefined", destination = "undefined", \
+    source_key = None, destination_key = None, table = None):
+    super(TableProjection, self).__init__(source, destination)
 
     self._table = table
+    self._source_key = source_key
+    self._destination_key = destination_key
 
 
   def project(self, subdomain, destination):
 
-      # TODO: Use table to find list that we pass to destination subdomain
-      return None
+      if destination == self.destination:
+          identifiers = self._table.subset_by_key(subdomain)
+          keys = self._table.attribute_by_identfiers(identifiers,\
+              [self._destination_key])
+      else:
+          conditions = list()
+          for key in subdomain:
+              conditions.append((self._destination_key, "=", key, "or"))
+          identfiers = self._table.subset_by_attributes(\
+              self._table.identifiers(), conditions)
+          keys = self._table.attribute_by_identifiers(identifiers,\
+              [self._source_key])
+      
+      return keys
 
 
 

@@ -30,7 +30,7 @@ class FilterBoxWindow(BFModuleWindow):
             self.parent_view.module.model)
 
     def createView(self):
-        view = QWidget() # Later this will be a FilterBoxView with Filter controls
+        view = QWidget() # Later this will be a FilterBoxView w/ Filter controls
 
         layout = QGridLayout()
         self.fake_label = QLabel("")
@@ -61,6 +61,8 @@ class FilterBoxWindow(BFModuleWindow):
         self.addToolBar(self.toolbar)
 
     # Demonstration of changing Drag & Drop behavior for Attribute data
+    # Need to add common functions to override to take out a lot of this 
+    # cruft for common operations.
     def dropEvent(self, event):
         # Dropped Attribute Data
         if isinstance(event.mimeData(), BFDataMime):

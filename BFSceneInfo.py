@@ -12,8 +12,6 @@ class BFSubdomainScene(QObject):
         super(BFSubdomainScene, self).__init__()
 
         self.subdomain = subdomain
-        self.color_map = color_map
-        self.color_range = color_range
         self.highlight_set = highlight_set # Subdomain
         self.run = run # QModelIndex
 
@@ -23,6 +21,9 @@ class BFSubdomainScene(QObject):
 class BFAttributeScene(QObject):
     """This holds attribute-specific scene information that we might
        want to propogate among views.
+
+       Color map ranges only make sense with respect to a specific
+       combination of attributes. 
     """
 
     changeSignal = Signal(QObject)
@@ -31,8 +32,8 @@ class BFAttributeScene(QObject):
         color_range = (0.0, 1.0)):
         super(BFAttributeScene, self).__init__()
 
-        self.attributes = attributes
-        self.color_map = color_map
+        self.attributes = attributes # Needs to identify combination of attrs
+        self.color_map = color_map # Move to something completely general?
         self.color_range = color_range
 
     def announceChange(self):
@@ -45,12 +46,12 @@ class BFModuleScene(QObject):
        Example: May be used to hold ModelView matrix.
     """
 
+    moduleType = None #Change for subclass
     changeSignal = Signal(QObject)
 
-    def __init__(self, info = None):
+    def __init__(self):
         super(BFModuleScene, self).__init__()
 
-        self.info = info
 
     def announceChange(self):
         self.changeSignal.emit(self)

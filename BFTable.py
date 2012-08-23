@@ -1,4 +1,5 @@
 import numpy as np
+import itertools
 
 class BFTable(object):
   """A (B)ox(F)ishTable is a wrapper around a numpy array of records that
@@ -15,6 +16,20 @@ class BFTable(object):
     'count' : np.size,
     'N.A.'  : lambda x: x,
     }
+
+  relations = {
+    '='  : np.ndarray.__eq__,
+    '!=' : np.ndarray.__ne__,
+    '<'  : np.ndarray.__lt__,
+    '<=' : np.ndarray.__le__,
+    '>'  : np.ndarray.__gt__,
+    '>=' : np.ndarray.__ge__,
+  }
+
+  logicals = {
+    'and' : np.ndarray.__and__,
+    'or'  : np.ndarray.__or__,
+  }
 
   def __init__(self):
 
@@ -115,11 +130,7 @@ class BFTable(object):
     except:
       return list()
 
-    result = list()
-    for d in self._data.dtype.names:
-        result.append(d)
-
-    return result
+    return self._data.dtype.names
 
   def domain(self):
 
@@ -183,11 +194,117 @@ class BFTable(object):
 
     return result, True
 
-  def subset(self, query, identifiers):
+  def attributes_by_attributes(self, identifiers, given_attrs, desired_attrs, \
+    aggregator):
+    """Determine list of desired attributed aggregated by set of given
+       attributes. This does an attribute look up/group by type operation.
+
+       Right now we treat these attributes separately, but we could define
+       perhaps a list of lists style such that we could aggregate multiple
+       columns and produce a single column.
+    """
+
+    # We need all possible combinations of the given attributes
+    givens_list = list()
+    for attr in given_attrs:
+      givens_list.append(np.unique(self._data[attr][identifiers]))
+
+    groupby_iter = itertools.product(*givens_list)
+    group_list = list()
+
+    # For the found values
+    desired_list = list()
+    for attr in desired_attrs:
+      desired_list.append(list())
+
+    for given_tuple in groupby_iter:
+      where_clause = True
+      for i, attr in enumerate(given_tuple):
+        where_clause = self.append_clause(where_clause, (given_attrs[i], "=",\
+          attr, "and"), identifiers)
+
+      indices = np.where(where_clause)[0]
+
+      # We only keep the valid combinations
+      if len(indices) != 0:
+        new_identifiers = [identifiers[x] for x in indices]
+        group_list.append(given_tuple)
+        for i, attr_list in enumerate(desired_list):
+          attr_list.append(self.operator[aggregator](\
+            self._data[new_identifiers][desired_attrs[i]]))
+
+    return group_list, desired_list
+
+  def attribute_by_identifiers(self, identfiers, attributes, unique = True):
+    """Get list of all attributes from a set of identifiers. Not sure
+       this is a good idea.
+    """
+
+    attr_list = list()
+    if unique:
+      for attr in attributes:
+        attr_list.append(np.unique(self._data[identifiers][attr]))
+    else:
+      for attr in attributes:
+        attr_list.append(list())
+
+      for row in self._data[identifiers]:
+        for i, attr in attributes:
+          attr_list[i].append(row[attr])
+
+    return attr_list
+
+      
+
+  def subset_by_key(self, identifiers, subdomain):
     """Determine the subset of valid identifiers based on some query given the
        initial set of identifiers.
+
+       identifiers = initial set of identifiers
+       subdomain = subdomain containing list of keys we are subsetting by
+
+       This could be done with subset_by_attributes but we special-case
+       this for convenience since we will be using this a lot when we've
+       mapped outside data onto the primary key and are performing some
+       operation on it in a filter.
     """
-    pass
+    if len(subdomain) == 0:
+      return []
+    subset_filter = True
+    for index in subdomain:
+      subset_filter = subset_filter | \
+        (self._data[self._key][identifiers] == index)
+    indices = np.where(subset_filter)
+    return [identifiers[x] for x in indices]
+
+  def subset_by_attributes(self, identifiers, conditions):
+    """Determine the subset of valid identifiers based on some conditions
+       within this table and an initial set of identifiers.
+
+       identifiers = initial set of identifiers of rows.
+       conditions = list of (attribute, relation, value, logical) tuples 
+                    where attributes are in this table
+    """
+    subset_filter = True
+    for condition in conditions:
+      subset_filter = self.append_clause(subset_filter, condition, identifiers)
+    indices = np.where(subset_filter)
+    return [identifiers[x] for x in indices]
+
+  def append_clause(self, clauses, condition, identifiers):
+    """Append a clause tuple to an existing set of clauses.
+
+       This is for building where-type clauses in this table scheme.
+    """
+    attr, relation, value, logical = condition
+    if attr not in self.attributes():
+      print "Attribute mismatch. Could not find attribute in table."
+      return clauses
+
+    logic_operator = logicals[logical]
+    relation_operator = relations[relation]
+    return logic_operator(clauses, 
+      relation_operator(self._data[attr][identifiers], value))
 
 
 if __name__ == '__main__':

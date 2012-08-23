@@ -44,7 +44,10 @@ class BFModule(QObject):
 
         self.model = model
         self.listenerCount = dict()
-        self.highlights = dict()
+        self.highlights = dict() # domain based information
+        self.domain_scenes = dict()
+        self.attribute_scenes = dict()
+        self.module_scenes = dict()
         self.publish = dict()
         for name in SubDomain().subclasses():
             self.listenerCount[name] = 0
@@ -79,6 +82,7 @@ class BFModule(QObject):
 
     def addRequirement(self, col):
         self.requirements.append(col)
+        #Now send this new one to the parent
 
     def getColumnRequests(self):
         reqs = list()
@@ -210,18 +214,9 @@ class BFModule(QObject):
         self.highlights[name].disconnect(module.highlightChanged)
         self.publish[name].disconnect(module.receive)
 
-    #def subscribe(self,name):
-    #    self.subscribeSignal.emit(self,name)
-
-    #def unsubscribe(self,name):
-    #    self.unsubscribeSignal.emit(self,name)
-
     def evaluate(self,query):
         pass
         #self.evaluateSignal.emit(query)
-
-    #def highlight(self,subdomain):
-    #    self.highlightSignal.emit(subdomain)
 
     def getSubDomain(self,subdomain):
         self.getSubDomainSignal.emit(self,subdomain)

@@ -48,14 +48,21 @@ class BFColumn(QObject):
     def setTable(self, table):
         self.table = table
 
-    def getAttributes(self):
+    @property
+    def attributes(self):
         return self.attributes
 
-    def getIdentifiers(self):
-        return self.identifiers
+    @attributes.setter
+    def attributes(self, attrs):
+        self._attributes = attributes[:]
 
-    def setIdentifiers(self, ids):
-        self.identifiers = ids[:]
+    @property
+    def identifiers(self):
+        return self._identifiers
+
+    @identifiers.setter
+    def identifiers(self, ids):
+        self._identifiers = ids[:]
 
     def getParent(self):
         return self.parent
@@ -69,11 +76,13 @@ class BFColumn(QObject):
     def getModifier(self):
         return self.modifier
 
-    def getModifierChain(self):
-        return self.modifier_chain
+    @property
+    def modifier_chain(self):
+        return self._modifier_chain
 
-    def setModifierChain(self, chain):
-        self.modifier_chain = chain[:]
+    @modifier_chain.setter
+    def modifier_chain(self, chain):
+        self._modifier_chain = chain[:]
 
     def createUpstream(self, parent):
         """Creates a BFColumn that is directly upstream from
