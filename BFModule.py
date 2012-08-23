@@ -17,8 +17,7 @@ class BFModule(QObject):
     subscribeSignal          = Signal(object,str)
     unsubscribeSignal        = Signal(object,str)
     highlightSignal          = Signal(SubDomain)
-    registerTableSignal      = Signal(BFTable)
-    registerProjectionSignal = Signal(Projection)
+    addColumnSignal          = Signal(BFColumn, object)
     #evaluateSignal           = Signal(Query)
     getSubDomainSignal       = Signal(object,str)
 
@@ -83,6 +82,12 @@ class BFModule(QObject):
     def addRequirement(self, col):
         self.requirements.append(col)
         #Now send this new one to the parent
+        self.addColumnSignal.emit(col)
+
+    # Signal decorator attached after teh class.
+    def addChildColumn(self, col, child):
+        self.child_columns.appent(col.createUpstream(child))
+        self.addColumnSignal.emit(col)
 
     def getColumnRequests(self):
         reqs = list()
@@ -102,6 +107,7 @@ class BFModule(QObject):
         child.subscribeSignal.connect(self.subscribe)
         child.unsubscribeSignal.connect(self.unsubscribe)
         child.highlightSignal.connect(self.highlight)
+        child.addColumnSignal.connect(self.addChildColumn)
         #child.evaluateSignal.connect(self.evaluate)
         child.getSubDomainSignal.connect(self.getSubDomain)
 
@@ -113,6 +119,7 @@ class BFModule(QObject):
         child.subscribeSignal.disconnect(self.subscribe)
         child.unsubscribeSignal.disconnect(self.unsubscribe)
         child.highlightSignal.disconnect(self.highlight)
+        child.addColumnSignal.disconnect(self.addChildColumn)
         #child.evaluateSignal.disconnect(self.evaluate)
         child.getSubDomainSignal.disconnect(self.getSubDomain)
 
@@ -246,6 +253,7 @@ class BFModule(QObject):
 BFModule.subscribe = Slot(BFModule, str)(BFModule.subscribe)
 BFModule.unsubscribe = Slot(BFModule, str)(BFModule.unsubscribe)
 BFModule.getSubDomain = Slot(BFModule, str)(BFModule.getSubDomain)
+BFModule.addChildColumn = Slot(BFColumn, BFModule)(BFModule.addChildColumn)
 
 
 class BFModuleWindow(QMainWindow):

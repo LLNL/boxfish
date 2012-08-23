@@ -12,7 +12,7 @@ class BFMainWindow(QMainWindow):
         super(BFMainWindow, self).__init__(parent)
 
         self.model = BFDataModel()
-        self.module = self
+        self.module = BFTopModule(self, self.model)
         self.centralWidget = QSplitter(Qt.Horizontal)
 
         # Control Frame
@@ -22,9 +22,9 @@ class BFMainWindow(QMainWindow):
         self.centralWidget.setStretchFactor(0, 0)
 
         # Filter group
-        self.filter_group = FilterBoxWindow(parent = self, \
+        self.filter_box = FilterBoxWindow(self, \
             title = "Boxfish", parent_view = self)
-        self.centralWidget.addWidget(self.filter_group)
+        self.centralWidget.addWidget(self.filter_box)
         self.centralWidget.setStretchFactor(1, 1)
 
         self.setCentralWidget(self.centralWidget)
@@ -32,14 +32,6 @@ class BFMainWindow(QMainWindow):
         self.createMenus()
         self.setWindowTitle("Boxfish")
         self.resize(1000, 800)
-
-    # TODO: Instead of this nonsense, do a new Module just
-    # for the top level
-    def registerChild(self, child):
-        pass
-
-    def unregisterChild(self, child):
-        pass
 
 
     def makeControlFrame(self):
@@ -56,8 +48,8 @@ class BFMainWindow(QMainWindow):
         self.toolbox.addItem(self.data_view, "Data")
 
         # Projection tree
-        projection_view = QListView(self.control_frame)
-        self.toolbox.addItem(projection_view, "Projections")
+        filter_view = QListView(self.control_frame)
+        self.toolbox.addItem(filter_view, "Filters")
 
         # Module list
         module_view = QListView(self.control_frame)
@@ -96,6 +88,26 @@ class BFMainWindow(QMainWindow):
 
         modules = BFModuleWindow().subclassList()
         return modules
+
+class BFTopModule(BFModule):
+
+    def __init__(self, parent, model):
+        super(BFTopModule, self).__init__(parent, model)
+    
+
+    # You can't add requirements to this module
+    def addRequirement(self, col):
+        raise UserWarning("Top module should not have own requirements.")
+
+    # Since this is the top module which doesn't have any
+    # filters or interface or anything, any column we receive
+    # should automatically get all table identifiers
+    @Slot(BFColumn, BFModule)
+    def addChildColumn(self, col, child):
+        super(BFTopModule, self).addChildColumn(col, child)
+        col.identifiers = col.table.identifiers()
+        col.changeSignal.emit(col)
+        
 
 
 

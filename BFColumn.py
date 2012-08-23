@@ -30,8 +30,8 @@ class BFColumn(QObject):
         name = None):
         super(BFColumn, self).__init__()
         self.table = table
-        self.attributes = attributes
-        self.identifiers = identifiers
+        self._attributes = attributes
+        self._identifiers = identifiers
         self.name = name
         self.parent = parent
 
@@ -40,21 +40,15 @@ class BFColumn(QObject):
         self.modifier = None # e.g. filter
 
         # chain of modifiers this data has gone through
-        self.modifier_chain = list()
-
-    def getTable(self):
-        return self.table
-
-    def setTable(self, table):
-        self.table = table
+        self._modifier_chain = list()
 
     @property
     def attributes(self):
-        return self.attributes
+        return self._attributes
 
     @attributes.setter
     def attributes(self, attrs):
-        self._attributes = attributes[:]
+        self._attributes = attrs[:]
 
     @property
     def identifiers(self):
@@ -63,18 +57,6 @@ class BFColumn(QObject):
     @identifiers.setter
     def identifiers(self, ids):
         self._identifiers = ids[:]
-
-    def getParent(self):
-        return self.parent
-
-    def getName(self):
-        return self.name
-
-    def setModifier(self, modifier):
-        self.modifier = modifier
-
-    def getModifier(self):
-        return self.modifier
 
     @property
     def modifier_chain(self):
