@@ -391,9 +391,10 @@ class BFDataModel(QAbstractItemModel):
 
                 metadata, data = yl.load_table(os.path.dirname(filename) + \
                     "/" + filedict['filename'])
+                combined_meta = dict(metadata.items() + filedict.items())
                 atable = BFTable()
                 atable.fromRecArray(data_type, filedict['field'], data)
-                self.insertTable(filedict['filename'], atable, metadata, \
+                self.insertTable(filedict['filename'], atable, combined_meta, \
                     parent = self.createIndex(position, 0, tablesItem))
             elif filedict['filetype'].upper() == "PROJECTION":
                 domainlist = filedict['subdomain']
@@ -420,12 +421,13 @@ class BFDataModel(QAbstractItemModel):
                 if filedict['type'].upper() == "FILE":
                     metadata, data = yl.load_table(os.path.dirname(filename) \
                         + "/" + filedict['filename'])
+                    combined_meta = dict(metadata.items() + filedict.items())
                     atable = BFTable()
                     atable.fromRecArray(mydomains[0], mykeys[0], data)
                     aprojection = TableProjection(mydomains[0], mydomains[1], \
                             mykeys[0], mykeys[1], atable)
                     self.insertProjection(mydomains[0].typename() + "<->" \
-                        + mydomains[1].typename(), aprojection, metadata, \
+                        + mydomains[1].typename(), aprojection, combined_meta, \
                         parent = self.createIndex(position, 0, projectionsItem))
 
 
@@ -444,6 +446,16 @@ class BFDataModel(QAbstractItemModel):
     # want drop actions on standard views anyway.
     def mimeData(self, indices):
         return BFDataMime(indices)
+
+
+    def findTableBySubdomain(self, index):
+        """Given a subdomain attribute (from a projection), find
+           a list of indices from some other table.
+        """
+        if self.getItem(index).parent().typeInfo() == "PROJECTION":
+            my_type = self.getItem(index).name
+        else:
+            pass
 
 
 

@@ -1,10 +1,6 @@
 from PySide.QtCore import Slot,Signal,QObject
 from BFTable import *
 
-# TODO: Figure out how the reconnect is going to
-# work here. We may need to have upstream/downstream
-# connections more explicit.
-
 # Column used for input and output
 # table - The BFTable object holding the data, might be from the DataModel
 # or something specifically created by the filter
@@ -29,8 +25,8 @@ class BFColumn(QObject):
     def __init__(self, table, attributes, identifiers = None, parent = None,\
         name = None):
         super(BFColumn, self).__init__()
-        self.table = table
-        self._attributes = attributes
+        self.table = table # This might also be a projection
+        self.attributes = attributes
         self._identifiers = identifiers
         self.name = name
         self.parent = parent
@@ -41,14 +37,6 @@ class BFColumn(QObject):
 
         # chain of modifiers this data has gone through
         self._modifier_chain = list()
-
-    @property
-    def attributes(self):
-        return self._attributes
-
-    @attributes.setter
-    def attributes(self, attrs):
-        self._attributes = attrs[:]
 
     @property
     def identifiers(self):

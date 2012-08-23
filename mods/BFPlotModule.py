@@ -11,8 +11,8 @@ matplotlib.rcParams['backend.qt4']='PySide'
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import \
     FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import \
-    NavigationToolbar2QT as NavigationToolbar
+#from matplotlib.backends.backend_qt4agg import \
+#    NavigationToolbar2QT as NavigationToolbar
 
 from PySide.QtCore import *
 from PySide.QtGui import *
@@ -22,11 +22,18 @@ class BFPlotModule(BFModule):
     def __init__(self, parent, model):
         super(BFPlotModule, self).__init__(parent, model)
 
+        self.x_columns = list()
+        self.y_columns = list()
+
     def setXColumns(self, indexList):
-        pass
+        for col in self.x_columns:
+            col.delete()
+        self.x_columns = self.buildColumnsFromIndices(indexList)
 
     def setYColumns(self, indexList):
-        pass
+        for col in self.y_columns:
+            col.delete()
+        self.y_columns = self.buildColumnsFromIndices(indexList)
 
 
 class BFPlotWindow(BFModuleWindow):
@@ -51,7 +58,7 @@ class BFPlotWindow(BFModuleWindow):
         self.viewarea.setWidgetResizable(True)
         self.viewarea.setMinimumSize(300,300)
 
-        # TODO: Use panels to make the attrs flust with the first label
+        # TODO: Use panels to make the attrs flush with the first label
         # and/or change this entirely so we drop into parts of the 
         # MPL window.
         self.xlabel = BFDropLabel("X: ", self, self.droppedXData)
@@ -76,7 +83,6 @@ class BFPlotWindow(BFModuleWindow):
 
     def droppedData(self, indexList):
         # We assume generally dropped data is Y data
-        print "Dropped in general!"
         self.droppedYData(indexList)
 
     def droppedXData(self, indexList):
@@ -105,7 +111,8 @@ class BFPlotView(QWidget):
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self)
         self.canvas.mpl_connect('pick_event', self.onPick)
-        self.toolbar = NavigationToolbar(self.canvas, self.canvas)
+        #Toolbar Doesn't get along with Kate's MPL at the moment
+        #self.toolbar = NavigationToolbar(self.canvas, self.canvas)
         self.axes = self.fig.add_subplot(111)
 
         vbox = QVBoxLayout()

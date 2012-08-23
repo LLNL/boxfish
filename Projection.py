@@ -68,7 +68,7 @@ class TableProjection(Projection):
               self._table.identifiers(), conditions)
           keys = self._table.attribute_by_identifiers(identifiers,\
               [self._source_key])
-      
+
       return keys
 
 

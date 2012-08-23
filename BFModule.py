@@ -79,6 +79,20 @@ class BFModule(QObject):
                     return result
             return None
 
+    def buildColumnsFromIndices(self, indexList):
+        column_list = list()
+
+        get_parent = lambda x: self.model.getItem(x).parent()
+        sorted_indices = sorted(indexList, key = get_parent)
+        attr_groups = itertools.groupby(sorted_indices, key = get_parent)
+
+        for group in attr_group:
+            column_list.append(BFColumn(get_parent(group[0]), group,
+                parent = self))
+
+        return column_list
+
+
     def addRequirement(self, col):
         self.requirements.append(col)
         col.changeSignal.connect(self.requiredColumnChanged)
@@ -89,7 +103,7 @@ class BFModule(QObject):
     def requiredColumnChanged(self, col):
         pass
 
-    # Signal decorator attached after teh class.
+    # Signal decorator attached after the class.
     def addChildColumn(self, col, child):
         self.child_columns.appent(col.createUpstream(child))
         self.addColumnSignal.emit(col)
