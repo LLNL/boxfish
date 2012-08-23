@@ -81,8 +81,13 @@ class BFModule(QObject):
 
     def addRequirement(self, col):
         self.requirements.append(col)
+        col.changeSignal.connect(self.requiredColumnChanged)
         #Now send this new one to the parent
         self.addColumnSignal.emit(col)
+
+    @Slot(BFColumn)
+    def requiredColumnChanged(self, col):
+        pass
 
     # Signal decorator attached after teh class.
     def addChildColumn(self, col, child):
@@ -529,6 +534,34 @@ class BFDragToolBar(QToolBar):
         drag.setMimeData(BFWindowMime(self.dock))
         dropAction = drag.start(Qt.MoveAction)
 
+class BFDropLabel(QLabel):
+    """This creates a label that can be model index drag/drop operations.
 
+       handler - the model index list (and only the model index list) will
+                 be passed to this function if not None.
+    """
 
+    def __init__(self, text, parent = None, handler = None):
+        super(BFDropLabel, self).__init__(text, parent = parent)
 
+        self.handler = handler
+        self.setAcceptDrops(True)
+    
+    def dragEnterEvent(self, event):
+        if isinstance(event.mimeData(), BFDataMime):
+            event.accept()
+        else:
+            super(BFDropLabel, self).dragEnterEvent(event)
+
+    def dropEvent(self, event):
+        # Dropped Attribute Data
+        if isinstance(event.mimeData(), BFDataMime):
+            indexList = event.mimeData().getDataIndices()
+            event.accept()
+            self.droppedData(indexList)
+        else:
+            super(BFDropLabel, self).dropEvent(event)
+
+    def droppedData(self, indexList):
+        if self.handler is not None:
+            self.handler(indexList)

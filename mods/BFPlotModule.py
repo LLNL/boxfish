@@ -22,10 +22,10 @@ class BFPlotModule(BFModule):
     def __init__(self, parent, model):
         super(BFPlotModule, self).__init__(parent, model)
 
-    def setXColumns(self, columns):
+    def setXColumns(self, indexList):
         pass
 
-    def setYColumns(self, columns):
+    def setYColumns(self, indexList):
         pass
 
 
@@ -40,11 +40,10 @@ class BFPlotWindow(BFModuleWindow):
         self.selected = []
 
     def createModule(self):
-        print "Creating Module"
-        return BFPlotModule(self.parent_view.module, self.parent_view.module.model)
+        return BFPlotModule(self.parent_view.module, \
+            self.parent_view.module.model)
 
     def createView(self):
-        print "Creating View"
         view = QWidget()
 
         self.viewarea = QScrollArea()
@@ -52,13 +51,47 @@ class BFPlotWindow(BFModuleWindow):
         self.viewarea.setWidgetResizable(True)
         self.viewarea.setMinimumSize(300,300)
 
+        # TODO: Use panels to make the attrs flust with the first label
+        # and/or change this entirely so we drop into parts of the 
+        # MPL window.
+        self.xlabel = BFDropLabel("X: ", self, self.droppedXData)
+        self.ylabel = BFDropLabel("Y: ", self, self.droppedYData)
+        self.xattrs = BFDropLabel("", self, self.droppedXData)
+        self.yattrs = BFDropLabel("", self, self.droppedYData)
+
+        self.xattrs.setWordWrap(True)
+        self.yattrs.setWordWrap(True)
+
         layout = QGridLayout()
-        layout.addWidget(self.viewarea, 0, 0, 1, 1)
-        layout.setRowStretch(0, 10)
+        layout.addWidget(self.xlabel, 0, 0, 1, 1)
+        layout.addWidget(self.xattrs, 0, 1, 1, 1)
+        layout.addWidget(self.ylabel, 1, 0, 1, 1)
+        layout.addWidget(self.yattrs, 1, 1, 1, 1)
+        layout.addWidget(self.viewarea, 2, 0, 1, 2)
+        layout.setRowStretch(2, 10)
         layout.setContentsMargins(0, 0, 0, 0)
         view.setLayout(layout)
 
         return view
+
+    def droppedData(self, indexList):
+        # We assume generally dropped data is Y data
+        print "Dropped in general!"
+        self.droppedYData(indexList)
+
+    def droppedXData(self, indexList):
+        self.module.setXColumns(indexList)
+        self.xattrs.setText(self.buildAttributeString(indexList))
+
+    def droppedYData(self, indexList):
+        self.module.setYColumns(indexList)
+        self.yattrs.setText(self.buildAttributeString(indexList))
+
+    def buildAttributeString(self, indexList):
+        mytext = ""
+        for index in indexList:
+            mytext = mytext + self.module.model.getItem(index).name + ", "
+        return mytext[:len(mytext) - 2]
 
 
 class BFPlotView(QWidget):
@@ -66,14 +99,12 @@ class BFPlotView(QWidget):
     def __init__(self, parent=None):
         super(BFPlotView, self).__init__(parent)
 
-        print "Adding Figure"
-        self.fig = Figure(figsize=(300,300), dpi=72, facecolor=(1,1,1), edgecolor=(0,0,0))
+        self.fig = Figure(figsize=(300,300), dpi=72, facecolor=(1,1,1), \
+            edgecolor=(0,0,0))
 
-        print "Adding Canvas"
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self)
         self.canvas.mpl_connect('pick_event', self.onPick)
-        print "Adding Toolbar"
         self.toolbar = NavigationToolbar(self.canvas, self.canvas)
         self.axes = self.fig.add_subplot(111)
 
@@ -85,14 +116,15 @@ class BFPlotView(QWidget):
         # Test
         self.axes.plot([1,2,3,4,5],[1,2,3,4,5], 'ob')
         print "Drawing"
-        self.canvas.draw()
+        self.canvas.draw() # Why does this take so long? DockWidgets issue?
 
 
     def plotData(self, ids, vals):
         self.axes.clear()
         self.axes.plot(ids, vals, 'ob', picker=3)
         if np.alen(self.selected) > 0:
-            self.highlighted = self.axes.plot(ids[self.selected[0]], traffic[self.selcted[0]], 'or')[0]
+            self.highlighted = self.axes.plot(ids[self.selected[0]], \
+                vals[self.selcted[0]], 'or')[0]
         self.canvas.draw()
 
     def onPick(self, event):
@@ -110,11 +142,13 @@ class BFPlotView(QWidget):
         print "self.selected is ", self.selected
         if old_selection == self.selected and old_selection != []:
             self.selected = []
-            # emit some signal about this
+            # HIGHLIGHT_CHANGE
+            # alert module about this - need SceneGraph done
 
-        # We haven't changed the data so we don't have to go through makePlottable
         self.plotData(self.ids, self.traffic, True)
 
         if self.selected != []:
-            # emit some signal about this
+            # HIGHLIGHT_CHANGE
+            # alert module about this -- need SceneGraph done
             pass
+

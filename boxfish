@@ -90,7 +90,10 @@ class BFMainWindow(QMainWindow):
         modules = BFModuleWindow().subclassList()
         return modules
 
+
 class BFTopModule(BFModule):
+    """Module for handling top of module tree interactions.
+    """
 
     def __init__(self, parent, model):
         super(BFTopModule, self).__init__(parent, model)
@@ -113,6 +116,8 @@ class BFTopModule(BFModule):
 
 
 class ModuleListModel(QStringListModel):
+    """Simple model for interactions with list of available modules.
+    """
 
     def __init__(self, slist):
         super(ModuleListModel, self).__init__(slist)
