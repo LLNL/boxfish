@@ -239,14 +239,6 @@ class BFModule(QObject):
     def receive(self,query,data):
         print "BFModule got an answer for ", query
 
-    @Slot(dict)
-    def attributesChanged(self,attributes):
-        """Whenever the global list of available attributes changes this
-           function is called
-        """
-        print "BFModule.updateAttributes ", attributes, "\n\n"
-        self.attributes = attributes
-
 
 # The slots need to be added down here because BFModule is not defined
 # at the time that the functions are defined
@@ -378,6 +370,10 @@ class BFModuleWindow(QMainWindow):
     def allowDocks(self, dockable):
         self.acceptDocks = dockable
 
+    def droppedData(self, indexList):
+        """Handle DataModel indices dropped into this window.
+        """
+        pass
 
     # We only accept events that are of our type, indicating
     # a dock window change
@@ -421,9 +417,8 @@ class BFModuleWindow(QMainWindow):
         # Dropped Attribute Data
         elif isinstance(event.mimeData(), BFDataMime):
             indexList = event.mimeData().getDataIndices()
-            for index in indexList:
-                print self.module.model.getItem(index).name()
             event.accept()
+            self.droppedData(indexList)
         else:
             super(BFModuleWindow, self).dropEvent(event)
 

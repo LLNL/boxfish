@@ -60,19 +60,21 @@ class FilterBoxWindow(BFModuleWindow):
 
         self.addToolBar(self.toolbar)
 
-    # Demonstration of changing Drag & Drop behavior for Attribute data
-    # Need to add common functions to override to take out a lot of this 
-    # cruft for common operations.
+    def droppedData(self, indexList):
+        mytext = self.fake_label.text()
+        for index in indexList:
+            print self.module.model.getItem(index).name
+            mytext = mytext + "\n" + self.module.model.getItem(index).name + \
+                " from " + self.module.model.getItem(index).parent().name
+        self.fake_label.setText(mytext)
+
+    # Demonstration of changing Drag & Drop behavior for window unique data
+    # May not be necessary for other modules.
     def dropEvent(self, event):
-        # Dropped Attribute Data
-        if isinstance(event.mimeData(), BFDataMime):
-            indexList = event.mimeData().getDataIndices()
-            mytext = self.fake_label.text()
-            for index in indexList:
-                print self.module.model.getItem(index).name
-                mytext = mytext + "\n" + self.module.model.getItem(index).name + \
-                    " from " + self.module.model.getItem(index).parent().name
-            self.fake_label.setText(mytext)
+        # Dropped Filter
+        if isinstance(event.mimeData(), FilterMime):
+            myfilter = event.mimeData().getFilter()
+            # Do something with it.
             event.accept()
         else:
             super(FilterBoxWindow, self).dropEvent(event)
@@ -89,6 +91,18 @@ class FilterBoxWindow(BFModuleWindow):
         self.setTitle(title)
         self.parent().setWindowTitle(title)
 
+
+class FilterMime(QMimeData):
+    """This is for passing Filter information between filter windows.
+    """
+
+    def __init__(self, myfilter):
+        super(FilterMime, self).__init__()
+
+        self.myfilter = myfilter
+
+    def getFilter(self):
+        return self.myfilter
 
 # Convenient way for me to rename the window and added text for
 # Boxfish poster. May want to change this into something permanent
