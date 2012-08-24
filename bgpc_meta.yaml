@@ -7,7 +7,7 @@ hardware:
 - network: torus
 - nodes: 512
 - coords: [x, y, z]
-- dim: {x: 16, y: 8, z: 8}
+- dim: {x: 8, y: 8, z: 8}
 ---
 filetype: table
 filename: bgpc_nodes.yaml

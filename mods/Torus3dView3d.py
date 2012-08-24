@@ -48,7 +48,7 @@ class GLTorus3dView(GLWidget):
     def __init__(self, parent):
         super(GLTorus3dView, self).__init__(parent)
 
-        self.shape = [1, 1, 1]    # Shape stores the dimensions of the torus
+        self.shape = [2, 2, 2]    # Shape stores the dimensions of the torus
         self.seam = [0, 0, 0]     # Offsets representing seam of the torus
         self.box_size = 0.2       # Size of one edge of each cube representing a node
         self.link_radius = self.box_size * .1       # Radius of link cylinders
@@ -91,7 +91,7 @@ class GLTorus3dView(GLWidget):
         for x, y, z in np.ndindex(*self.shape):
             glPushMatrix()
 
-            glColor4f(0.5, 0.5, 0.5, 1.0)
+            glColor4f(0.5, 0.0, 0.0, 1.0)
             glTranslatef((x + self.seam[0]) % x_span,
                          (y + self.seam[1]) % y_span,
                          -((z + self.seam[2]) % z_span))
