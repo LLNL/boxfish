@@ -29,35 +29,20 @@ class TableWindow(BFModuleWindow):
                             self.parent_view.module.model)
 
     def createView(self):
-        view = QWidget()
-
-        self.tablabel = QLabel("Attributes: ")
-        self.tabattrs = QLabel("")
-
-        self.tabattrs.setWordWrap(True)
-
         self.tabwidget = QTableWidget(10,2)
-
-        layout = QGridLayout()
-        layout.addWidget(self.tablabel, 0, 0, 1, 1)
-        layout.addWidget(self.tabattrs, 0, 1, 1, 1)
-        layout.addWidget(self.tabwidget,1,0,1,2)
-        layout.setRowStretch(2, 10)
-        layout.setContentsMargins(0, 0, 0, 0)
-        view.setLayout(layout)
-
-        return view
+        return self.tabwidget
 
     def droppedData(self, indexList):
         # We assume generally dropped data is Y data
-        self.tabattrs.setText(self.buildAttributeString(indexList))
         self.tabwidget.setColumnCount(len(indexList))
+
+        def make_full_name(i):
+            item = self.module.model.getItem(i)
+            return "%s:%s" % (item.parent().name, item.name)
+
+        def make_name(i):
+            return self.module.model.getItem(i).name
+
+        labels = [make_name(i) for i in indexList]
+        self.tabwidget.setHorizontalHeaderLabels(labels)
         self.module.addDataIndices(indexList)
-
-    def buildAttributeString(self, indexList):
-        mytext = ""
-        for index in indexList:
-            mytext = mytext + self.module.model.getItem(index).name + ", "
-        return mytext[:len(mytext) - 2]
-
-
