@@ -75,7 +75,12 @@ class BFMainWindow(QMainWindow):
         if filename == u'':
             return
 
-        self.model.insertRun(filename)
+        self.openRun(filename)
+
+    def openRun(self, *runs):
+        """User callable method to tell boxfish to open a file."""
+        for run in runs:
+            self.model.insertRun(run)
 
     #TODO: Read other directories to add from config file and add them
     def findModules(self):
@@ -128,9 +133,18 @@ class ModuleListModel(QStringListModel):
 
 
 if __name__ == "__main__":
-
     app = QApplication(sys.argv)
     #app.setStyle('plastique')
     bf = BFMainWindow()
     bf.show()
+    bf.raise_()
+
+    # Open runs based on command line arguments
+    if len(sys.argv) > 1:
+        bf.openRun(*sys.argv[1:])
+
     sys.exit(app.exec_())
+
+
+
+
