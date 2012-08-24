@@ -86,8 +86,8 @@ class BFModule(QObject):
         sorted_indices = sorted(indexList, key = get_parent)
         attr_groups = itertools.groupby(sorted_indices, key = get_parent)
 
-        for group in attr_group:
-            column_list.append(BFColumn(get_parent(group[0]), group,
+        for key, group in attr_groups:
+            column_list.append(BFColumn(key, group,
                 parent = self))
 
         return column_list
