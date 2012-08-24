@@ -6,12 +6,37 @@ from OpenGL.GLUT import *
 from OpenGL.GLE import *
 import numpy as np
 
+from BFColumn import BFColumn
+
 # TODO: this is a hack.  we should change our yaml format so that hardware
 # is a dict and not a list of single-item dicts.
 def get_from_list(dict_list, key):
     for dict in dict_list:
         if key in dict:
             return dict[key]
+
+class Torus3dView3dModule(BFModule):
+    columnSignal = Signal(list, list)
+
+    def __init__(self, parent, model):
+        super(Torus3dView3dModule, self).__init__(parent, model)
+
+    def registerColumn(self, index):
+        index_list = [index]
+        item = self.model.getItem(index)
+
+        col = BFColumn(item.parent(), [item.name], self)
+        self.addRequirement(col)
+
+    @Slot(BFColumn)
+    def requiredColumnChanged(self, col):
+        identifiers = col.table._table.identifiers()
+        for modifier in col.modifier_chain:
+            identifiers = modifier.process(col, identifiers)
+
+        coord_list, attr_val_list = col.table._table.attribute_by_attributes(
+            identifiers, self.coords, col.attributes, BFTable.operator["mean"])
+        self.columnSignal.emit(coord_list, attr_val_list)
 
 class Torus3dView3d(BFModuleWindow):
     """This is a 3d rendering of a 3d torus.
@@ -21,9 +46,15 @@ class Torus3dView3d(BFModuleWindow):
 
     def __init__(self, parent, parent_view = None, title = None):
         super(Torus3dView3d, self).__init__(parent, parent_view, title)
+        if self.module:
+            self.module.columnSignal.connect()
+
+    def drawColors(self):
+        pass
 
     def createModule(self):
-        return BFModule(self.parent_view.module, self.parent_view.module.model)
+        self.module = Torus3dView3dModule(self.parent_view.module, self.parent_view.module.model)
+        return self.module
 
     def createView(self):
         self.view = GLTorus3dView(self)
@@ -33,15 +64,19 @@ class Torus3dView3d(BFModuleWindow):
         if len(index_list) != 1:
             return
 
-        item = self.module.model.getItem(index_list[0])
-        if item.typeInfo() != "RUN":
-            return
+        index = index_list[0]
+        item = self.module.model.getItem(index)
+        if item.typeInfo() == "RUN":
+            if "hardware" in item:
+                hardware = item["hardware"]
 
-        if "hardware" in item:
-            hardware = item["hardware"]
+                coords = get_from_list(hardware, "coords")
+                shape = [get_from_list(hardware, "dim")[coord] for coord in coords]
+                self.module.coords = coords
+                self.view.setShape(shape)
 
-            shape = [get_from_list(hardware, "dim")[coord] for coord in get_from_list(hardware, "coords")]
-            self.view.setShape(shape)
+        elif item.typeInfo() == "ATTRIBUTE":
+            self.module.registerColumn(index)
 
 
 class GLTorus3dView(GLWidget):
