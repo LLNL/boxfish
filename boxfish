@@ -141,8 +141,8 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         bf.openRun(*sys.argv[1:])
 
-    bf.raise_()
     bf.show()
+    bf.raise_()
     sys.exit(app.exec_())
 
 
