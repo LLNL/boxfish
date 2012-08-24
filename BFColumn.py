@@ -29,10 +29,19 @@ class BFColumn(QObject):
 
         # parent will deleteColumn
         self.deleteSignal.connect(parent.deleteColumn)
-        self.modifier = None # e.g. filter
+        self._modifier = None # e.g. filter
 
         # chain of modifiers this data has gone through
         self._modifier_chain = list()
+
+    @property
+    def modifier(self):
+        return self._modifier
+
+    @modifier.setter
+    def modifier(self, mod):
+        self._modifier = mod
+        self.modifierChanged()
 
     @property
     def modifier_chain(self):
@@ -56,19 +65,26 @@ class BFColumn(QObject):
 
         # Upstream listens to this column for deletion as well.
         self.deleteSignal.connect(upstream.delete)
+        return upstream
 
     # When the upstream column changes, we must reapply our
     # modifier and then emit the change downward.
     @Slot(QObject)
     def upstreamChanged(self, upstream):
         # Get modifier chain from upstream
-        self.setModifierChain(upstream.getModifierChain())
+        self.modifier_chain = upstream.modifier_chain
 
         # Apply modifier
         if self.modifier is not None:
-            slef.modifier_chain.append(self.modifier) # Grow modifier chain
+            sef.modifier_chain.append(self.modifier) # Grow modifier chain
 
         # Send downward
+        self.changeSignal.emit(self)
+
+    def modifierChanged(self):
+        if self.modifier is not None:
+            self.modifier_chain.append(self.modifier)
+
         self.changeSignal.emit(self)
 
     # Disconnect an upstream BFColumn marked for deletion
