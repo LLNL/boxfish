@@ -136,13 +136,13 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     #app.setStyle('plastique')
     bf = BFMainWindow()
-    bf.show()
-    bf.raise_()
 
     # Open runs based on command line arguments
     if len(sys.argv) > 1:
         bf.openRun(*sys.argv[1:])
 
+    bf.raise_()
+    bf.show()
     sys.exit(app.exec_())
 
 
