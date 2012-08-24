@@ -36,6 +36,7 @@ class GLWidget(QGLWidget):
 
         # enabled/disabled features
         self.enable_rotation = keywords.get("rotation", True)  #rotation enabled by default
+        self.enable_perspective = keywords.get("perspective", True)  #perspective (as opposed to orthographic)
 
         self.translation = np.zeros([3])      # Initial translation is zero in all directions.
         self.rotation = np.identity(4)        # Initial rotation is just the identity matrix.
@@ -67,6 +68,55 @@ class GLWidget(QGLWidget):
         v[2] *= a
 
         return v
+
+    def initializeGL(self):
+        glShadeModel(GL_SMOOTH)
+        glClearColor(0.0, 0.0, 0.0, 1.0)
+
+        glClearDepth(1.0)
+        glDepthFunc(GL_LESS)
+
+        glLightfv(GL_LIGHT0, GL_AMBIENT,  [0.2, 0.2, 0.2, 1.0])
+        glLightfv(GL_LIGHT0, GL_DIFFUSE,  [1.0, 1.0, 1.0, 1.0])
+        glLightfv(GL_LIGHT0, GL_POSITION, [-1.0, -1.0, 2.0, 1.0])
+
+        glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+        glShadeModel(GL_SMOOTH)
+
+        glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
+        glHint(GL_POLYGON_SMOOTH_HINT,         GL_NICEST)
+        glHint(GL_LINE_SMOOTH_HINT,            GL_NICEST)
+        glHint(GL_POINT_SMOOTH_HINT,           GL_NICEST)
+
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_LIGHTING)
+        glEnable(GL_LIGHT0)
+        glEnable(GL_COLOR_MATERIAL)
+        glEnable(GL_LINE_SMOOTH)
+        glEnable(GL_POLYGON_SMOOTH)
+
+    def resizeGL(self, width, height):
+        if (height == 0):
+            height = 1
+        glViewport(0, 0, width, height)
+
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+
+        aspect = float(width)/height
+        if self.enable_perspective:
+            set_perspective(45.0, aspect, 0.1, 100.0)
+        else:
+            maxdim = max(self.paths.shape)
+            set_ortho(maxdim, aspect)
+
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+
 
     def mousePressEvent(self, event):
         """Maps the click location to the sphere and records this in lastPos.  Also records that
@@ -152,3 +202,15 @@ class GLWidget(QGLWidget):
         glLoadIdentity()
         glTranslatef(*self.translation)
         glMultMatrixd(self.rotation)
+
+
+def set_perspective(fovY, aspect, zNear, zFar):
+    """NeHe replacement for gluPerspective"""
+    fH = math.tan(fovY / 360.0 * math.pi) * zNear
+    fW = fH * aspect
+    glFrustum(-fW, fW, -fH, fH, zNear, zFar)
+
+def set_ortho(maxdim, aspect):
+    halfheight = maxdim
+    halfwidth = aspect * halfheight
+    glOrtho(-halfwidth, halfwidth, -halfheight, halfheight, -10, 100)

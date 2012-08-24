@@ -1,6 +1,8 @@
 from PySide.QtCore import *
 from BFModule import *
 from GLWidget import GLWidget
+from OpenGL.GL import *
+from OpenGL.GLUT import *
 
 class Torus3dView3d(BFModuleWindow):
     """This is a 3d rendering of a 3d torus.
@@ -15,13 +17,27 @@ class Torus3dView3d(BFModuleWindow):
         return BFModule(self.parent_view.module, self.parent_view.module.model)
 
     def createView(self):
-        view = QWidget()
+        return GLBoxDisplay(self)
+#         view = QWidget()
+#         layout = QGridLayout()
+#         layout.addWidget(GLBoxDisplay(self), 0, 0, 1, 1)
+#         layout.setRowStretch(0, 10)
+#         layout.setContentsMargins(0, 0, 0, 0)
+#         view.setLayout(layout)
+#         return view
 
-        layout = QGridLayout()
-        layout.addWidget(GLWidget(self), 0, 0, 1, 1)
-        layout.setRowStretch(0, 10)
-        layout.setContentsMargins(0, 0, 0, 0)
-        view.setLayout(layout)
-        return view
+class GLBoxDisplay(GLWidget):
+    def __init__(self, parent):
+        super(GLBoxDisplay, self).__init__(parent)
 
 
+    def paintGL(self):
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+        self.orient_scene()
+
+        glTranslatef(0.0, 0.0, -5.0)
+        glColor4f(0.0, 1.0, 0.0, 1.0)
+        glutSolidCube(5.0)
+
+        glFlush()
