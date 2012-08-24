@@ -389,8 +389,8 @@ class BFDataModel(QAbstractItemModel):
                         "! Skipping table..."
                     continue
 
-                metadata, data = yl.load_table(os.path.dirname(filename) + \
-                    "/" + filedict['filename'])
+                filepath = os.path.join(os.path.dirname(filename), filedict['filename'])
+                metadata, data = yl.load_table(filepath)
                 combined_meta = dict(metadata.items() + filedict.items())
                 atable = BFTable()
                 atable.fromRecArray(data_type, filedict['field'], data)
@@ -419,8 +419,8 @@ class BFDataModel(QAbstractItemModel):
                 # Different projections created here per type. Again, probably
                 # should be moved to different class.
                 if filedict['type'].upper() == "FILE":
-                    metadata, data = yl.load_table(os.path.dirname(filename) \
-                        + "/" + filedict['filename'])
+                    filepath = os.path.join(os.path.dirname(filename), filedict['filename'])
+                    metadata, data = yl.load_table(filepath)
                     combined_meta = dict(metadata.items() + filedict.items())
                     atable = BFTable()
                     atable.fromRecArray(mydomains[0], mykeys[0], data)
