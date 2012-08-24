@@ -107,7 +107,10 @@ class BFModule(QObject):
 
     # Signal decorator attached after the class.
     def addChildColumn(self, col, child):
-        new_col = col.createUpstream(child)
+        my_filter = None
+        if self.filters:
+            my_filter = self.filters[0]
+        new_col = col.createUpstream(child, my_filter)
         self.child_columns.append(new_col)
         self.addColumnSignal.emit(new_col, self)
 
@@ -135,7 +138,12 @@ class BFModule(QObject):
 
         # "Adopt" child's column requests
         for col in child.getColumnRequests():
-            self.child_columns.append(col.createUpstream(child))
+            my_filter = None
+            if self.filters:
+                my_filter = self.filters[0]
+            new_col = col.createUpstream(child, my_filter)
+            self.child_columns.append(new_col)
+            self.addColumnSignal.emit(new_col, self)
 
     def unregisterChild(self, child):
         child.subscribeSignal.disconnect(self.subscribe)
@@ -147,7 +155,7 @@ class BFModule(QObject):
 
         # Abandon child's column requests
         for col in self.child_columns:
-            if col.parent() == child:
+            if col.parent == child:
                 col.delete()
 
     # Change the parent of the module.

@@ -20,7 +20,8 @@ class BFColumn(QObject):
     changeSignal = Signal(QObject)
     deleteSignal = Signal(QObject)
 
-    def __init__(self, table, attributes, parent = None, name = None):
+    def __init__(self, table, attributes, parent = None, modifier = None,
+        name = None):
         super(BFColumn, self).__init__()
         self.table = table # This might also be a projection
         self.attributes = attributes
@@ -29,7 +30,7 @@ class BFColumn(QObject):
 
         # parent will deleteColumn
         self.deleteSignal.connect(parent.deleteColumn)
-        self._modifier = None # e.g. filter
+        self._modifier = modifier # e.g. filter
 
         # chain of modifiers this data has gone through
         self._modifier_chain = list()
@@ -51,13 +52,13 @@ class BFColumn(QObject):
     def modifier_chain(self, chain):
         self._modifier_chain = chain[:]
 
-    def createUpstream(self, parent):
+    def createUpstream(self, parent, modifier):
         """Creates a BFColumn that is directly upstream from
            this one. The only initial difference is the change
            in parent.
         """
         upstream = BFColumn(self.table, self.attributes, \
-            parent, self.name)
+            parent, modifier, self.name)
 
         # We listen for the upstream changing or deleting
         upstream.changeSignal.connect(self.upstreamChanged)
@@ -76,7 +77,7 @@ class BFColumn(QObject):
 
         # Apply modifier
         if self.modifier is not None:
-            sef.modifier_chain.append(self.modifier) # Grow modifier chain
+            self.modifier_chain.append(self.modifier) # Grow modifier chain
 
         # Send downward
         self.changeSignal.emit(self)
@@ -91,7 +92,7 @@ class BFColumn(QObject):
     @Slot(QObject)
     def upstreamDeleted(self, upstream):
         upstream.deleteSignal.disconnect(self.upstreamDeleted)
-        upstream.changeSignal.disconnect(self.upstreamChagned)
+        upstream.changeSignal.disconnect(self.upstreamChanged)
 
     # We're getting rid of this column, let everyone know.
     # All upstreams will be deleted.
