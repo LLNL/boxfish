@@ -6,8 +6,6 @@ from BFTable import *
 # or something specifically created by the filter
 # attribute - the attribute in the table we care about, for self owned
 # tables this is probably the only output
-# identifiers - the BFTable's representation of the 'rows' we are
-# considering in this source
 # * This is in whatever format the particular BFTable uses which is
 # nice since it could eventually handle range data and so forth
 # parent - this is the originating module
@@ -22,12 +20,10 @@ class BFColumn(QObject):
     changeSignal = Signal(QObject)
     deleteSignal = Signal(QObject)
 
-    def __init__(self, table, attributes, identifiers = None, parent = None,\
-        name = None):
+    def __init__(self, table, attributes, parent = None, name = None):
         super(BFColumn, self).__init__()
         self.table = table # This might also be a projection
         self.attributes = attributes
-        self._identifiers = identifiers
         self.name = name
         self.parent = parent
 
@@ -37,14 +33,6 @@ class BFColumn(QObject):
 
         # chain of modifiers this data has gone through
         self._modifier_chain = list()
-
-    @property
-    def identifiers(self):
-        return self._identifiers
-
-    @identifiers.setter
-    def identifiers(self, ids):
-        self._identifiers = ids[:]
 
     @property
     def modifier_chain(self):
@@ -60,7 +48,6 @@ class BFColumn(QObject):
            in parent.
         """
         upstream = BFColumn(self.table, self.attributes, \
-            self.table.copyIdentifiers(self.identifiers), \
             parent, self.name)
 
         # We listen for the upstream changing or deleting
@@ -74,15 +61,11 @@ class BFColumn(QObject):
     # modifier and then emit the change downward.
     @Slot(QObject)
     def upstreamChanged(self, upstream):
-        # Get the valid identifiers from upstream
-        self.setIdentifiers(upstream.getIdentifiers())
-
         # Get modifier chain from upstream
         self.setModifierChain(upstream.getModifierChain())
 
         # Apply modifier
         if self.modifier is not None:
-            self.modifier.process(self)
             slef.modifier_chain.append(self.modifier) # Grow modifier chain
 
         # Send downward
