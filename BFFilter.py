@@ -20,5 +20,5 @@ class IdentityFilter(BFFilter):
     def __init__(self):
         super(IdentityFilter, self).__init__()
 
-    def process(self, columns):
-        return columns
+    def process(self, columns, identifiers):
+        return  identifiers

@@ -17,7 +17,7 @@ class BFModule(QObject):
     subscribeSignal          = Signal(object,str)
     unsubscribeSignal        = Signal(object,str)
     highlightSignal          = Signal(SubDomain)
-    addColumnSignal          = Signal(BFColumn, object)
+    addColumnSignal          = Signal(BFColumn, QObject)
     #evaluateSignal           = Signal(Query)
     getSubDomainSignal       = Signal(object,str)
 
@@ -87,17 +87,19 @@ class BFModule(QObject):
         attr_groups = itertools.groupby(sorted_indices, key = get_parent)
 
         for key, group in attr_groups:
-            column_list.append(BFColumn(key, group,
+            attrs = [self.model.getItem(x).name for x in group]
+            column_list.append(BFColumn(key, attrs,
                 parent = self))
 
         return column_list
 
 
-    def addRequirement(self, col):
-        self.requirements.append(col)
-        col.changeSignal.connect(self.requiredColumnChanged)
-        #Now send this new one to the parent
-        self.addColumnSignal.emit(col)
+    def addRequirement(self, cols):
+        for col in cols:
+            self.requirements.append(col)
+            col.changeSignal.connect(self.requiredColumnChanged)
+            #Now send this new one to the parent
+            self.addColumnSignal.emit(col, self)
 
     @Slot(BFColumn)
     def requiredColumnChanged(self, col):
@@ -105,8 +107,9 @@ class BFModule(QObject):
 
     # Signal decorator attached after the class.
     def addChildColumn(self, col, child):
-        self.child_columns.appent(col.createUpstream(child))
-        self.addColumnSignal.emit(col)
+        new_col = col.createUpstream(child)
+        self.child_columns.append(new_col)
+        self.addColumnSignal.emit(new_col, self)
 
     def getColumnRequests(self):
         reqs = list()

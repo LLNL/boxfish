@@ -114,7 +114,6 @@ class BFTopModule(BFModule):
     @Slot(BFColumn, BFModule)
     def addChildColumn(self, col, child):
         super(BFTopModule, self).addChildColumn(col, child)
-        col.identifiers = col.table.identifiers()
         col.changeSignal.emit(col)
 
 

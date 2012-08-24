@@ -118,7 +118,7 @@ class BFTable(object):
   def identifiers(self):
     """Return some representation of all the rows in the table.
     """
-    return set(range(len(self._data)))
+    return range(len(self._data))
 
 
   def attributes(self):
@@ -235,11 +235,10 @@ class BFTable(object):
 
     return group_list, desired_list
 
-  def attribute_by_identifiers(self, identfiers, attributes, unique = True):
+  def attribute_by_identifiers(self, identifiers, attributes, unique = True):
     """Get list of all attributes from a set of identifiers. Not sure
        this is a good idea.
     """
-
     attr_list = list()
     if unique:
       for attr in attributes:
@@ -249,12 +248,12 @@ class BFTable(object):
         attr_list.append(list())
 
       for row in self._data[identifiers]:
-        for i, attr in attributes:
+        for i, attr in enumerate(attributes):
           attr_list[i].append(row[attr])
 
     return attr_list
 
-      
+
 
   def subset_by_key(self, identifiers, subdomain):
     """Determine the subset of valid identifiers based on some query given the
@@ -282,7 +281,7 @@ class BFTable(object):
        within this table and an initial set of identifiers.
 
        identifiers = initial set of identifiers of rows.
-       conditions = list of (attribute, relation, value, logical) tuples 
+       conditions = list of (attribute, relation, value, logical) tuples
                     where attributes are in this table
     """
     subset_filter = True
@@ -303,7 +302,7 @@ class BFTable(object):
 
     logic_operator = logicals[logical]
     relation_operator = relations[relation]
-    return logic_operator(clauses, 
+    return logic_operator(clauses,
       relation_operator(self._data[attr][identifiers], value))
 
 
