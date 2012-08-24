@@ -7,7 +7,7 @@ hardware:
 - network: torus
 - nodes: 512
 - coords: [x, y, z]
-- dim: {x: 8, y: 8, z: 8}
+- dim: {x: 16, y: 8, z: 8}
 ---
 filetype: table
 filename: bgpc_nodes.yaml
@@ -26,7 +26,7 @@ flags: 0
 filetype: projection
 type: file
 filename: bgpc_map.yaml
-subdomain: 
+subdomain:
 - { domain: HW, type: NODE, field: nodeid }
 - { domain: COMM, type: RANK, field: mpirank }
 flags: 0

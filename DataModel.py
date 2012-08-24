@@ -82,6 +82,12 @@ class BFRunItem(AbstractTreeItem):
 
         return False
 
+    def __contains__(self, key):
+        return self.hasMetaData(key)
+
+    def __getitem__(self, key):
+        return self.getMetaData(key)
+
     def getMetaData(self, key):
 
         if self._metadata is not None \
@@ -268,7 +274,7 @@ class BFDataModel(QAbstractItemModel):
 
         # RUN needs to be draggable for meta information only.
         if item.typeInfo() == "RUN":
-            return Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsDragEnabled
+            return Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsDragEnabled | Qt.ItemIsSelectable
 
         if item.typeInfo() == "PROJECTION":
             return Qt.ItemIsEnabled | Qt.ItemIsEditable
