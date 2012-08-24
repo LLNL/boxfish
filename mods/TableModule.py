@@ -33,7 +33,7 @@ class TableModule(BFModule):
             self.columnSignal.emit(index, att_list)
 
     # This is the stupidest way possible to do this column connection
-    # but I just want to see if the rest of this works. 
+    # but I just want to see if the rest of this works.
     def getIndex(self, attribute, col):
         for i, index in enumerate(self.indices):
             item = self.model.getItem(index)
