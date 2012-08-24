@@ -6,11 +6,19 @@ from BFModule import *
 #from QueryEngine import *
 from DataModel import *
 import BFIcons
+from BFFilter import * 
 
 class FilterBox(BFModule):
 
     def __init__(self, parent, model):
         super(FilterBox, self).__init__(parent, model)
+
+    def createSimpleFilter(self, attribute, value):
+        self.filters.append(SimpleWhereFilter(attribute, value))
+        for col in self.requirements:
+            col.modifier = self.filters[-1]
+        for col in self.child_columns:
+            col.modifier = self.filters[-1]
 
 
 class FilterBoxWindow(BFModuleWindow):
@@ -61,12 +69,15 @@ class FilterBoxWindow(BFModuleWindow):
         self.addToolBar(self.toolbar)
 
     def droppedData(self, indexList):
-        mytext = self.fake_label.text()
-        for index in indexList:
-            print self.module.model.getItem(index).name
-            mytext = mytext + "\n" + self.module.model.getItem(index).name + \
-                " from " + self.module.model.getItem(index).parent().name
-        self.fake_label.setText(mytext)
+        #mytext = self.fake_label.text()
+        #for index in indexList:
+        #    print self.module.model.getItem(index).name
+        #    mytext = mytext + "\n" + self.module.model.getItem(index).name + \
+                #        " from " + self.module.model.getItem(index).parent().name
+        #self.fake_label.setText(mytext)
+        dial = FakeDialog(self, self.module.model.getItem(indexList[0]).name, "")
+        dial.show()
+
 
     # Demonstration of changing Drag & Drop behavior for window unique data
     # May not be necessary for other modules.
@@ -88,8 +99,10 @@ class FilterBoxWindow(BFModuleWindow):
     # Goes with FakeDialog
     def fakeNewVals(self, title, filtertext):
         print title, filtertext
-        self.setTitle(title)
-        self.parent().setWindowTitle(title)
+        self.module.createSimpleFilter(title, int(filtertext))
+        self.fake_label.setText("Filter: " + title + " = " + filtertext)
+        #self.setTitle(title)
+        #self.parent().setWindowTitle(title)
 
 
 class FilterMime(QMimeData):
@@ -115,8 +128,8 @@ class FakeDialog(QDialog):
         self.setModal(False)
         self.parent = parent
 
-        nameLabel = QLabel("Title: ")
-        filterLabel = QLabel("Filter: ")
+        nameLabel = QLabel("Attribute: ")
+        filterLabel = QLabel("Value: ")
 
         self.nameEdit = QLineEdit(title)
         self.filterEdit = QLineEdit(filtertext)

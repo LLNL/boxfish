@@ -29,10 +29,19 @@ class BFColumn(QObject):
 
         # parent will deleteColumn
         self.deleteSignal.connect(parent.deleteColumn)
-        self.modifier = None # e.g. filter
+        self._modifier = None # e.g. filter
 
         # chain of modifiers this data has gone through
         self._modifier_chain = list()
+
+    @property
+    def modifier(self):
+        return self._modifier
+
+    @modifier.setter
+    def modifier(self, mod):
+        self._modifier = mod
+        self.modifierChanged()
 
     @property
     def modifier_chain(self):
@@ -67,9 +76,15 @@ class BFColumn(QObject):
 
         # Apply modifier
         if self.modifier is not None:
-            self.modifier_chain.append(self.modifier) # Grow modifier chain
+            sef.modifier_chain.append(self.modifier) # Grow modifier chain
 
         # Send downward
+        self.changeSignal.emit(self)
+
+    def modifierChanged(self):
+        if self.modifier is not None:
+            self.modifier_chain.append(self.modifier)
+
         self.changeSignal.emit(self)
 
     # Disconnect an upstream BFColumn marked for deletion

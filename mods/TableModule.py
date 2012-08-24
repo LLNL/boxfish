@@ -79,10 +79,8 @@ class TableWindow(BFModuleWindow):
 
     @Slot(int, list)
     def displayColumn(self, index, values):
-        print "display!"
         self.tabwidget.setRowCount(len(values))
         for i in range(len(values)):
-            print i, index, values[i]
             self.tabwidget.setItem(i, index,
                     QTableWidgetItem(str(values[i])))
 

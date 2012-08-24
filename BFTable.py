@@ -284,11 +284,12 @@ class BFTable(object):
        conditions = list of (attribute, relation, value, logical) tuples
                     where attributes are in this table
     """
-    subset_filter = True
+    subset_filter = None
     for condition in conditions:
       subset_filter = self.append_clause(subset_filter, condition, identifiers)
     indices = np.where(subset_filter)
-    return [identifiers[x] for x in indices]
+    print indices
+    return [identifiers[x] for x in indices[0]]
 
   def append_clause(self, clauses, condition, identifiers):
     """Append a clause tuple to an existing set of clauses.
@@ -300,10 +301,13 @@ class BFTable(object):
       print "Attribute mismatch. Could not find attribute in table."
       return clauses
 
-    logic_operator = logicals[logical]
-    relation_operator = relations[relation]
-    return logic_operator(clauses,
-      relation_operator(self._data[attr][identifiers], value))
+    logic_operator = self.logicals[logical]
+    relation_operator = self.relations[relation]
+    if clauses is not None:
+      return logic_operator(clauses,
+        relation_operator(self._data[attr][identifiers], value))
+    else:
+      return relation_operator(self._data[attr][identifiers], value)
 
 
 if __name__ == '__main__':
