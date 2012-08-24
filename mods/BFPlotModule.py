@@ -47,8 +47,8 @@ class BFPlotWindow(BFModuleWindow):
         self.selected = []
 
     def createModule(self):
-        return BFPlotModule(self.parent_view.module, \
-            self.parent_view.module.model)
+        return BFPlotModule(self.parent_view.module,
+                            self.parent_view.module.model)
 
     def createView(self):
         view = QWidget()
@@ -59,7 +59,7 @@ class BFPlotWindow(BFModuleWindow):
         self.viewarea.setMinimumSize(300,300)
 
         # TODO: Use panels to make the attrs flush with the first label
-        # and/or change this entirely so we drop into parts of the 
+        # and/or change this entirely so we drop into parts of the
         # MPL window.
         self.xlabel = BFDropLabel("X: ", self, self.droppedXData)
         self.ylabel = BFDropLabel("Y: ", self, self.droppedYData)

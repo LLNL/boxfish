@@ -97,7 +97,7 @@ class BFTopModule(BFModule):
 
     def __init__(self, parent, model):
         super(BFTopModule, self).__init__(parent, model)
-    
+
 
     # You can't add requirements to this module
     def addRequirement(self, col):
@@ -111,7 +111,7 @@ class BFTopModule(BFModule):
         super(BFTopModule, self).addChildColumn(col, child)
         col.identifiers = col.table.identifiers()
         col.changeSignal.emit(col)
-        
+
 
 
 
