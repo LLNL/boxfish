@@ -134,10 +134,12 @@ class GLTorus3dView(GLWidget):
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
         self.orient_scene()
         self.drawCubes()
         self.drawLinks()
+
+        super(GLTorus3dView, self).paintGL()
+    
         glFlush()
 
     def centerView(self):

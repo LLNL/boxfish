@@ -11,6 +11,7 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 from PySide.QtOpenGL import *
 from OpenGL.GL import *
+from OpenGL.GLUT import *
 
 import math
 import numpy as np
@@ -117,7 +118,9 @@ class GLWidget(QGLWidget):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
-
+    def paintGL(self):
+        self.drawAxis()
+       
     def mousePressEvent(self, event):
         """Maps the click location to the sphere and records this in lastPos.  Also records that
            dragging has begun.
@@ -165,7 +168,7 @@ class GLWidget(QGLWidget):
             glRotatef(0.5*tb_angle, tb_axis[0] , tb_axis[1], tb_axis[2])
             glMultMatrixd(self.rotation)
             self.rotation = glGetDouble(GL_MODELVIEW_MATRIX)
-
+            
             self.updateGL()
 
 
@@ -183,7 +186,6 @@ class GLWidget(QGLWidget):
         elif event.orientation() == Qt.Orientation.Horizontal:
             self.translation[0] -= .01 * event.delta()
 
-
         self.updateGL()
 
     def keyPressEvent(self, event):
@@ -193,7 +195,6 @@ class GLWidget(QGLWidget):
         if event.key() in self.pressed_keys:
             self.pressed_keys.remove(event.key())
 
-
     def orient_scene(self):
         """You should call this from paintGL() to orient the scene before rendering.
            This will do translation and rotation so that rendering happens at the right
@@ -202,6 +203,40 @@ class GLWidget(QGLWidget):
         glLoadIdentity()
         glTranslatef(*self.translation)
         glMultMatrixd(self.rotation)
+   
+    def drawAxis(self):
+        glViewport(0,0,80,80)
+
+        glPushMatrix()
+        glPushAttrib(GL_CURRENT_BIT)
+        glPushAttrib(GL_LINE_BIT)
+        glLineWidth(2.0)
+        len=0.3
+        lentxt=0.4
+        
+        glLoadIdentity()
+        glTranslatef(0,0,-len)
+        glMultMatrixd(self.rotation)
+        glDisable(GL_DEPTH_TEST)       
+        glBegin(GL_LINES)
+        glColor4f(1.0,0.0,0.0,1.0)
+        glVertex3f (0, 0, 0)
+        glVertex3f (len, 0, 0)
+        glColor4f(0.0,1.0,0.0,1.0)
+        glVertex3f (0, 0, 0)
+        glVertex3f (0, len, 0)
+        glColor4f(0.0,0.0,1.0,1.0)
+        glVertex3f (0, 0, 0)
+        glVertex3f (0, 0, -len)
+        glEnd()
+        
+        glEnable(GL_DEPTH_TEST)
+        
+        glPopAttrib()
+        glPopAttrib()
+        glPopMatrix()
+        
+        glViewport(0, 0, self.width(), self.height())
 
 
 def set_perspective(fovY, aspect, zNear, zFar):
