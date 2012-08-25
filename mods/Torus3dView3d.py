@@ -7,6 +7,8 @@ from OpenGL.GLE import *
 import numpy as np
 
 from BFColumn import BFColumn
+import matplotlib
+import matplotlib.cm as cm
 
 # TODO: this is a hack.  we should change our yaml format so that hardware
 # is a dict and not a list of single-item dicts.
@@ -21,22 +23,28 @@ class Torus3dView3dModule(BFModule):
     def __init__(self, parent, model):
         super(Torus3dView3dModule, self).__init__(parent, model)
 
+    # TODO: the module probably shouldn't have to know about
+    # BFColumn -- it can just specify which attributes it wants
+    # to be notified about
     def registerColumn(self, index):
-        index_list = [index]
         item = self.model.getItem(index)
-
+        # BFColumn is really a requirement set plus information
+        # about who to notify.  BFModule knows most of this, though
+        # so maybe just pass the item
         col = BFColumn(item.parent(), [item.name], self)
-        self.addRequirement(col)
+
+        # e.g., how about self.addRequirement([item ...])?
+        self.addRequirement([col])
 
     @Slot(BFColumn)
     def requiredColumnChanged(self, col):
         identifiers = col.table._table.identifiers()
-        for modifier in col.modifier_chain:
-            identifiers = modifier.process(col, identifiers)
+        for filt in col.modifier_chain:
+            identifiers = filt.process(col, identifiers)
 
-        coord_list, attr_val_list = col.table._table.attribute_by_attributes(
-            identifiers, self.coords, col.attributes, BFTable.operator["mean"])
-        self.columnSignal.emit(coord_list, attr_val_list)
+        coords, attrVals = col.table._table.attributes_by_attributes(
+            identifiers, self.coords, col.attributes, "mean")
+        self.columnSignal.emit(coords, attrVals)
 
 class Torus3dView3d(BFModuleWindow):
     """This is a 3d rendering of a 3d torus.
@@ -47,10 +55,7 @@ class Torus3dView3d(BFModuleWindow):
     def __init__(self, parent, parent_view = None, title = None):
         super(Torus3dView3d, self).__init__(parent, parent_view, title)
         if self.module:
-            self.module.columnSignal.connect()
-
-    def drawColors(self):
-        pass
+            self.module.columnSignal.connect(self.updateNodeData)
 
     def createModule(self):
         self.module = Torus3dView3dModule(self.parent_view.module, self.parent_view.module.model)
@@ -59,6 +64,18 @@ class Torus3dView3d(BFModuleWindow):
     def createView(self):
         self.view = GLTorus3dView(self)
         return self.view
+
+    @Slot(list, list)
+    def updateNodeData(self, coords, vals):
+        vals = vals[0]  # TODO: why is this a list nested in a list
+        min_val = min(vals)
+        max_val = max(vals)
+        range = max_val - min_val
+
+        cmap = cm.get_cmap("gist_earth_r")
+        for coord, val in zip(coords, vals):
+            x, y, z = coord
+            self.view.node_colors[x, y, z] = cmap((val - min_val) / range)
 
     def droppedData(self, index_list):
         if len(index_list) != 1:
@@ -83,22 +100,26 @@ class GLTorus3dView(GLWidget):
     def __init__(self, parent):
         super(GLTorus3dView, self).__init__(parent)
 
-        self.shape = [2, 2, 2]    # Shape stores the dimensions of the torus
-        self.seam = [0, 0, 0]     # Offsets representing seam of the torus
-        self.box_size = 0.2       # Size of one edge of each cube representing a node
-        self.link_radius = self.box_size * .1       # Radius of link cylinders
+        self.default_color = [0.5, 0.5, 0.5, 1.0] # color for when we have no data
+        self.setShape([0, 0, 0])                  # Set shape and set up color matrix
+        self.seam = [0, 0, 0]                     # Offsets representing seam of the torus
+        self.box_size = 0.2                       # Size of one edge of each cube representing a node
+        self.link_radius = self.box_size * .1     # Radius of link cylinders
 
     def getBoxSize(self):
         return self.box_size
 
     def setBoxSize(self, box_size):
         self.box_size = box_size
+        self.updateGL()
 
     def getShape(self):
         return self.shape
 
     def setShape(self, shape):
         self.shape = shape
+        self.node_colors = np.empty(self.shape + [4])
+        self.node_colors.fill(0.5)  # TODO: make this fill with self.default_color
         self.updateGL()
 
     def paintGL(self):
@@ -126,7 +147,7 @@ class GLTorus3dView(GLWidget):
         for x, y, z in np.ndindex(*self.shape):
             glPushMatrix()
 
-            glColor4f(0.5, 0.0, 0.0, 1.0)
+            glColor4f(*self.node_colors[x,y,z])
             glTranslatef((x + self.seam[0]) % x_span,
                          (y + self.seam[1]) % y_span,
                          -((z + self.seam[2]) % z_span))

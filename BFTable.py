@@ -218,10 +218,9 @@ class BFTable(object):
       desired_list.append(list())
 
     for given_tuple in groupby_iter:
-      where_clause = True
+      where_clause = None
       for i, attr in enumerate(given_tuple):
-        where_clause = self.append_clause(where_clause, (given_attrs[i], "=",\
-          attr, "and"), identifiers)
+        where_clause = self.append_clause(where_clause, (given_attrs[i], "=", attr, "and"), identifiers)
 
       indices = np.where(where_clause)[0]
 
