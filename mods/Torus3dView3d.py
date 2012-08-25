@@ -76,13 +76,9 @@ class Torus3dView3d(BFModuleWindow):
         for coord, val in zip(coords, vals):
             x, y, z = coord
             self.view.node_colors[x, y, z] = cmap((val - min_val) / range)
+        self.view.updateGL()
 
-    def droppedData(self, index_list):
-        if len(index_list) != 1:
-            return
-
-        index = index_list[0]
-        item = self.module.model.getItem(index)
+    def findRunAndGetHardware(self,item):
         if item.typeInfo() == "RUN":
             if "hardware" in item:
                 hardware = item["hardware"]
@@ -91,10 +87,24 @@ class Torus3dView3d(BFModuleWindow):
                 shape = [get_from_list(hardware, "dim")[coord] for coord in coords]
                 self.module.coords = coords
                 self.view.setShape(shape)
+            else:
+                pass
+        else:
+            if item.parent():
+                self.findRunAndGetHardware(item.parent())
 
-        elif item.typeInfo() == "ATTRIBUTE":
+    def droppedData(self, index_list):
+        if len(index_list) != 1:
+            return
+
+        index = index_list[0]
+        item = self.module.model.getItem(index)
+
+        self.findRunAndGetHardware(item)
+        
+        if item.typeInfo() == "ATTRIBUTE":
             self.module.registerColumn(index)
-
+ 
 
 class GLTorus3dView(GLWidget):
     def __init__(self, parent):
