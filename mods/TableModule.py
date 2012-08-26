@@ -41,10 +41,8 @@ class TableModule(BFModule):
                 and item.parent().name == col.table.name:
                 return i
 
+@Module("Table")
 class TableWindow(BFModuleWindow):
-
-    display_name = "Table"
-    in_use = True
 
     def __init__(self, parent, parent_view = None, title = None):
         super(TableWindow, self).__init__(parent, parent_view, title)

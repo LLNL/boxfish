@@ -46,11 +46,10 @@ class Torus3dView3dModule(BFModule):
             identifiers, self.coords, col.attributes, "mean")
         self.columnSignal.emit(coords, attrVals)
 
+@Module("3D Torus - 3D View")
 class Torus3dView3d(BFModuleWindow):
     """This is a 3d rendering of a 3d torus.
     """
-    display_name = "3D Torus View"
-    in_use = True
 
     def __init__(self, parent, parent_view = None, title = None):
         super(Torus3dView3d, self).__init__(parent, parent_view, title)
@@ -101,10 +100,10 @@ class Torus3dView3d(BFModuleWindow):
         item = self.module.model.getItem(index)
 
         self.findRunAndGetHardware(item)
-        
+
         if item.typeInfo() == "ATTRIBUTE":
             self.module.registerColumn(index)
- 
+
 
 class GLTorus3dView(GLWidget):
     def __init__(self, parent):
@@ -139,7 +138,7 @@ class GLTorus3dView(GLWidget):
         self.drawLinks()
 
         super(GLTorus3dView, self).paintGL()
-    
+
         glFlush()
 
     def centerView(self):

@@ -20,13 +20,10 @@ class FilterBox(BFModule):
         for col in self.child_columns:
             col.modifier = self.filters[-1]
 
-
+@Module("Filter Box")
 class FilterBoxWindow(BFModuleWindow):
     """Window for handling filtering operations.
     """
-
-    display_name = "FilterBox"
-    in_use = True
 
     def __init__(self, parent, parent_view = None, title = None):
         super(FilterBoxWindow, self).__init__(parent, parent_view, title)

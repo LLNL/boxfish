@@ -35,7 +35,7 @@ class BFPlotModule(BFModule):
             col.delete()
         self.y_columns = self.buildColumnsFromIndices(indexList)
 
-
+@Module("Plotter")
 class BFPlotWindow(BFModuleWindow):
 
     display_name = "Plotter"

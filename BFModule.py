@@ -277,7 +277,20 @@ BFModule.unsubscribe = Slot(BFModule, str)(BFModule.unsubscribe)
 BFModule.getSubDomain = Slot(BFModule, str)(BFModule.getSubDomain)
 BFModule.addChildColumn = Slot(BFColumn, BFModule)(BFModule.addChildColumn)
 
+def Module(display_name, enabled = True):
+    """Module decorator :
+       display_name - name of module the user will see
+       enabled - true if the user can created one
+    """
+    def module_inner(cls):
+        cls.display_name = display_name
+        cls.enabled = enabled
+        return cls
+    return module_inner
 
+# All ModuleWindows must be decorated with their display name and
+# a bool indicating if they can be created by the user.
+@Module("Module Window", enabled = False)
 class BFModuleWindow(QMainWindow):
     """This is the parent of what we will think of as a
        module/extension/plug-in. It has the interface to create the single
@@ -287,11 +300,6 @@ class BFModuleWindow(QMainWindow):
        This class handles the reparenting and docking elements of all such
        modules.
     """
-
-    # display_name should be unique to the class and will show up in UI and
-    # be available for instantiation if in_use is True
-    display_name = "Module Window"
-    in_use = False # This is an 'abstract' class, do not instantiate
 
     def __init__(self, parent = None, parent_view = None, title = None):
         super(BFModuleWindow, self).__init__(parent)
@@ -383,7 +391,7 @@ class BFModuleWindow(QMainWindow):
     def subclassList(self, scList = None):
         if scList is None:
             scList = list()
-        if self.in_use:
+        if self.enabled:
             scList.append(self.display_name)
         for s in self.__class__.__subclasses__():
             scList.extend(s(None).subclassList())
