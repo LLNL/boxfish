@@ -46,7 +46,7 @@ class PlotterView(ModuleView):
 
         self.selected = []
 
-    def createModule(self):
+    def createAgent(self):
         return PlotterAgent(self.parent_view.agent,
                             self.parent_view.agent.datatree)
 

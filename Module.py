@@ -338,7 +338,7 @@ class ModuleView(QMainWindow):
     # it to the parent and by placing the view elements in the overall
     # layout
     def realize(self):
-        self.agent = self.createModule()
+        self.agent = self.createAgent()
         self.parent_view.agent.registerChild(self.agent)
 
         self.view = self.createView()
@@ -365,7 +365,7 @@ class ModuleView(QMainWindow):
 
 
     # Must be implemented by inheritors
-    def createModule(self):
+    def createAgent(self):
         raise NotImplementedError("Realize not implemented,"\
             + " cannot create agent")
 

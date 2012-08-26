@@ -5,7 +5,7 @@ from Module import *
 #from Query import *
 #from QueryEngine import *
 from DataModel import *
-from Filter import * 
+from Filter import *
 
 class FilterBox(ModuleAgent):
 
@@ -20,21 +20,21 @@ class FilterBox(ModuleAgent):
             col.modifier = self.filters[-1]
 
 @Module("Filter Box")
-class FilterBoxWindow(ModuleView):
+class FilterBoxView(ModuleView):
     """Window for handling filtering operations.
     """
 
     def __init__(self, parent, parent_view = None, title = None):
-        super(FilterBoxWindow, self).__init__(parent, parent_view, title)
+        super(FilterBoxView, self).__init__(parent, parent_view, title)
 
         self.allowDocks(True)
 
-    def createModule(self):
+    def createAgent(self):
         return FilterBox(self.parent_view.agent, \
             self.parent_view.agent.datatree)
 
     def createView(self):
-        view = QWidget() # Later this will be a FilterBoxView w/ Filter controls
+        view = QWidget() # Later this may be a FilterBoxWidget w/Filter controls
 
         layout = QGridLayout()
         self.fake_label = QLabel("")
@@ -84,7 +84,7 @@ class FilterBoxWindow(ModuleView):
             # Do something with it.
             event.accept()
         else:
-            super(FilterBoxWindow, self).dropEvent(event)
+            super(FilterBoxView, self).dropEvent(event)
 
 
     # Goes with FakeDialog
@@ -94,7 +94,6 @@ class FilterBoxWindow(ModuleView):
 
     # Goes with FakeDialog
     def fakeNewVals(self, title, filtertext):
-        print title, filtertext
         self.agent.createSimpleFilter(title, int(filtertext))
         self.fake_label.setText("Filter: " + title + " = " + filtertext)
         #self.setTitle(title)

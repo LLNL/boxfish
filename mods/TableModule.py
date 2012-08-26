@@ -22,7 +22,6 @@ class TableAgent(ModuleAgent):
 
     @Slot(FilterCoupler)
     def requiredColumnChanged(self, col):
-        print "Column changed!"
         identifiers = col.table._table.identifiers()
         for modifier in col.modifier_chain:
             identifiers = modifier.process(col, identifiers)
@@ -50,10 +49,9 @@ class TableView(ModuleView):
         self.selected = []
 
         if self.agent is not None:
-            print "connect!"
             self.agent.columnSignal.connect(self.displayColumn)
 
-    def createModule(self):
+    def createAgent(self):
         return TableAgent(self.parent_view.agent,
                             self.parent_view.agent.datatree)
 

@@ -24,6 +24,7 @@ class FilterCoupler(QObject):
         self.attributes = attributes # TODO: remove
         self.name = name
         self.parent = parent
+        self.upstream_chain = list()
 
         # parent will deleteColumn
         self.deleteSignal.connect(parent.deleteColumn)
@@ -70,7 +71,8 @@ class FilterCoupler(QObject):
     @Slot(QObject)
     def upstreamChanged(self, upstream):
         # Get modifier chain from upstream
-        self.modifier_chain = upstream.modifier_chain
+        self.upstream_chain = upstream.modifier_chain[:]
+        self.modifier_chain = self.upstream_chain[:]
 
         # Apply modifier
         if self.modifier is not None:
@@ -80,6 +82,7 @@ class FilterCoupler(QObject):
         self.changeSignal.emit(self)
 
     def modifierChanged(self):
+        self.modifier_chain = self.upstream_chain[:]
         if self.modifier is not None:
             self.modifier_chain.append(self.modifier)
 

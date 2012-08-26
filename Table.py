@@ -287,7 +287,6 @@ class Table(object):
     for condition in conditions:
       subset_filter = self.append_clause(subset_filter, condition, identifiers)
     indices = np.where(subset_filter)
-    print indices
     return [identifiers[x] for x in indices[0]]
 
   def append_clause(self, clauses, condition, identifiers):

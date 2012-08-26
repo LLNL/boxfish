@@ -56,7 +56,7 @@ class Torus3dView3d(ModuleView):
         if self.agent:
             self.agent.columnSignal.connect(self.updateNodeData)
 
-    def createModule(self):
+    def createAgent(self):
         self.agent = Torus3dView3dModule(self.parent_view.agent, self.parent_view.agent.datatree)
         return self.agent
 

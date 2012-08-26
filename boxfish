@@ -23,7 +23,7 @@ class MainWindow(QMainWindow):
         self.centralWidget.setStretchFactor(0, 0)
 
         # Filter group
-        self.filter_box = FilterBoxWindow(self, \
+        self.filter_box = FilterBoxView(self, \
             title = "Boxfish", parent_view = self)
         self.centralWidget.addWidget(self.filter_box)
         self.centralWidget.setStretchFactor(1, 1)
@@ -82,6 +82,7 @@ class MainWindow(QMainWindow):
         """User callable method to tell boxfish to open a file."""
         for run in runs:
             self.datatree.insertRun(run)
+        self.data_view.expandAll() #For now
 
     #TODO: Read other directories to add from config file and add them
     def findModules(self):
@@ -115,7 +116,8 @@ class TopModule(ModuleAgent):
     @Slot(FilterCoupler, ModuleAgent)
     def addChildColumn(self, col, child):
         super(TopModule, self).addChildColumn(col, child)
-        col.changeSignal.emit(col)
+        # emit on new child column to start the chain
+        self.child_columns[-1].changeSignal.emit(self.child_columns[-1])
 
 
 
