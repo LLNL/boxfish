@@ -1,20 +1,17 @@
 from PySide.QtCore import Slot,Signal,QObject
 from Table import *
 
-# Column used for input and output
-# table - The Table object holding the data, might be from the DataModel
-# or something specifically created by the filter
-# attribute - the attribute in the table we care about, for self owned
-# tables this is probably the only output
-# * This is in whatever format the particular Table uses which is
-# nice since it could eventually handle range data and so forth
-# parent - this is the originating agent
-# name - this may be for the user interface
-class BFColumn(QObject):
-    """Representation of columns requested in a single data table and a
-       single modifier (e.g. filter) applied to them. These columns are
-       meant to be chained to allow alterations to valid rows through
-       a sequence of modules.
+# FilterCouplers form a chain from a module's data request to the top of 
+# Boxfish's tree. At each module, they may attach a modifier (filter).
+# parent - this is the originating agent down the chain
+# name - this is for the user interface. If a Module has two separate
+# data requests (e.g. nodes and links), they can be differentiated
+# in the interface using this.
+class FilterCoupler(QObject):
+    """Representation of a the filter that should be applied to a set
+       of data in a module. These form the chain down the Module
+       hierarchy to be applied to the data. They also handle changes
+       in applied filters and placement in the filter hierarchy.
     """
 
     changeSignal = Signal(QObject)
@@ -22,9 +19,9 @@ class BFColumn(QObject):
 
     def __init__(self, table, attributes, parent = None, modifier = None,
         name = None):
-        super(BFColumn, self).__init__()
-        self.table = table # This might also be a projection
-        self.attributes = attributes
+        super(FilterCoupler, self).__init__()
+        self.table = table # This might also be a projection TODO: remove
+        self.attributes = attributes # TODO: remove
         self.name = name
         self.parent = parent
 
@@ -53,11 +50,11 @@ class BFColumn(QObject):
         self._modifier_chain = chain[:]
 
     def createUpstream(self, parent, modifier):
-        """Creates a BFColumn that is directly upstream from
+        """Creates a FilterCoupler that is directly upstream from
            this one. The only initial difference is the change
            in parent.
         """
-        upstream = BFColumn(self.table, self.attributes, \
+        upstream = FilterCoupler(self.table, self.attributes, \
             parent, modifier, self.name)
 
         # We listen for the upstream changing or deleting
@@ -88,7 +85,7 @@ class BFColumn(QObject):
 
         self.changeSignal.emit(self)
 
-    # Disconnect an upstream BFColumn marked for deletion
+    # Disconnect an upstream FilterCoupler marked for deletion
     @Slot(QObject)
     def upstreamDeleted(self, upstream):
         upstream.deleteSignal.disconnect(self.upstreamDeleted)

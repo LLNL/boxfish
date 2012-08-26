@@ -6,7 +6,7 @@ from OpenGL.GLUT import *
 from OpenGL.GLE import *
 import numpy as np
 
-from BFColumn import BFColumn
+from FilterCoupler import FilterCoupler
 import matplotlib
 import matplotlib.cm as cm
 
@@ -24,19 +24,19 @@ class Torus3dView3dModule(ModuleAgent):
         super(Torus3dView3dModule, self).__init__(parent, datatree)
 
     # TODO: the agent probably shouldn't have to know about
-    # BFColumn -- it can just specify which attributes it wants
+    # FilterCoupler -- it can just specify which attributes it wants
     # to be notified about
     def registerColumn(self, index):
         item = self.datatree.getItem(index)
-        # BFColumn is really a requirement set plus information
+        # FilterCoupler is really a requirement set plus information
         # about who to notify.  ModuleAgent knows most of this, though
         # so maybe just pass the item
-        col = BFColumn(item.parent(), [item.name], self)
+        col = FilterCoupler(item.parent(), [item.name], self)
 
         # e.g., how about self.addRequirement([item ...])?
         self.addRequirement([col])
 
-    @Slot(BFColumn)
+    @Slot(FilterCoupler)
     def requiredColumnChanged(self, col):
         identifiers = col.table._table.identifiers()
         for filt in col.modifier_chain:

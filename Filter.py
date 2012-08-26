@@ -1,7 +1,7 @@
 
 from PySide.QtCore import *
 from PySide.QtGui import *
-from BFColumn import *
+from FilterCoupler import *
 
 class Filter(QObject):
 

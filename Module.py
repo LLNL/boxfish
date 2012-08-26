@@ -7,7 +7,7 @@ from Table import *
 #from Query import *
 from Projection import *
 from DataModel import *
-from BFColumn import *
+from FilterCoupler import *
 import ColorMaps
 from SceneInfo import *
 
@@ -17,7 +17,7 @@ class ModuleAgent(QObject):
     subscribeSignal          = Signal(object,str)
     unsubscribeSignal        = Signal(object,str)
     highlightSignal          = Signal(SubDomain)
-    addColumnSignal          = Signal(BFColumn, QObject)
+    addColumnSignal          = Signal(FilterCoupler, QObject)
     #evaluateSignal           = Signal(Query)
     getSubDomainSignal       = Signal(object,str)
 
@@ -88,7 +88,7 @@ class ModuleAgent(QObject):
 
         for key, group in attr_groups:
             attrs = [self.datatree.getItem(x).name for x in group]
-            column_list.append(BFColumn(key, attrs,
+            column_list.append(FilterCoupler(key, attrs,
                 parent = self))
 
         return column_list
@@ -101,7 +101,7 @@ class ModuleAgent(QObject):
             #Now send this new one to the parent
             self.addColumnSignal.emit(col, self)
 
-    @Slot(BFColumn)
+    @Slot(FilterCoupler)
     def requiredColumnChanged(self, col):
         pass
 
@@ -121,7 +121,7 @@ class ModuleAgent(QObject):
         return reqs
 
     # Remove column that has sent a delete signal
-    @Slot(BFColumn)
+    @Slot(FilterCoupler)
     def deleteColumn(self, col):
         if col in self.requirements:
             self.requirements.remove(col)
@@ -275,7 +275,7 @@ class ModuleAgent(QObject):
 ModuleAgent.subscribe = Slot(ModuleAgent, str)(ModuleAgent.subscribe)
 ModuleAgent.unsubscribe = Slot(ModuleAgent, str)(ModuleAgent.unsubscribe)
 ModuleAgent.getSubDomain = Slot(ModuleAgent, str)(ModuleAgent.getSubDomain)
-ModuleAgent.addChildColumn = Slot(BFColumn, ModuleAgent)(ModuleAgent.addChildColumn)
+ModuleAgent.addChildColumn = Slot(FilterCoupler, ModuleAgent)(ModuleAgent.addChildColumn)
 
 def Module(display_name, enabled = True):
     """Module decorator :

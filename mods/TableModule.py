@@ -20,7 +20,7 @@ class TableAgent(ModuleAgent):
         columns = self.buildColumnsFromIndices(indexList)
         self.addRequirement(columns)
 
-    @Slot(BFColumn)
+    @Slot(FilterCoupler)
     def requiredColumnChanged(self, col):
         print "Column changed!"
         identifiers = col.table._table.identifiers()

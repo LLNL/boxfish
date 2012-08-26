@@ -112,7 +112,7 @@ class TopModule(ModuleAgent):
     # Since this is the top agent which doesn't have any
     # filters or interface or anything, any column we receive
     # should automatically get all table identifiers
-    @Slot(BFColumn, ModuleAgent)
+    @Slot(FilterCoupler, ModuleAgent)
     def addChildColumn(self, col, child):
         super(TopModule, self).addChildColumn(col, child)
         col.changeSignal.emit(col)
