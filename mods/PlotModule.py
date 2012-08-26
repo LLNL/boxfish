@@ -1,5 +1,5 @@
 from SubDomain import *
-from BFModule import *
+from Module import *
 from DataModel import *
 
 import sys
@@ -17,10 +17,10 @@ from matplotlib.backends.backend_qt4agg import \
 from PySide.QtCore import *
 from PySide.QtGui import *
 
-class BFPlotModule(BFModule):
+class PlotterAgent(ModuleAgent):
 
     def __init__(self, parent, model):
-        super(BFPlotModule, self).__init__(parent, model)
+        super(PlotterAgent, self).__init__(parent, model)
 
         self.x_columns = list()
         self.y_columns = list()
@@ -36,25 +36,25 @@ class BFPlotModule(BFModule):
         self.y_columns = self.buildColumnsFromIndices(indexList)
 
 @Module("Plotter")
-class BFPlotWindow(BFModuleWindow):
+class PlotterView(ModuleView):
 
     display_name = "Plotter"
     in_use = True
 
     def __init__(self, parent, parent_view = None, title = None):
-        super(BFPlotWindow, self).__init__(parent, parent_view, title)
+        super(PlotterView, self).__init__(parent, parent_view, title)
 
         self.selected = []
 
     def createModule(self):
-        return BFPlotModule(self.parent_view.module,
+        return PlotterAgent(self.parent_view.module,
                             self.parent_view.module.model)
 
     def createView(self):
         view = QWidget()
 
         self.viewarea = QScrollArea()
-        self.viewarea.setWidget(BFPlotView())
+        self.viewarea.setWidget(PlotterWidget())
         self.viewarea.setWidgetResizable(True)
         self.viewarea.setMinimumSize(300,300)
 
@@ -100,10 +100,10 @@ class BFPlotWindow(BFModuleWindow):
         return mytext[:len(mytext) - 2]
 
 
-class BFPlotView(QWidget):
+class PlotterWidget(QWidget):
 
     def __init__(self, parent=None):
-        super(BFPlotView, self).__init__(parent)
+        super(PlotterWidget, self).__init__(parent)
 
         self.fig = Figure(figsize=(300,300), dpi=72, facecolor=(1,1,1), \
             edgecolor=(0,0,0))

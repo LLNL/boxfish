@@ -1,17 +1,17 @@
 from SubDomain import *
-from BFModule import *
+from Module import *
 from DataModel import *
 
 import sys
 from PySide.QtCore import *
 from PySide.QtGui import *
 
-class TableModule(BFModule):
+class TableAgent(ModuleAgent):
 
     columnSignal = Signal(int, list)
 
     def __init__(self, parent, model):
-        super(TableModule, self).__init__(parent, model)
+        super(TableAgent, self).__init__(parent, model)
 
         self.indices = None
 
@@ -42,10 +42,10 @@ class TableModule(BFModule):
                 return i
 
 @Module("Table")
-class TableWindow(BFModuleWindow):
+class TableView(ModuleView):
 
     def __init__(self, parent, parent_view = None, title = None):
-        super(TableWindow, self).__init__(parent, parent_view, title)
+        super(TableView, self).__init__(parent, parent_view, title)
 
         self.selected = []
 
@@ -54,7 +54,7 @@ class TableWindow(BFModuleWindow):
             self.module.columnSignal.connect(self.displayColumn)
 
     def createModule(self):
-        return TableModule(self.parent_view.module,
+        return TableAgent(self.parent_view.module,
                             self.parent_view.module.model)
 
     def createView(self):

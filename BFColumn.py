@@ -1,12 +1,12 @@
 from PySide.QtCore import Slot,Signal,QObject
-from BFTable import *
+from Table import *
 
 # Column used for input and output
-# table - The BFTable object holding the data, might be from the DataModel
+# table - The Table object holding the data, might be from the DataModel
 # or something specifically created by the filter
 # attribute - the attribute in the table we care about, for self owned
 # tables this is probably the only output
-# * This is in whatever format the particular BFTable uses which is
+# * This is in whatever format the particular Table uses which is
 # nice since it could eventually handle range data and so forth
 # parent - this is the originating module
 # name - this may be for the user interface

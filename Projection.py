@@ -42,7 +42,7 @@ class IdentityProjection(Projection):
 
 
 class TableProjection(Projection):
-  """Mapping defined by BFTable.
+  """Mapping defined by Table.
   """
 
   def __init__(self, source = "undefined", destination = "undefined", \

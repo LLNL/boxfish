@@ -3,10 +3,10 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 from BFColumn import *
 
-class BFFilter(QObject):
+class Filter(QObject):
 
     def __init__(self):
-        super(BFFilter, self).__init__()
+        super(Filter, self).__init__()
 
     # This takes a set of input and creates an output.
     # This might also do input and output checking,
@@ -15,7 +15,7 @@ class BFFilter(QObject):
         raise NotImplementedError("Filter has no process method")
 
 
-class IdentityFilter(BFFilter):
+class IdentityFilter(Filter):
 
     def __init__(self):
         super(IdentityFilter, self).__init__()
@@ -23,7 +23,7 @@ class IdentityFilter(BFFilter):
     def process(self, columns, identifiers):
         return  identifiers
 
-class SimpleWhereFilter(BFFilter):
+class SimpleWhereFilter(Filter):
 
     def __init__(self, attribute, value):
         super(SimpleWhereFilter, self).__init__()

@@ -1,5 +1,5 @@
 from PySide.QtCore import *
-from BFModule import *
+from Module import *
 from GLWidget import GLWidget
 from OpenGL.GL import *
 from OpenGL.GLUT import *
@@ -17,7 +17,7 @@ def get_from_list(dict_list, key):
         if key in dict:
             return dict[key]
 
-class Torus3dView3dModule(BFModule):
+class Torus3dView3dModule(ModuleAgent):
     columnSignal = Signal(list, list)
 
     def __init__(self, parent, model):
@@ -29,7 +29,7 @@ class Torus3dView3dModule(BFModule):
     def registerColumn(self, index):
         item = self.model.getItem(index)
         # BFColumn is really a requirement set plus information
-        # about who to notify.  BFModule knows most of this, though
+        # about who to notify.  ModuleAgent knows most of this, though
         # so maybe just pass the item
         col = BFColumn(item.parent(), [item.name], self)
 
@@ -47,7 +47,7 @@ class Torus3dView3dModule(BFModule):
         self.columnSignal.emit(coords, attrVals)
 
 @Module("3D Torus - 3D View")
-class Torus3dView3d(BFModuleWindow):
+class Torus3dView3d(ModuleView):
     """This is a 3d rendering of a 3d torus.
     """
 

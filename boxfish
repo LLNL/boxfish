@@ -7,13 +7,13 @@ from PySide.QtGui import *
 from FilterBox import *
 from DataModel import *
 
-class BFMainWindow(QMainWindow):
+class MainWindow(QMainWindow):
 
     def __init__(self, parent=None):
-        super(BFMainWindow, self).__init__(parent)
+        super(MainWindow, self).__init__(parent)
 
-        self.model = BFDataModel()
-        self.module = BFTopModule(self, self.model)
+        self.model = DataTree()
+        self.module = TopModule(self, self.model)
         self.centralWidget = QSplitter(Qt.Horizontal)
 
         # Control Frame
@@ -93,16 +93,16 @@ class BFMainWindow(QMainWindow):
         __import__("mods") # import!
         sys.path = saved_syspath # Revert true sys.path
 
-        modules = BFModuleWindow().subclassList()
+        modules = ModuleView().subclassList()
         return modules
 
 
-class BFTopModule(BFModule):
+class TopModule(ModuleAgent):
     """Module for handling top of module tree interactions.
     """
 
     def __init__(self, parent, model):
-        super(BFTopModule, self).__init__(parent, model)
+        super(TopModule, self).__init__(parent, model)
 
 
     # You can't add requirements to this module
@@ -112,9 +112,9 @@ class BFTopModule(BFModule):
     # Since this is the top module which doesn't have any
     # filters or interface or anything, any column we receive
     # should automatically get all table identifiers
-    @Slot(BFColumn, BFModule)
+    @Slot(BFColumn, ModuleAgent)
     def addChildColumn(self, col, child):
-        super(BFTopModule, self).addChildColumn(col, child)
+        super(TopModule, self).addChildColumn(col, child)
         col.changeSignal.emit(col)
 
 
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     app = QApplication(sys.argv)
     #app.setStyle('plastique')
-    bf = BFMainWindow()
+    bf = MainWindow()
 
     # Open runs based on command line arguments
     if len(sys.argv) > 1:

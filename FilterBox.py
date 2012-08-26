@@ -1,14 +1,13 @@
 from PySide.QtCore import *
 from PySide.QtGui import *
 from SubDomain import *
-from BFModule import *
+from Module import *
 #from Query import *
 #from QueryEngine import *
 from DataModel import *
-import BFIcons
-from BFFilter import * 
+from Filter import * 
 
-class FilterBox(BFModule):
+class FilterBox(ModuleAgent):
 
     def __init__(self, parent, model):
         super(FilterBox, self).__init__(parent, model)
@@ -21,7 +20,7 @@ class FilterBox(BFModule):
             col.modifier = self.filters[-1]
 
 @Module("Filter Box")
-class FilterBoxWindow(BFModuleWindow):
+class FilterBoxWindow(ModuleView):
     """Window for handling filtering operations.
     """
 

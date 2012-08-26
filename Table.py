@@ -1,7 +1,7 @@
 import numpy as np
 import itertools
 
-class BFTable(object):
+class Table(object):
   """A (B)ox(F)ishTable is a wrapper around a numpy array of records that
   additionally keeps track of its corresponding domain and allows to query
   attributes of this domain and potentially reduce them."""
@@ -316,7 +316,7 @@ if __name__ == '__main__':
 
   data = load_yaml("bgpcounter_data.yaml")
 
-  table = BFTable()
+  table = Table()
   table.fromArray(Ranks,'mpirank',data)
 
   r = Ranks([[0,1,2],[1,2,3],2])

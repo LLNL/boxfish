@@ -3,15 +3,15 @@ from PySide.QtGui import QWidget,QMainWindow,QDockWidget,QToolBar,\
     QLabel,QDrag,QPixmap
 import numpy as np
 from SubDomain import *
-from BFTable import *
+from Table import *
 #from Query import *
 from Projection import *
 from DataModel import *
 from BFColumn import *
-import BFMaps
-from BFSceneInfo import *
+import ColorMaps
+from SceneInfo import *
 
-class BFModule(QObject):
+class ModuleAgent(QObject):
 
     # Signals that I send
     subscribeSignal          = Signal(object,str)
@@ -39,7 +39,7 @@ class BFModule(QObject):
 
     # INIT IS DOWN HERE
     def __init__(self, parent, model = None):
-        super(BFModule,self).__init__(parent)
+        super(ModuleAgent,self).__init__(parent)
 
         self.model = model
         self.listenerCount = dict()
@@ -163,7 +163,7 @@ class BFModule(QObject):
         self.parent().unregisterChild(self)
         self.setParent(new_parent)
         if self.parent() is not None and \
-            isinstance(self.parent(), BFModule):
+            isinstance(self.parent(), ModuleAgent):
             self.parent().registerChild(self)
 
     # REWRITEME to apply child policy and use projections through the
@@ -195,7 +195,7 @@ class BFModule(QObject):
 
 
     # Slot must be added after class definition
-    #@Slot(BFModule,str)
+    #@Slot(ModuleAgent,str)
     def subscribe(self,module,name):
 
         # If we are the first one subscribing to this subdomain
@@ -209,7 +209,7 @@ class BFModule(QObject):
 
 
     # Slot must be added after class definition
-    #@Slot(BFModule,str)
+    #@Slot(ModuleAgent,str)
     def unsubscribe(self,module,name):
 
         # If we are the first one subscribing to this subdomain
@@ -233,7 +233,7 @@ class BFModule(QObject):
         #    self.publish[query.subdomain.subdomain()].emit(query,answer)
 
     # Slot must be added after class definition
-    #@Slot(BFModule,str)
+    #@Slot(ModuleAgent,str)
     def getSubDomain(self,module,subdomain):
         pass
         #data,success = self.queryEngine.getSubDomain(subdomain)
@@ -267,15 +267,15 @@ class BFModule(QObject):
 
     #@Slot(Query,np.ndarray)
     def receive(self,query,data):
-        print "BFModule got an answer for ", query
+        print "ModuleAgent got an answer for ", query
 
 
-# The slots need to be added down here because BFModule is not defined
+# The slots need to be added down here because ModuleAgent is not defined
 # at the time that the functions are defined
-BFModule.subscribe = Slot(BFModule, str)(BFModule.subscribe)
-BFModule.unsubscribe = Slot(BFModule, str)(BFModule.unsubscribe)
-BFModule.getSubDomain = Slot(BFModule, str)(BFModule.getSubDomain)
-BFModule.addChildColumn = Slot(BFColumn, BFModule)(BFModule.addChildColumn)
+ModuleAgent.subscribe = Slot(ModuleAgent, str)(ModuleAgent.subscribe)
+ModuleAgent.unsubscribe = Slot(ModuleAgent, str)(ModuleAgent.unsubscribe)
+ModuleAgent.getSubDomain = Slot(ModuleAgent, str)(ModuleAgent.getSubDomain)
+ModuleAgent.addChildColumn = Slot(BFColumn, ModuleAgent)(ModuleAgent.addChildColumn)
 
 def Module(display_name, enabled = True):
     """Module decorator :
@@ -291,10 +291,10 @@ def Module(display_name, enabled = True):
 # All ModuleWindows must be decorated with their display name and
 # a bool indicating if they can be created by the user.
 @Module("Module Window", enabled = False)
-class BFModuleWindow(QMainWindow):
+class ModuleView(QMainWindow):
     """This is the parent of what we will think of as a
        module/extension/plug-in. It has the interface to create the single
-       BFModule it represents as well as the GUI elements to handle its
+       ModuleAgent it represents as well as the GUI elements to handle its
        specific actions. Both need to be written by the inheriting object.
 
        This class handles the reparenting and docking elements of all such
@@ -302,7 +302,7 @@ class BFModuleWindow(QMainWindow):
     """
 
     def __init__(self, parent = None, parent_view = None, title = None):
-        super(BFModuleWindow, self).__init__(parent)
+        super(ModuleView, self).__init__(parent)
 
         self.title = title
         self.parent_view = parent_view
@@ -416,14 +416,14 @@ class BFModuleWindow(QMainWindow):
     # We only accept events that are of our type, indicating
     # a dock window change
     def dragEnterEvent(self, event):
-        if self.acceptDocks and isinstance(event.mimeData(), BFWindowMime):
+        if self.acceptDocks and isinstance(event.mimeData(), ModuleViewMime):
             event.accept()
-        elif isinstance(event.mimeData(), BFDataMime):
+        elif isinstance(event.mimeData(), DataIndexMime):
             event.accept()
         elif self.acceptDocks and isinstance(event.mimeData(), ModuleNameMime):
             event.accept()
         else:
-            super(BFModuleWindow, self).dragEnterEvent(event)
+            super(ModuleView, self).dragEnterEvent(event)
 
     # If the event has a DockWidget in it, we check if it is our
     # parent or if we are its widget. If so, do nothing
@@ -432,7 +432,7 @@ class BFModuleWindow(QMainWindow):
     # re-goodifies the view since the filter/data has changed
     def dropEvent(self, event):
         # Dropped DockWidget
-        if self.acceptDocks and isinstance(event.mimeData(), BFWindowMime):
+        if self.acceptDocks and isinstance(event.mimeData(), ModuleViewMime):
             if event.mimeData().getDockWindow().parent() != self and \
                event.mimeData().getDockWindow().widget() != self:
                 self.addDockWidget(Qt.BottomDockWidgetArea, \
@@ -448,17 +448,17 @@ class BFModuleWindow(QMainWindow):
         elif self.acceptDocks and isinstance(event.mimeData(), ModuleNameMime):
             mod_name = event.mimeData().getName()
             dock = BFDockWidget(mod_name, self)
-            new_mod = BFModuleWindow().instantiate(mod_name, dock, self, \
+            new_mod = ModuleView().instantiate(mod_name, dock, self, \
                 mod_name)
             dock.setWidget(new_mod)
             self.addDockWidget(Qt.BottomDockWidgetArea, dock)
         # Dropped Attribute Data
-        elif isinstance(event.mimeData(), BFDataMime):
+        elif isinstance(event.mimeData(), DataIndexMime):
             indexList = event.mimeData().getDataIndices()
             event.accept()
             self.droppedData(indexList)
         else:
-            super(BFModuleWindow, self).dropEvent(event)
+            super(ModuleView, self).dropEvent(event)
 
 
 class BFDockWidget(QDockWidget):
@@ -486,23 +486,23 @@ class BFDockWidget(QDockWidget):
     def mouseMoveEvent(self, e):
         if (e.buttons() == Qt.MidButton): # dropAction Doesn't work :(
             drag = QDrag(self)
-            drag.setMimeData(BFWindowMime(self))
+            drag.setMimeData(ModuleViewMime(self))
             dropAction = drag.start(Qt.MoveAction)
         elif (e.modifiers() == Qt.ShiftModifier): # dropAction works here
             drag = QDrag(self)
-            drag.setMimeData(BFWindowMime(self))
+            drag.setMimeData(ModuleViewMime(self))
             dropAction = drag.start(Qt.MoveAction)
         else:
             super(BFDockWidget, self).mouseMoveEvent(e)
 
 
-class BFWindowMime(QMimeData):
+class ModuleViewMime(QMimeData):
     """This allows passing of the QDockWidget between windows
        during Drag & Drop.
     """
 
     def __init__(self, dock_window):
-        super(BFWindowMime, self).__init__()
+        super(ModuleViewMime, self).__init__()
 
         self.dock_window = dock_window
 
@@ -511,7 +511,7 @@ class BFWindowMime(QMimeData):
 
 
 class ModuleNameMime(QMimeData):
-    """This is for passing BFModuleWindow display_names during
+    """This is for passing ModuleView display_names during
        Drag & Drop operations.
     """
 
@@ -546,7 +546,7 @@ class BFAttachLabel(QLabel):
 
     def mouseMoveEvent(self, e):
         drag = QDrag(self)
-        drag.setMimeData(BFWindowMime(self.dock))
+        drag.setMimeData(ModuleViewMime(self.dock))
         dropAction = drag.start(Qt.MoveAction)
 
 class BFDragToolBar(QToolBar):
@@ -564,7 +564,7 @@ class BFDragToolBar(QToolBar):
 
     def mouseMoveEvent(self, e):
         drag = QDrag(self)
-        drag.setMimeData(BFWindowMime(self.dock))
+        drag.setMimeData(ModuleViewMime(self.dock))
         dropAction = drag.start(Qt.MoveAction)
 
 class BFDropLabel(QLabel):
@@ -581,14 +581,14 @@ class BFDropLabel(QLabel):
         self.setAcceptDrops(True)
     
     def dragEnterEvent(self, event):
-        if isinstance(event.mimeData(), BFDataMime):
+        if isinstance(event.mimeData(), DataIndexMime):
             event.accept()
         else:
             super(BFDropLabel, self).dragEnterEvent(event)
 
     def dropEvent(self, event):
         # Dropped Attribute Data
-        if isinstance(event.mimeData(), BFDataMime):
+        if isinstance(event.mimeData(), DataIndexMime):
             indexList = event.mimeData().getDataIndices()
             event.accept()
             self.droppedData(indexList)

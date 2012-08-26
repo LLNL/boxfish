@@ -2,7 +2,7 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 import sys
 import os.path
-from BFTable import *
+from Table import *
 from SubDomain import *
 from Projection import *
 import YamlLoader as yl
@@ -60,14 +60,14 @@ class AbstractTreeItem(object):
 
 
 
-class BFRunItem(AbstractTreeItem):
+class RunItem(AbstractTreeItem):
     """Item representing an entire run. Holds the run
        metadata. Its children are divided into tables
        and projections.
     """
 
     def __init__(self, name, metadata, parent=None):
-        super(BFRunItem, self).__init__(name, parent)
+        super(RunItem, self).__init__(name, parent)
 
         self._metadata = metadata
 
@@ -98,12 +98,12 @@ class BFRunItem(AbstractTreeItem):
                 return self._metadata[key]
 
 
-class BFGroupItem(AbstractTreeItem):
+class GroupItem(AbstractTreeItem):
     """Item for grouping items of similar type, e.g. tables.
     """
 
     def __init__(self, name, parent=None):
-        super(BFGroupItem, self).__init__(name, parent)
+        super(GroupItem, self).__init__(name, parent)
 
     def typeInfo(self):
         return "GROUP"
@@ -118,14 +118,14 @@ class BFGroupItem(AbstractTreeItem):
             self.parent().getMetaData(key)
 
 
-# REFACTORME: BFProjectionItem and BFTableItem share metadata functions
-class BFProjectionItem(AbstractTreeItem):
+# REFACTORME: ProjectionItem and TableItem share metadata functions
+class ProjectionItem(AbstractTreeItem):
     """Item for holding a projection and its metadata. The data types
        of the projection are represented as children.
     """
 
     def __init__(self, name, projection, metadata, parent = None):
-        super(BFProjectionItem, self).__init__(name, parent)
+        super(ProjectionItem, self).__init__(name, parent)
 
         self._metadata = metadata
         self._projection = projection
@@ -158,13 +158,13 @@ class BFProjectionItem(AbstractTreeItem):
             return self.parent().getMetaData(key)
 
 
-class BFTableItem(AbstractTreeItem):
+class TableItem(AbstractTreeItem):
     """Item for holding a table and its metadata. The columns of the
        table are the children.
     """
 
     def __init__(self, name, table, metadata, parent = None):
-        super(BFTableItem, self).__init__(name, parent)
+        super(TableItem, self).__init__(name, parent)
 
         self._metadata = metadata
         self._table = table
@@ -198,7 +198,7 @@ class BFTableItem(AbstractTreeItem):
 
 # Projection Attribute may be different from table attribute,
 # we may want to separate those out.
-class BFAttributeItem(AbstractTreeItem):
+class AttributeItem(AbstractTreeItem):
     """Item for containing individual attributes. Access to these
        will be done through parent items.
     """
@@ -206,20 +206,20 @@ class BFAttributeItem(AbstractTreeItem):
     # These are more intimately connected with their table/projection and
     # we will only think of them by name (and potentially type)
     def __init__(self, name, parent=None):
-        super(BFAttributeItem, self).__init__(name, parent)
+        super(AttributeItem, self).__init__(name, parent)
 
     def typeInfo(self):
         return "ATTRIBUTE"
 
 
-class BFDataModel(QAbstractItemModel):
+class DataTree(QAbstractItemModel):
     """Data is accessed through this model. It is organized as a tree
        with Runs as level 1, Groups as level 2, Tables/Projections at
        level 3 and Attributes at level 4.
     """
 
     def __init__(self, root = AbstractTreeItem("BoxFish"), parent=None):
-        super(BFDataModel, self).__init__(parent)
+        super(DataTree, self).__init__(parent)
         self._rootItem = root
 
 
@@ -322,15 +322,15 @@ class BFDataModel(QAbstractItemModel):
 
         # Create projection
         self.beginInsertRows(parent, position, position + rows - 1)
-        projectionItem = BFProjectionItem(name, projection, metadata, \
+        projectionItem = ProjectionItem(name, projection, metadata, \
             parentItem)
         self.endInsertRows()
 
         #Create attributes
         self.beginInsertRows(self.createIndex(position, 0, projectionItem), \
             0, 2)
-        attItem = BFAttributeItem(projection.source, projectionItem)
-        attItem = BFAttributeItem(projection.destination, projectionItem)
+        attItem = AttributeItem(projection.source, projectionItem)
+        attItem = AttributeItem(projection.destination, projectionItem)
         self.endInsertRows()
 
         return True
@@ -345,14 +345,14 @@ class BFDataModel(QAbstractItemModel):
 
         # Create table
         self.beginInsertRows(parent, position, position + rows - 1)
-        tableItem = BFTableItem(name, table, metadata, parentItem)
+        tableItem = TableItem(name, table, metadata, parentItem)
         self.endInsertRows()
 
         #Create attributes
         self.beginInsertRows(self.createIndex(position, 0, tableItem), 0, \
             len(table.attributes()))
         for position, attribute in enumerate(table.attributes()):
-            attItem = BFAttributeItem(attribute, tableItem)
+            attItem = AttributeItem(attribute, tableItem)
         self.endInsertRows()
 
         return True
@@ -376,13 +376,13 @@ class BFDataModel(QAbstractItemModel):
 
         # Create RunItem
         self.beginInsertRows(QModelIndex(), position, position + rows - 1)
-        runItem = BFRunItem(os.path.basename(filename), metadata, parentItem)
+        runItem = RunItem(os.path.basename(filename), metadata, parentItem)
         self.endInsertRows()
 
         # Create groups for Tables and Projections
         self.beginInsertRows(self.createIndex(position, 0, runItem), 0, 2)
-        tablesItem = BFGroupItem("tables", parent = runItem)
-        projectionsItem = BFGroupItem("projections", parent = runItem)
+        tablesItem = GroupItem("tables", parent = runItem)
+        projectionsItem = GroupItem("projections", parent = runItem)
         self.endInsertRows()
 
         # Create TableItems and ProjectionItems
@@ -398,7 +398,7 @@ class BFDataModel(QAbstractItemModel):
                 filepath = os.path.join(os.path.dirname(filename), filedict['filename'])
                 metadata, data = yl.load_table(filepath)
                 combined_meta = dict(metadata.items() + filedict.items())
-                atable = BFTable()
+                atable = Table()
                 atable.fromRecArray(data_type, filedict['field'], data)
                 self.insertTable(filedict['filename'], atable, combined_meta, \
                     parent = self.createIndex(position, 0, tablesItem))
@@ -428,7 +428,7 @@ class BFDataModel(QAbstractItemModel):
                     filepath = os.path.join(os.path.dirname(filename), filedict['filename'])
                     metadata, data = yl.load_table(filepath)
                     combined_meta = dict(metadata.items() + filedict.items())
-                    atable = BFTable()
+                    atable = Table()
                     atable.fromRecArray(mydomains[0], mykeys[0], data)
                     aprojection = TableProjection(mydomains[0], mydomains[1], \
                             mykeys[0], mykeys[1], atable)
@@ -451,7 +451,7 @@ class BFDataModel(QAbstractItemModel):
     # most likely unless we also override dropMimeData(). For now we don't
     # want drop actions on standard views anyway.
     def mimeData(self, indices):
-        return BFDataMime(indices)
+        return DataIndexMime(indices)
 
 
     def findTableBySubdomain(self, index):
@@ -465,12 +465,12 @@ class BFDataModel(QAbstractItemModel):
 
 
 
-class BFDataMime(QMimeData):
+class DataIndexMime(QMimeData):
     """For passing around model indices using drag and drop.
     """
 
     def __init__(self, data_index):
-        super(BFDataMime, self).__init__()
+        super(DataIndexMime, self).__init__()
 
         self.data_index = data_index
 
@@ -483,7 +483,7 @@ if __name__ == '__main__':
 
     app = QApplication(sys.argv)
 
-    model = BFDataModel()
+    model = DataTree()
 
     treeView = QTreeView()
     treeView.show()
