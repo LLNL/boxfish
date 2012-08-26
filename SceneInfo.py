@@ -40,7 +40,7 @@ class AttributeScene(QObject):
         self.changeSignal.emit(self)
 
 class ModuleScene(QObject):
-    """This holds module-specific scene information that we might
+    """This holds agent-specific scene information that we might
        want to propogate among views.
 
        Example: May be used to hold ModelView matrix.

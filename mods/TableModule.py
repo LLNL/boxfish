@@ -10,8 +10,8 @@ class TableAgent(ModuleAgent):
 
     columnSignal = Signal(int, list)
 
-    def __init__(self, parent, model):
-        super(TableAgent, self).__init__(parent, model)
+    def __init__(self, parent, datatree):
+        super(TableAgent, self).__init__(parent, datatree)
 
         self.indices = None
 
@@ -36,7 +36,7 @@ class TableAgent(ModuleAgent):
     # but I just want to see if the rest of this works.
     def getIndex(self, attribute, col):
         for i, index in enumerate(self.indices):
-            item = self.model.getItem(index)
+            item = self.datatree.getItem(index)
             if item.name == attribute \
                 and item.parent().name == col.table.name:
                 return i
@@ -49,13 +49,13 @@ class TableView(ModuleView):
 
         self.selected = []
 
-        if self.module is not None:
+        if self.agent is not None:
             print "connect!"
-            self.module.columnSignal.connect(self.displayColumn)
+            self.agent.columnSignal.connect(self.displayColumn)
 
     def createModule(self):
-        return TableAgent(self.parent_view.module,
-                            self.parent_view.module.model)
+        return TableAgent(self.parent_view.agent,
+                            self.parent_view.agent.datatree)
 
     def createView(self):
         self.tabwidget = QTableWidget(10,2)
@@ -65,15 +65,15 @@ class TableView(ModuleView):
         self.tabwidget.setColumnCount(len(indexList))
 
         def make_full_name(i):
-            item = self.module.model.getItem(i)
+            item = self.agent.datatree.getItem(i)
             return "%s:%s" % (item.parent().name, item.name)
 
         def make_name(i):
-            return self.module.model.getItem(i).name
+            return self.agent.datatree.getItem(i).name
 
         labels = [make_name(i) for i in indexList]
         self.tabwidget.setHorizontalHeaderLabels(labels)
-        self.module.addDataIndices(indexList)
+        self.agent.addDataIndices(indexList)
 
     @Slot(int, list)
     def displayColumn(self, index, values):

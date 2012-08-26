@@ -12,8 +12,8 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
 
-        self.model = DataTree()
-        self.module = TopModule(self, self.model)
+        self.datatree = DataTree()
+        self.agent = TopModule(self, self.datatree)
         self.centralWidget = QSplitter(Qt.Horizontal)
 
         # Control Frame
@@ -41,7 +41,7 @@ class MainWindow(QMainWindow):
 
         # Data tree
         self.data_view = QTreeView(self.control_frame)
-        self.data_view.setModel(self.model)
+        self.data_view.setModel(self.datatree)
         self.data_view.setDragEnabled(True)
         self.data_view.setDropIndicatorShown(True)
         self.data_view.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -81,7 +81,7 @@ class MainWindow(QMainWindow):
     def openRun(self, *runs):
         """User callable method to tell boxfish to open a file."""
         for run in runs:
-            self.model.insertRun(run)
+            self.datatree.insertRun(run)
 
     #TODO: Read other directories to add from config file and add them
     def findModules(self):
@@ -98,18 +98,18 @@ class MainWindow(QMainWindow):
 
 
 class TopModule(ModuleAgent):
-    """Module for handling top of module tree interactions.
+    """Module for handling top of agent tree interactions.
     """
 
-    def __init__(self, parent, model):
-        super(TopModule, self).__init__(parent, model)
+    def __init__(self, parent, datatree):
+        super(TopModule, self).__init__(parent, datatree)
 
 
-    # You can't add requirements to this module
+    # You can't add requirements to this agent
     def addRequirement(self, col):
-        raise UserWarning("Top module should not have own requirements.")
+        raise UserWarning("Top agent should not have own requirements.")
 
-    # Since this is the top module which doesn't have any
+    # Since this is the top agent which doesn't have any
     # filters or interface or anything, any column we receive
     # should automatically get all table identifiers
     @Slot(BFColumn, ModuleAgent)
@@ -121,7 +121,7 @@ class TopModule(ModuleAgent):
 
 
 class ModuleListModel(QStringListModel):
-    """Simple model for interactions with list of available modules.
+    """Simple datatree for interactions with list of available modules.
     """
 
     def __init__(self, slist):

@@ -20,14 +20,14 @@ def get_from_list(dict_list, key):
 class Torus3dView3dModule(ModuleAgent):
     columnSignal = Signal(list, list)
 
-    def __init__(self, parent, model):
-        super(Torus3dView3dModule, self).__init__(parent, model)
+    def __init__(self, parent, datatree):
+        super(Torus3dView3dModule, self).__init__(parent, datatree)
 
-    # TODO: the module probably shouldn't have to know about
+    # TODO: the agent probably shouldn't have to know about
     # BFColumn -- it can just specify which attributes it wants
     # to be notified about
     def registerColumn(self, index):
-        item = self.model.getItem(index)
+        item = self.datatree.getItem(index)
         # BFColumn is really a requirement set plus information
         # about who to notify.  ModuleAgent knows most of this, though
         # so maybe just pass the item
@@ -53,12 +53,12 @@ class Torus3dView3d(ModuleView):
 
     def __init__(self, parent, parent_view = None, title = None):
         super(Torus3dView3d, self).__init__(parent, parent_view, title)
-        if self.module:
-            self.module.columnSignal.connect(self.updateNodeData)
+        if self.agent:
+            self.agent.columnSignal.connect(self.updateNodeData)
 
     def createModule(self):
-        self.module = Torus3dView3dModule(self.parent_view.module, self.parent_view.module.model)
-        return self.module
+        self.agent = Torus3dView3dModule(self.parent_view.agent, self.parent_view.agent.datatree)
+        return self.agent
 
     def createView(self):
         self.view = GLTorus3dView(self)
@@ -84,7 +84,7 @@ class Torus3dView3d(ModuleView):
 
                 coords = get_from_list(hardware, "coords")
                 shape = [get_from_list(hardware, "dim")[coord] for coord in coords]
-                self.module.coords = coords
+                self.agent.coords = coords
                 self.view.setShape(shape)
             else:
                 pass
@@ -97,12 +97,12 @@ class Torus3dView3d(ModuleView):
             return
 
         index = index_list[0]
-        item = self.module.model.getItem(index)
+        item = self.agent.datatree.getItem(index)
 
         self.findRunAndGetHardware(item)
 
         if item.typeInfo() == "ATTRIBUTE":
-            self.module.registerColumn(index)
+            self.agent.registerColumn(index)
 
 
 class GLTorus3dView(GLWidget):

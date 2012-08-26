@@ -9,8 +9,8 @@ from Filter import *
 
 class FilterBox(ModuleAgent):
 
-    def __init__(self, parent, model):
-        super(FilterBox, self).__init__(parent, model)
+    def __init__(self, parent, datatree):
+        super(FilterBox, self).__init__(parent, datatree)
 
     def createSimpleFilter(self, attribute, value):
         self.filters.append(SimpleWhereFilter(attribute, value))
@@ -30,8 +30,8 @@ class FilterBoxWindow(ModuleView):
         self.allowDocks(True)
 
     def createModule(self):
-        return FilterBox(self.parent_view.module, \
-            self.parent_view.module.model)
+        return FilterBox(self.parent_view.agent, \
+            self.parent_view.agent.datatree)
 
     def createView(self):
         view = QWidget() # Later this will be a FilterBoxView w/ Filter controls
@@ -67,11 +67,11 @@ class FilterBoxWindow(ModuleView):
     def droppedData(self, indexList):
         #mytext = self.fake_label.text()
         #for index in indexList:
-        #    print self.module.model.getItem(index).name
-        #    mytext = mytext + "\n" + self.module.model.getItem(index).name + \
-                #        " from " + self.module.model.getItem(index).parent().name
+        #    print self.agent.datatree.getItem(index).name
+        #    mytext = mytext + "\n" + self.agent.datatree.getItem(index).name + \
+                #        " from " + self.agent.datatree.getItem(index).parent().name
         #self.fake_label.setText(mytext)
-        dial = FakeDialog(self, self.module.model.getItem(indexList[0]).name, "")
+        dial = FakeDialog(self, self.agent.datatree.getItem(indexList[0]).name, "")
         dial.show()
 
 
@@ -95,7 +95,7 @@ class FilterBoxWindow(ModuleView):
     # Goes with FakeDialog
     def fakeNewVals(self, title, filtertext):
         print title, filtertext
-        self.module.createSimpleFilter(title, int(filtertext))
+        self.agent.createSimpleFilter(title, int(filtertext))
         self.fake_label.setText("Filter: " + title + " = " + filtertext)
         #self.setTitle(title)
         #self.parent().setWindowTitle(title)
@@ -149,7 +149,7 @@ class FakeDialog(QDialog):
 
 # ??? Not sure what I was thinking here... previous ideas on filtering.
 # This has all of the information that actually gets shown in the filter
-# Will need to subscribe to the DocTree model as well as its own internal model
+# Will need to subscribe to the DocTree datatree as well as its own internal datatree
 # of what data it has which is subscribed to something more specific as well
 # as up the tree and the highlight selection
 class FilterModel():

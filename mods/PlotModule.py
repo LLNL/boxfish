@@ -19,8 +19,8 @@ from PySide.QtGui import *
 
 class PlotterAgent(ModuleAgent):
 
-    def __init__(self, parent, model):
-        super(PlotterAgent, self).__init__(parent, model)
+    def __init__(self, parent, datatree):
+        super(PlotterAgent, self).__init__(parent, datatree)
 
         self.x_columns = list()
         self.y_columns = list()
@@ -47,8 +47,8 @@ class PlotterView(ModuleView):
         self.selected = []
 
     def createModule(self):
-        return PlotterAgent(self.parent_view.module,
-                            self.parent_view.module.model)
+        return PlotterAgent(self.parent_view.agent,
+                            self.parent_view.agent.datatree)
 
     def createView(self):
         view = QWidget()
@@ -86,17 +86,17 @@ class PlotterView(ModuleView):
         self.droppedYData(indexList)
 
     def droppedXData(self, indexList):
-        self.module.setXColumns(indexList)
+        self.agent.setXColumns(indexList)
         self.xattrs.setText(self.buildAttributeString(indexList))
 
     def droppedYData(self, indexList):
-        self.module.setYColumns(indexList)
+        self.agent.setYColumns(indexList)
         self.yattrs.setText(self.buildAttributeString(indexList))
 
     def buildAttributeString(self, indexList):
         mytext = ""
         for index in indexList:
-            mytext = mytext + self.module.model.getItem(index).name + ", "
+            mytext = mytext + self.agent.datatree.getItem(index).name + ", "
         return mytext[:len(mytext) - 2]
 
 
@@ -150,12 +150,12 @@ class PlotterWidget(QWidget):
         if old_selection == self.selected and old_selection != []:
             self.selected = []
             # HIGHLIGHT_CHANGE
-            # alert module about this - need SceneGraph done
+            # alert agent about this - need SceneGraph done
 
         self.plotData(self.ids, self.traffic, True)
 
         if self.selected != []:
             # HIGHLIGHT_CHANGE
-            # alert module about this -- need SceneGraph done
+            # alert agent about this -- need SceneGraph done
             pass
 

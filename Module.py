@@ -38,10 +38,10 @@ class ModuleAgent(QObject):
         #exec publishSignal_base % name + ' = Signal(Query,np.ndarray)'
 
     # INIT IS DOWN HERE
-    def __init__(self, parent, model = None):
+    def __init__(self, parent, datatree = None):
         super(ModuleAgent,self).__init__(parent)
 
-        self.model = model
+        self.datatree = datatree
         self.listenerCount = dict()
         self.highlights = dict() # domain based information
         self.domain_scenes = dict()
@@ -58,7 +58,7 @@ class ModuleAgent(QObject):
         #self.context = Context()
         #self.queryEngine = QueryEngine()
 
-        # List of BFColumns the module wants
+        # List of BFColumns the agent wants
         self.requirements = list()
 
         # List of BFColumns the children want
@@ -82,12 +82,12 @@ class ModuleAgent(QObject):
     def buildColumnsFromIndices(self, indexList):
         column_list = list()
 
-        get_parent = lambda x: self.model.getItem(x).parent()
+        get_parent = lambda x: self.datatree.getItem(x).parent()
         sorted_indices = sorted(indexList, key = get_parent)
         attr_groups = itertools.groupby(sorted_indices, key = get_parent)
 
         for key, group in attr_groups:
-            attrs = [self.model.getItem(x).name for x in group]
+            attrs = [self.datatree.getItem(x).name for x in group]
             column_list.append(BFColumn(key, attrs,
                 parent = self))
 
@@ -158,7 +158,7 @@ class ModuleAgent(QObject):
             if col.parent == child:
                 col.delete()
 
-    # Change the parent of the module.
+    # Change the parent of the agent.
     def changeParent(self, new_parent):
         self.parent().unregisterChild(self)
         self.setParent(new_parent)
@@ -167,11 +167,11 @@ class ModuleAgent(QObject):
             self.parent().registerChild(self)
 
     # REWRITEME to apply child policy and use projections through the
-    # data model as well as handle other Scenegraph changes
+    # data datatree as well as handle other Scenegraph changes
     @Slot(SubDomain)
     def highlight(self,subdomain):
-        """This slot is called whenever a child module changes
-           subdomain-dependent scene information. The module cycles through
+        """This slot is called whenever a child agent changes
+           subdomain-dependent scene information. The agent cycles through
            all subscribed listeners. Those of the same subdomain will
            get all of the scene info. For those of different domains, we
            check the highlight set to see if we can project.
@@ -196,7 +196,7 @@ class ModuleAgent(QObject):
 
     # Slot must be added after class definition
     #@Slot(ModuleAgent,str)
-    def subscribe(self,module,name):
+    def subscribe(self,agent,name):
 
         # If we are the first one subscribing to this subdomain
         if name not in self.listenerCount:
@@ -205,12 +205,12 @@ class ModuleAgent(QObject):
 
         self.listenerCount[name] = self.listenerCount[name] + 1
 
-        self.connectSubscription(module,name)
+        self.connectSubscription(agent,name)
 
 
     # Slot must be added after class definition
     #@Slot(ModuleAgent,str)
-    def unsubscribe(self,module,name):
+    def unsubscribe(self,agent,name):
 
         # If we are the first one subscribing to this subdomain
         if name not in self.listenerCount:
@@ -222,7 +222,7 @@ class ModuleAgent(QObject):
 
         self.listenerCount[name] = self.listenerCount[name] - 1
 
-        self.disconnectSubscription(module,name)
+        self.disconnectSubscription(agent,name)
 
 
     #@Slot(Query)
@@ -234,22 +234,22 @@ class ModuleAgent(QObject):
 
     # Slot must be added after class definition
     #@Slot(ModuleAgent,str)
-    def getSubDomain(self,module,subdomain):
+    def getSubDomain(self,agent,subdomain):
         pass
         #data,success = self.queryEngine.getSubDomain(subdomain)
         #if success:
-        #    module.setSubDomain(data)
+        #    agent.setSubDomain(data)
 
-    def connectSubscription(self,module,name):
+    def connectSubscription(self,agent,name):
 
-        self.highlights[name].connect(module.highlightChanged)
-        self.publish[name].connect(module.receive)
+        self.highlights[name].connect(agent.highlightChanged)
+        self.publish[name].connect(agent.receive)
 
 
-    def disconnectSubscription(self,module,name):
+    def disconnectSubscription(self,agent,name):
 
-        self.highlights[name].disconnect(module.highlightChanged)
-        self.publish[name].disconnect(module.receive)
+        self.highlights[name].disconnect(agent.highlightChanged)
+        self.publish[name].disconnect(agent.receive)
 
     def evaluate(self,query):
         pass
@@ -279,7 +279,7 @@ ModuleAgent.addChildColumn = Slot(BFColumn, ModuleAgent)(ModuleAgent.addChildCol
 
 def Module(display_name, enabled = True):
     """Module decorator :
-       display_name - name of module the user will see
+       display_name - name of agent the user will see
        enabled - true if the user can created one
     """
     def module_inner(cls):
@@ -293,7 +293,7 @@ def Module(display_name, enabled = True):
 @Module("Module Window", enabled = False)
 class ModuleView(QMainWindow):
     """This is the parent of what we will think of as a
-       module/extension/plug-in. It has the interface to create the single
+       agent/extension/plug-in. It has the interface to create the single
        ModuleAgent it represents as well as the GUI elements to handle its
        specific actions. Both need to be written by the inheriting object.
 
@@ -306,7 +306,7 @@ class ModuleView(QMainWindow):
 
         self.title = title
         self.parent_view = parent_view
-        self.module = None
+        self.agent = None
 
         # Only realize if we have a parent and a parent view
         if self.parent_view is not None and self.parent() is not None:
@@ -334,12 +334,12 @@ class ModuleView(QMainWindow):
             + "rgb(240, 240, 120); width: 2px; height: 2px; }")
 
 
-    # This sets up the plug-in by generating the module and registering
+    # This sets up the plug-in by generating the agent and registering
     # it to the parent and by placing the view elements in the overall
     # layout
     def realize(self):
-        self.module = self.createModule()
-        self.parent_view.module.registerChild(self.module)
+        self.agent = self.createModule()
+        self.parent_view.agent.registerChild(self.agent)
 
         self.view = self.createView()
         self.centralWidget = QWidget()
@@ -367,7 +367,7 @@ class ModuleView(QMainWindow):
     # Must be implemented by inheritors
     def createModule(self):
         raise NotImplementedError("Realize not implemented,"\
-            + " cannot create module")
+            + " cannot create agent")
 
     # Must be implemented by inheritors
     def createView(self):
@@ -437,7 +437,7 @@ class ModuleView(QMainWindow):
                event.mimeData().getDockWindow().widget() != self:
                 self.addDockWidget(Qt.BottomDockWidgetArea, \
                     event.mimeData().getDockWindow())
-                event.mimeData().getDockWindow().widget().module.changeParent(self.module)
+                event.mimeData().getDockWindow().widget().agent.changeParent(self.agent)
                 event.mimeData().getDockWindow().widget().parent_view = self
                 event.mimeData().getDockWindow().changeParent(self)
                 event.setDropAction(Qt.MoveAction)
@@ -568,9 +568,9 @@ class BFDragToolBar(QToolBar):
         dropAction = drag.start(Qt.MoveAction)
 
 class BFDropLabel(QLabel):
-    """This creates a label that can be model index drag/drop operations.
+    """This creates a label that can be datatree index drag/drop operations.
 
-       handler - the model index list (and only the model index list) will
+       handler - the datatree index list (and only the datatree index list) will
                  be passed to this function if not None.
     """
 

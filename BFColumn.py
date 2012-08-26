@@ -8,7 +8,7 @@ from Table import *
 # tables this is probably the only output
 # * This is in whatever format the particular Table uses which is
 # nice since it could eventually handle range data and so forth
-# parent - this is the originating module
+# parent - this is the originating agent
 # name - this may be for the user interface
 class BFColumn(QObject):
     """Representation of columns requested in a single data table and a

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""This module contains functions for reading files into datastructures used
+"""This agent contains functions for reading files into datastructures used
 by Boxfish.
 """
 

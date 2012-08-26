@@ -8,7 +8,7 @@ from Projection import *
 import YamlLoader as yl
 
 class AbstractTreeItem(object):
-    """Base class for items that are in our data model.
+    """Base class for items that are in our data datatree.
     """
 
     def __init__(self, name, parent=None):
@@ -213,7 +213,7 @@ class AttributeItem(AbstractTreeItem):
 
 
 class DataTree(QAbstractItemModel):
-    """Data is accessed through this model. It is organized as a tree
+    """Data is accessed through this datatree. It is organized as a tree
        with Runs as level 1, Groups as level 2, Tables/Projections at
        level 3 and Attributes at level 4.
     """
@@ -313,7 +313,7 @@ class DataTree(QAbstractItemModel):
 
         return self._rootItem
 
-    # Add a projection and its domains to the model.
+    # Add a projection and its domains to the datatree.
     def insertProjection(self, name, projection, metadata, position=-1, \
         rows=1, parent=QModelIndex()):
         parentItem = self.getItem(parent)
@@ -336,7 +336,7 @@ class DataTree(QAbstractItemModel):
         return True
 
 
-    # Add a table and its attributes to the model.
+    # Add a table and its attributes to the datatree.
     def insertTable(self, name, table, metadata, position=-1, rows=1, \
         parent=QModelIndex()):
         parentItem = self.getItem(parent)
@@ -366,7 +366,7 @@ class DataTree(QAbstractItemModel):
     # Runs are inserted at root level.
     def insertRun(self, filename, position = -1, rows = 1):
         """Insert a run with all of its child tables and projections
-           into the data model/data store. The input filename should
+           into the data datatree/data store. The input filename should
            refer to the meta file denoting the run.
         """
         parentItem = self._rootItem
@@ -466,7 +466,7 @@ class DataTree(QAbstractItemModel):
 
 
 class DataIndexMime(QMimeData):
-    """For passing around model indices using drag and drop.
+    """For passing around datatree indices using drag and drop.
     """
 
     def __init__(self, data_index):
@@ -483,12 +483,12 @@ if __name__ == '__main__':
 
     app = QApplication(sys.argv)
 
-    model = DataTree()
+    datatree = DataTree()
 
     treeView = QTreeView()
     treeView.show()
-    treeView.setModel(model)
+    treeView.setModel(datatree)
 
-    model.insertRun("dummy_meta.yaml")
+    datatree.insertRun("dummy_meta.yaml")
 
     sys.exit(app.exec_())
