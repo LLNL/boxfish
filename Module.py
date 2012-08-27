@@ -17,7 +17,7 @@ class ModuleAgent(QObject):
     subscribeSignal          = Signal(object,str)
     unsubscribeSignal        = Signal(object,str)
     highlightSignal          = Signal(SubDomain)
-    addColumnSignal          = Signal(FilterCoupler, QObject)
+    addCouplerSignal          = Signal(FilterCoupler, QObject)
     #evaluateSignal           = Signal(Query)
     getSubDomainSignal       = Signal(object,str)
 
@@ -58,11 +58,11 @@ class ModuleAgent(QObject):
         #self.context = Context()
         #self.queryEngine = QueryEngine()
 
-        # List of BFColumns the agent wants
+        # List of filter streams (couplers) the agent wants
         self.requirements = list()
 
-        # List of BFColumns the children want
-        self.child_columns = list()
+        # List of filter streams (couplers) the children want
+        self.child_requirements = list()
 
         self.filters = list()
 
@@ -79,84 +79,80 @@ class ModuleAgent(QObject):
                     return result
             return None
 
-    def buildColumnsFromIndices(self, indexList):
-        column_list = list()
-
+    def sortIndicesByTable(self, indexList):
+        """Creates an iterator of passed indices grouped by
+        the tableItem that they come from.
+        """
         get_parent = lambda x: self.datatree.getItem(x).parent()
         sorted_indices = sorted(indexList, key = get_parent)
-        attr_groups = itertools.groupby(sorted_indices, key = get_parent)
+        attribute_groups = itertools.groupby(sorted_indices, key = get_parent)
 
-        for key, group in attr_groups:
-            attrs = [self.datatree.getItem(x).name for x in group]
-            column_list.append(FilterCoupler(key, attrs,
-                parent = self))
+        return attribute_groups
 
-        return column_list
-
-
-    def addRequirement(self, cols):
-        for col in cols:
-            self.requirements.append(col)
-            col.changeSignal.connect(self.requiredColumnChanged)
+    def addRequirement(self, *names):
+        for name in names:
+            coupler = FilterCoupler(name, self, None)
+            self.requirements.append(coupler)
+            coupler.changeSignal.connect(self.requiredCouplerChanged)
             #Now send this new one to the parent
-            self.addColumnSignal.emit(col, self)
+            self.addCouplerSignal.emit(coupler, self)
 
     @Slot(FilterCoupler)
-    def requiredColumnChanged(self, col):
+    def requiredCouplerChanged(self, coupler):
         pass
 
     # Signal decorator attached after the class.
-    def addChildColumn(self, col, child):
+    def addChildCoupler(self, coupler, child):
         my_filter = None
         if self.filters:
             my_filter = self.filters[0]
-        new_col = col.createUpstream(child, my_filter)
-        self.child_columns.append(new_col)
-        self.addColumnSignal.emit(new_col, self)
+        new_coupler = coupler.createUpstream(child, my_filter)
+        self.child_requirements.append(new_coupler)
+        self.addCouplerSignal.emit(new_coupler, self)
 
-    def getColumnRequests(self):
+    def getCouplerRequests(self):
         reqs = list()
         reqs.extend(self.requirements)
-        reqs.extend(self.child_columns)
+        reqs.extend(self.child_requirements)
         return reqs
 
     # Remove column that has sent a delete signal
     @Slot(FilterCoupler)
-    def deleteColumn(self, col):
-        if col in self.requirements:
-            self.requirements.remove(col)
-        elif col in self.child_columns:
-            self.child_columns.remove(col)
+    def deleteCoupler(self, coupler):
+        if coupler in self.requirements:
+            self.requirements.remove(coupler)
+        elif coupler in self.child_requirements:
+            self.child_requirements.remove(coupler)
 
     def registerChild(self, child):
         child.subscribeSignal.connect(self.subscribe)
         child.unsubscribeSignal.connect(self.unsubscribe)
         child.highlightSignal.connect(self.highlight)
-        child.addColumnSignal.connect(self.addChildColumn)
+        child.addCouplerSignal.connect(self.addChildCoupler)
         #child.evaluateSignal.connect(self.evaluate)
         child.getSubDomainSignal.connect(self.getSubDomain)
 
         # "Adopt" child's column requests
-        for col in child.getColumnRequests():
+        for coupler in child.getCouplerRequests():
             my_filter = None
             if self.filters:
                 my_filter = self.filters[0]
-            new_col = col.createUpstream(child, my_filter)
-            self.child_columns.append(new_col)
-            self.addColumnSignal.emit(new_col, self)
+            new_coupler = coupler.createUpstream(child, my_filter)
+            self.child_requirements.append(new_coupler)
+            self.addCouplerSignal.emit(new_coupler, self)
 
     def unregisterChild(self, child):
         child.subscribeSignal.disconnect(self.subscribe)
         child.unsubscribeSignal.disconnect(self.unsubscribe)
         child.highlightSignal.disconnect(self.highlight)
-        child.addColumnSignal.disconnect(self.addChildColumn)
+        child.addCouplerSignal.disconnect(self.addChildCoupler)
         #child.evaluateSignal.disconnect(self.evaluate)
         child.getSubDomainSignal.disconnect(self.getSubDomain)
 
         # Abandon child's column requests
-        for col in self.child_columns:
-            if col.parent == child:
-                col.delete()
+        for coupler in self.child_requirements:
+            if coupler.parent == child:
+                coupler.delete()
 
     # Change the parent of the agent.
     def changeParent(self, new_parent):
@@ -275,7 +271,7 @@ class ModuleAgent(QObject):
 ModuleAgent.subscribe = Slot(ModuleAgent, str)(ModuleAgent.subscribe)
 ModuleAgent.unsubscribe = Slot(ModuleAgent, str)(ModuleAgent.unsubscribe)
 ModuleAgent.getSubDomain = Slot(ModuleAgent, str)(ModuleAgent.getSubDomain)
-ModuleAgent.addChildColumn = Slot(FilterCoupler, ModuleAgent)(ModuleAgent.addChildColumn)
+ModuleAgent.addChildCoupler = Slot(FilterCoupler, ModuleAgent)(ModuleAgent.addChildCoupler)
 
 def Module(display_name, enabled = True):
     """Module decorator :

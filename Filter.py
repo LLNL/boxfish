@@ -31,8 +31,7 @@ class SimpleWhereFilter(Filter):
         self.attribute = attribute
         self.value = value
 
-    def process(self, columns, identifiers):
+    def process(self, table, identifiers):
         conditions = list()
         conditions.append((self.attribute, "=", self.value, "and"))
-        return columns.table._table.subset_by_attributes(\
-            identifiers, conditions)
+        return table.subset_by_attributes(identifiers, conditions)

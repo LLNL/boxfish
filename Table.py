@@ -203,7 +203,6 @@ class Table(object):
        perhaps a list of lists style such that we could aggregate multiple
        columns and produce a single column.
     """
-
     # We need all possible combinations of the given attributes
     givens_list = list()
     for attr in given_attrs:

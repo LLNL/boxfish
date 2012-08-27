@@ -107,17 +107,17 @@ class TopModule(ModuleAgent):
 
 
     # You can't add requirements to this agent
-    def addRequirement(self, col):
+    def addRequirement(self, coupler):
         raise UserWarning("Top agent should not have own requirements.")
 
     # Since this is the top agent which doesn't have any
     # filters or interface or anything, any column we receive
     # should automatically get all table identifiers
     @Slot(FilterCoupler, ModuleAgent)
-    def addChildColumn(self, col, child):
-        super(TopModule, self).addChildColumn(col, child)
+    def addChildCoupler(self, coupler, child):
+        super(TopModule, self).addChildCoupler(coupler, child)
         # emit on new child column to start the chain
-        self.child_columns[-1].changeSignal.emit(self.child_columns[-1])
+        self.child_requirements[-1].changeSignal.emit(self.child_requirements[-1])
 
 
 

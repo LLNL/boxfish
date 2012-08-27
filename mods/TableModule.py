@@ -8,37 +8,55 @@ from PySide.QtGui import *
 
 class TableAgent(ModuleAgent):
 
-    columnSignal = Signal(int, list)
+    tableUpdateSignal = Signal(list, list)
 
     def __init__(self, parent, datatree):
         super(TableAgent, self).__init__(parent, datatree)
 
         self.indices = None
+        self.table_coupler = None
+
+        self.addRequirement("table columns")
 
     def addDataIndices(self, indexList):
         self.indices = indexList
-        columns = self.buildColumnsFromIndices(indexList)
-        self.addRequirement(columns)
+        self.presentData()
+
+    def makeHeaderLabels(self):
+        headers = list()
+        for table, attributes in self.attribute_groups:
+            print table
+            for attribute in attributes:
+                print attributes
+                headers.append(self.datatree.getItem(attribute).name)
+
+        print headers, " are the headers"
+        return headers
 
     @Slot(FilterCoupler)
-    def requiredColumnChanged(self, col):
-        identifiers = col.table._table.identifiers()
-        for modifier in col.modifier_chain:
-            identifiers = modifier.process(col, identifiers)
-        attribute_list = col.table._table.attribute_by_identifiers(\
-            identifiers, col.attributes, False)
-        for i, att_list in enumerate(attribute_list):
-            index = self.getIndex(col.attributes[i], col)
-            self.columnSignal.emit(index, att_list)
+    def requiredCouplerChanged(self, coupler):
+        self.table_coupler = coupler
+        self.presentData()
 
-    # This is the stupidest way possible to do this column connection
-    # but I just want to see if the rest of this works.
-    def getIndex(self, attribute, col):
-        for i, index in enumerate(self.indices):
-            item = self.datatree.getItem(index)
-            if item.name == attribute \
-                and item.parent().name == col.table.name:
-                return i
+    def presentData(self):
+        if self.indices is None:
+            return
+        self.attribute_groups = self.sortIndicesByTable(self.indices)
+        data_list = list()
+        headers = list()
+        for table, attribute_group in self.attribute_groups:
+            attributes = [self.datatree.getItem(x).name for x in
+                attribute_group]
+            headers.extend(attributes)
+            identifiers = table._table.identifiers()
+            for modifier in self.table_coupler.modifier_chain:
+                identifiers = modifier.process(table._table, identifiers)
+            attribute_list = table._table.attribute_by_identifiers(
+                identifiers, attributes, False)
+            for sub_list in attribute_list:
+                data_list.append(sub_list)
+        self.tableUpdateSignal.emit(headers, data_list)
+
 
 @Module("Table")
 class TableView(ModuleView):
@@ -49,37 +67,28 @@ class TableView(ModuleView):
         self.selected = []
 
         if self.agent is not None:
-            self.agent.columnSignal.connect(self.displayColumn)
+            self.agent.tableUpdateSignal.connect(self.updateTable)
 
     def createAgent(self):
         return TableAgent(self.parent_view.agent,
                             self.parent_view.agent.datatree)
 
     def createView(self):
-        self.tabwidget = QTableWidget(10,2)
-        return self.tabwidget
+        self.table_widget = QTableWidget(10,2)
+        return self.table_widget
 
     def droppedData(self, indexList):
-        self.tabwidget.setColumnCount(len(indexList))
-
-        def make_full_name(i):
-            item = self.agent.datatree.getItem(i)
-            return "%s:%s" % (item.parent().name, item.name)
-
-        def make_name(i):
-            return self.agent.datatree.getItem(i).name
-
-        labels = [make_name(i) for i in indexList]
-        self.tabwidget.setHorizontalHeaderLabels(labels)
         self.agent.addDataIndices(indexList)
 
-    @Slot(int, list)
-    def displayColumn(self, index, values):
+    @Slot(list, list)
+    def updateTable(self, headers, values):
         rows = 100
-        if len(values) < 100:
-            rows = len(values)
-        self.tabwidget.setRowCount(rows)
-        for i in range(rows):
-            self.tabwidget.setItem(i, index,
-                    QTableWidgetItem(str(values[i])))
+        print headers
+        self.table_widget.setColumnCount(len(headers))
+        self.table_widget.setHorizontalHeaderLabels(headers)
+        self.table_widget.setRowCount(rows)
+        for index, value_list in enumerate(values):
+            for i in range(rows):
+                self.table_widget.setItem(i, index,
+                        QTableWidgetItem(str(value_list[i])))
 

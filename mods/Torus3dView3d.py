@@ -17,34 +17,47 @@ def get_from_list(dict_list, key):
         if key in dict:
             return dict[key]
 
-class Torus3dView3dModule(ModuleAgent):
-    columnSignal = Signal(list, list)
+class Torus3dView3dAgent(ModuleAgent):
+    nodeUpdateSignal = Signal(list, list)
 
     def __init__(self, parent, datatree):
-        super(Torus3dView3dModule, self).__init__(parent, datatree)
+        super(Torus3dView3dAgent, self).__init__(parent, datatree)
+
+        self.node_attributes = None
+        self.node_coupler = None
+
+        self.addRequirement("nodes")
+
+    def registerAttributes(self, index):
+        self.node_attributes = list()
+        self.node_attributes.append(index)
+        self.updateNodeValues()
 
     # TODO: the agent probably shouldn't have to know about
-    # FilterCoupler -- it can just specify which attributes it wants
-    # to be notified about
-    def registerColumn(self, index):
-        item = self.datatree.getItem(index)
-        # FilterCoupler is really a requirement set plus information
-        # about who to notify.  ModuleAgent knows most of this, though
-        # so maybe just pass the item
-        col = FilterCoupler(item.parent(), [item.name], self)
-
-        # e.g., how about self.addRequirement([item ...])?
-        self.addRequirement([col])
-
+    # FilterCoupler -- it can just specify how it wants
+    # the data grouped via some other mechanism and the
+    # base module agent will be smart enough to do what
+    # updateNodeValues is doing now
     @Slot(FilterCoupler)
-    def requiredColumnChanged(self, col):
-        identifiers = col.table._table.identifiers()
-        for filt in col.modifier_chain:
-            identifiers = filt.process(col, identifiers)
+    def requiredCouplerChanged(self, coupler):
+        if coupler.name == "nodes":
+            self.node_coupler = coupler
+            self.updateNodeValues()
 
-        coords, attrVals = col.table._table.attributes_by_attributes(
-            identifiers, self.coords, col.attributes, "mean")
-        self.columnSignal.emit(coords, attrVals)
+    def updateNodeValues(self):
+        if self.node_attributes is None:
+            return
+
+        attribute = list()
+        attribute.append(self.datatree.getItem(self.node_attributes[0]).name)
+        table = self.datatree.getItem(self.node_attributes[0]).parent()._table
+        identifiers = table.identifiers()
+        for modifier in self.node_coupler.modifier_chain:
+            identifiers = modifier.process(table, identifiers)
+
+        coordinates, attribute_values = table.attributes_by_attributes(
+            identifiers, self.coords, attribute, "mean")
+        self.nodeUpdateSignal.emit(coordinates, attribute_values)
 
 @Module("3D Torus - 3D View")
 class Torus3dView3d(ModuleView):
@@ -54,10 +67,10 @@ class Torus3dView3d(ModuleView):
     def __init__(self, parent, parent_view = None, title = None):
         super(Torus3dView3d, self).__init__(parent, parent_view, title)
         if self.agent:
-            self.agent.columnSignal.connect(self.updateNodeData)
+            self.agent.nodeUpdateSignal.connect(self.updateNodeData)
 
     def createAgent(self):
-        self.agent = Torus3dView3dModule(self.parent_view.agent, self.parent_view.agent.datatree)
+        self.agent = Torus3dView3dAgent(self.parent_view.agent, self.parent_view.agent.datatree)
         return self.agent
 
     def createView(self):
@@ -102,7 +115,7 @@ class Torus3dView3d(ModuleView):
         self.findRunAndGetHardware(item)
 
         if item.typeInfo() == "ATTRIBUTE":
-            self.agent.registerColumn(index)
+            self.agent.registerAttributes(index)
 
 
 class GLTorus3dView(GLWidget):

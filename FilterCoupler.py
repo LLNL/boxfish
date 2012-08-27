@@ -17,17 +17,14 @@ class FilterCoupler(QObject):
     changeSignal = Signal(QObject)
     deleteSignal = Signal(QObject)
 
-    def __init__(self, table, attributes, parent = None, modifier = None,
-        name = None):
+    def __init__(self, name, parent = None, modifier = None):
         super(FilterCoupler, self).__init__()
-        self.table = table # This might also be a projection TODO: remove
-        self.attributes = attributes # TODO: remove
         self.name = name
         self.parent = parent
         self.upstream_chain = list()
 
-        # parent will deleteColumn
-        self.deleteSignal.connect(parent.deleteColumn)
+        # parent will deleteCoupler
+        self.deleteSignal.connect(parent.deleteCoupler)
         self._modifier = modifier # e.g. filter
 
         # chain of modifiers this data has gone through
@@ -55,8 +52,7 @@ class FilterCoupler(QObject):
            this one. The only initial difference is the change
            in parent.
         """
-        upstream = FilterCoupler(self.table, self.attributes, \
-            parent, modifier, self.name)
+        upstream = FilterCoupler(self.name, parent, modifier)
 
         # We listen for the upstream changing or deleting
         upstream.changeSignal.connect(self.upstreamChanged)

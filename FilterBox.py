@@ -13,11 +13,12 @@ class FilterBox(ModuleAgent):
         super(FilterBox, self).__init__(parent, datatree)
 
     def createSimpleFilter(self, attribute, value):
+        self.filters = list()
         self.filters.append(SimpleWhereFilter(attribute, value))
-        for col in self.requirements:
-            col.modifier = self.filters[-1]
-        for col in self.child_columns:
-            col.modifier = self.filters[-1]
+        for coupler in self.requirements:
+            coupler.modifier = self.filters[0]
+        for coupler in self.child_requirements:
+            coupler.modifier = self.filters[0]
 
 @Module("Filter Box")
 class FilterBoxView(ModuleView):
