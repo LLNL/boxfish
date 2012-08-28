@@ -6,6 +6,7 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 from FilterBox import *
 from DataModel import *
+from OpenGL.GLUT import glutInit
 
 class MainWindow(QMainWindow):
 
@@ -136,6 +137,11 @@ class ModuleListModel(QStringListModel):
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+    # May be called on some systems, not on others and the latter
+    # will crash without it if GLUT stuff is used.
+    glutInit(sys.argv) 
+
     app = QApplication(sys.argv)
     #app.setStyle('plastique')
     bf = MainWindow()

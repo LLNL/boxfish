@@ -17,7 +17,7 @@ class ModuleAgent(QObject):
     subscribeSignal          = Signal(object,str)
     unsubscribeSignal        = Signal(object,str)
     highlightSignal          = Signal(SubDomain)
-    addCouplerSignal          = Signal(FilterCoupler, QObject)
+    addCouplerSignal         = Signal(FilterCoupler, QObject)
     #evaluateSignal           = Signal(Query)
     getSubDomainSignal       = Signal(object,str)
 
@@ -102,6 +102,7 @@ class ModuleAgent(QObject):
         pass
 
     # Signal decorator attached after the class.
+    # @Slot(FilterCoupler, ModuleAgent)
     def addChildCoupler(self, coupler, child):
         my_filter = None
         if self.filters:
@@ -265,13 +266,56 @@ class ModuleAgent(QObject):
     def receive(self,query,data):
         print "ModuleAgent got an answer for ", query
 
-
 # The slots need to be added down here because ModuleAgent is not defined
 # at the time that the functions are defined
 ModuleAgent.subscribe = Slot(ModuleAgent, str)(ModuleAgent.subscribe)
 ModuleAgent.unsubscribe = Slot(ModuleAgent, str)(ModuleAgent.unsubscribe)
 ModuleAgent.getSubDomain = Slot(ModuleAgent, str)(ModuleAgent.getSubDomain)
 ModuleAgent.addChildCoupler = Slot(FilterCoupler, ModuleAgent)(ModuleAgent.addChildCoupler)
+
+def ModuleRequest(QObject):
+    """Holds all of the requested information including the 
+       desired attributes and the operation to perform on them.
+       This is identified by the name member of the class.
+       Please keep names unique within a single module.
+    """
+
+    def __init__(self, name, coupler, indices = list(), operation = None,
+        operation_parameters = None, callback = None):
+        super(ModuleRequest, self).__init__()
+
+        self.name = name
+        self.coupler = coupler
+        self.indices = indices
+        self.operation = operation
+        self.operation_parameters = operation_parameters
+        self.callback = callback
+
+    def process(self):
+        """Applies filters from the coupler and then performs
+           the operation as specified by operation. Passes to callback a
+           list of list-pairs, the first of the pair being the
+           table + groupby attributes (could be identifiers), the
+           second being the table + desired attributes.
+        """
+        if self.indices is None:
+            return
+        if self.operation is None:
+            raise ValueError("No operation specified for " + self.name
+                + " request.")
+        # TODO: Search through operation parameters and make sure
+        # we have all the required ones between the ones we handle
+        # (identifiers, desired_attributes) and the ones in 
+        # self.operation_parameters (e.g. group_by attributes, aggregator)
+
+        self.attribute_groups = self.sortIndicesByTable(self.indices)
+        for table, attribute_group in self.attribute_groups:
+            attributes = [self.datatree.getItem(x) for x in attribute_group]
+            # TODO: Rest of this processing
+
+
+
+# -------------------------- VIEW -------------------------------------
 
 def Module(display_name, enabled = True):
     """Module decorator :
@@ -285,7 +329,7 @@ def Module(display_name, enabled = True):
     return module_inner
 
 # All ModuleWindows must be decorated with their display name and
-# a bool indicating if they can be created by the user.
+# optionally a bool indicating they are not for user creation.
 @Module("Module Window", enabled = False)
 class ModuleView(QMainWindow):
     """This is the parent of what we will think of as a
