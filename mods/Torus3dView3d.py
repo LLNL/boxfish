@@ -99,11 +99,11 @@ class Torus3dView3d(ModuleView):
                 shape = [get_from_list(hardware, "dim")[coord] for coord in coords]
                 self.agent.coords = coords
                 self.view.setShape(shape)
-            else:
-                pass
-        else:
-            if item.parent():
-                self.findRunAndGetHardware(item.parent())
+
+        elif item.parent():
+            #TODO: not sure this is the best way to figure out whether this is metadata.
+            #TODO: Shouldn't we figure it out from typeinfo?
+            self.findRunAndGetHardware(item.parent())
 
     def droppedData(self, index_list):
         if len(index_list) != 1:
@@ -151,8 +151,6 @@ class GLTorus3dView(GLWidget):
         self.drawLinks()
 
         super(GLTorus3dView, self).paintGL()
-
-        glFlush()
 
     def centerView(self):
         """ First we move the coordinate system by half the size of the total
