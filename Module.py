@@ -59,7 +59,7 @@ class ModuleAgent(QObject):
         #self.queryEngine = QueryEngine()
 
         # List of filter streams (couplers) the agent wants
-        self.requirements = list()
+        self.requirements = dict()
 
         # List of filter streams (couplers) the children want
         self.child_requirements = list()
@@ -92,14 +92,39 @@ class ModuleAgent(QObject):
     def addRequirement(self, *names):
         for name in names:
             coupler = FilterCoupler(name, self, None)
-            self.requirements.append(coupler)
+            self.requirements[name] = ModuleRequest(self.datatree, name,
+                coupler)
             coupler.changeSignal.connect(self.requiredCouplerChanged)
             #Now send this new one to the parent
             self.addCouplerSignal.emit(coupler, self)
 
+    def requestUpdated(self, name):
+        pass
+
     @Slot(FilterCoupler)
     def requiredCouplerChanged(self, coupler):
-        pass
+        request = self.requirements[coupler.name]
+        self.requestUpdated(coupler.name)
+
+    # TODO: Maybe instead of having next few functions we should
+    # move the functionality out of ModuleRequest and over here,
+    # leaving the request to just hold the coupler and the indices
+    def requestAddIndices(self, name, indices):
+        if name not in self.requirements:
+            raise ValueError("No requirement named " + name)
+        self.requirements[name].indices = indices
+
+    def requestGroupBy(self, name, group_by_attributes, group_by_table,
+        row_aggregator, attribute_aggregator):
+        if name not in self.requirements:
+            raise ValueError("No requirement named " + name)
+        return self.requirements[name].groupby(group_by_attributes,
+            group_by_table, row_aggregator, attribute_aggregator)
+
+    def requestGetRows(self, name):
+        if name not in self.requirements:
+            raise ValueError("No requirement named " + name)
+        return self.requirements[name].getRows()
 
     # Signal decorator attached after the class.
     # @Slot(FilterCoupler, ModuleAgent)
@@ -113,17 +138,20 @@ class ModuleAgent(QObject):
 
     def getCouplerRequests(self):
         reqs = list()
-        reqs.extend(self.requirements)
+        for request in self.requirements.itervalues():
+            reqs.append(request.coupler)
         reqs.extend(self.child_requirements)
         return reqs
 
     # Remove column that has sent a delete signal
     @Slot(FilterCoupler)
     def deleteCoupler(self, coupler):
-        if coupler in self.requirements:
-            self.requirements.remove(coupler)
-        elif coupler in self.child_requirements:
+        if coupler in self.child_requirements:
             self.child_requirements.remove(coupler)
+        else:
+            for key, request in self.requirements.iteritems():
+                if coupler == request.coupler:
+                    del self.requirements[key]
 
     def registerChild(self, child):
         child.subscribeSignal.connect(self.subscribe)
@@ -273,46 +301,121 @@ ModuleAgent.unsubscribe = Slot(ModuleAgent, str)(ModuleAgent.unsubscribe)
 ModuleAgent.getSubDomain = Slot(ModuleAgent, str)(ModuleAgent.getSubDomain)
 ModuleAgent.addChildCoupler = Slot(FilterCoupler, ModuleAgent)(ModuleAgent.addChildCoupler)
 
-def ModuleRequest(QObject):
-    """Holds all of the requested information including the 
+class ModuleRequest(QObject):
+    """Holds all of the requested information including the
        desired attributes and the operation to perform on them.
        This is identified by the name member of the class.
        Please keep names unique within a single module.
     """
 
-    def __init__(self, name, coupler, indices = list(), operation = None,
-        operation_parameters = None, callback = None):
+    def __init__(self, datatree, name, coupler, indices = list()):
         super(ModuleRequest, self).__init__()
 
         self.name = name
         self.coupler = coupler
         self.indices = indices
-        self.operation = operation
-        self.operation_parameters = operation_parameters
-        self.callback = callback
+        self.datatree = datatree
 
-    def process(self):
-        """Applies filters from the coupler and then performs
-           the operation as specified by operation. Passes to callback a
-           list of list-pairs, the first of the pair being the
-           table + groupby attributes (could be identifiers), the
-           second being the table + desired attributes.
+
+    def sortIndicesByTable(self, indexList):
+        """Creates an iterator of passed indices grouped by
+        the tableItem that they come from.
         """
-        if self.indices is None:
-            return
-        if self.operation is None:
-            raise ValueError("No operation specified for " + self.name
-                + " request.")
-        # TODO: Search through operation parameters and make sure
-        # we have all the required ones between the ones we handle
-        # (identifiers, desired_attributes) and the ones in 
-        # self.operation_parameters (e.g. group_by attributes, aggregator)
+        get_parent = lambda x: self.datatree.getItem(x).parent()
+        sorted_indices = sorted(indexList, key = get_parent)
+        attribute_groups = itertools.groupby(sorted_indices, key = get_parent)
 
+        return attribute_groups
+
+
+    def preprocess(self):
+        """Verifies that this ModuleRequest can be fulfilled.
+        """
+        if self.indices is None or len(self.indices) <= 0:
+            return False
+        return True
+
+
+    def groupby(self, group_by_attributes, group_by_table, row_aggregator,
+        attribute_aggregator):
+        """Gets results of the request, grouped by the given attributes
+           and aggregated by the given aggregators.
+           group_by_attributes - list of attribute names by which to group
+           group_by_table - table from which those attributes come
+           row_aggregator - how rows should be combined
+           attribute_aggregator - how attributes (columns) should be
+           combined.
+
+           Note, if the groups have overlapping IDs associated with
+           their table, then the values return will have double counting
+           for those IDs in their groups.
+        """
+        if not self.preprocess():
+            return None, None
+
+        # TEMP VERSION FOR WIRING ASSUMES EVERYTHING IS FROM THE SAME
+        # TABLE
+        data_list = list()
         self.attribute_groups = self.sortIndicesByTable(self.indices)
         for table, attribute_group in self.attribute_groups:
-            attributes = [self.datatree.getItem(x) for x in attribute_group]
-            # TODO: Rest of this processing
+            attributes = [self.datatree.getItem(x).name
+                for x in attribute_group]
+            identifiers = table._table.identifiers()
+            for modifier in self.coupler.modifier_chain:
+                identifiers = modifier.process(table._table, identifiers)
+            groups, values = table._table.attributes_by_attributes(
+                identifiers, group_by_attributes, attributes, row_aggregator)
+        return groups, values
 
+        # TRUE VERSION HERE
+        # Get mapping of group_by_attributes to their subdomain ID
+
+        data_list = list()
+        self.attribute_groups = self.sortIndicesByTable(self.indices)
+        for table, attribute_group in self.attribute_groups:
+            attributes = [self.datatree.getItem(x).name
+                for x in attribute_group]
+            identifiers = table._table.identifiers()
+            for modifier in self.coupler.modifier_chain:
+                identifiers = modifier.process(table._table, identifiers)
+            # Project the identifiers from this table to into
+            # the domain of the group by table
+            #
+            # Then get the IDs from the group by table that matter
+            # and associate them with these attributes
+
+
+    def getRows(self):
+        """Gets all of the attributes from the request, grouped by
+           the table from which they come from. There is no other grouping,
+           this returns the raw rows which may have rows with duplicate
+           IDs if IDs is one of the attributes
+
+           This returns a list of tables and two lists of lists.
+           The first is a list of lists of attribute names for each table.
+           The second is a list of list of lists of the corresponding
+           attribute values.
+        """
+        if not self.preprocess():
+            return None, None, None
+
+        self.attribute_groups = self.sortIndicesByTable(self.indices)
+        data_list = list()
+        headers = list()
+        table_list = list()
+        for table, attribute_group in self.attribute_groups:
+            table_list.append(table.name)
+            attributes = [self.datatree.getItem(x).name
+                for x in attribute_group]
+            headers.append(attributes)
+            identifiers = table._table.identifiers()
+            for modifier in self.coupler.modifier_chain:
+                identifiers = modifier.process(table._table, identifiers)
+            attribute_list = table._table.attribute_by_identifiers(
+                identifiers, attributes, False)
+            data_list.append(attribute_list)
+
+        return table_list, headers, data_list
 
 
 # -------------------------- VIEW -------------------------------------

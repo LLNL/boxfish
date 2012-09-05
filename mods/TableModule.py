@@ -8,7 +8,7 @@ from PySide.QtGui import *
 
 class TableAgent(ModuleAgent):
 
-    tableUpdateSignal = Signal(list, list)
+    tableUpdateSignal = Signal(list, list, list)
 
     def __init__(self, parent, datatree):
         super(TableAgent, self).__init__(parent, datatree)
@@ -19,43 +19,17 @@ class TableAgent(ModuleAgent):
         self.addRequirement("table columns")
 
     def addDataIndices(self, indexList):
-        self.indices = indexList
+        self.requestAddIndices("table columns", indexList)
         self.presentData()
 
-    def makeHeaderLabels(self):
-        headers = list()
-        for table, attributes in self.attribute_groups:
-            print table
-            for attribute in attributes:
-                print attributes
-                headers.append(self.datatree.getItem(attribute).name)
-
-        print headers, " are the headers"
-        return headers
-
-    @Slot(FilterCoupler)
-    def requiredCouplerChanged(self, coupler):
-        self.table_coupler = coupler
+    def requestUpdated(self, name):
+        if name != "table columns":
+            raise ValueError("Table Module: Unrecognized Request!")
         self.presentData()
 
     def presentData(self):
-        if self.indices is None:
-            return
-        self.attribute_groups = self.sortIndicesByTable(self.indices)
-        data_list = list()
-        headers = list()
-        for table, attribute_group in self.attribute_groups:
-            attributes = [self.datatree.getItem(x).name for x in
-                attribute_group]
-            headers.extend(attributes)
-            identifiers = table._table.identifiers()
-            for modifier in self.table_coupler.modifier_chain:
-                identifiers = modifier.process(table._table, identifiers)
-            attribute_list = table._table.attribute_by_identifiers(
-                identifiers, attributes, False)
-            for sub_list in attribute_list:
-                data_list.append(sub_list)
-        self.tableUpdateSignal.emit(headers, data_list)
+        tables, headers, data_lists = self.requestGetRows("table columns")
+        self.tableUpdateSignal.emit(tables, headers, data_lists)
 
 
 @Module("Table")
@@ -67,28 +41,37 @@ class TableView(ModuleView):
         self.selected = []
 
         if self.agent is not None:
-            self.agent.tableUpdateSignal.connect(self.updateTable)
+            self.agent.tableUpdateSignal.connect(self.updateTables)
 
     def createAgent(self):
         return TableAgent(self.parent_view.agent,
                             self.parent_view.agent.datatree)
 
     def createView(self):
-        self.table_widget = QTableWidget(10,2)
-        return self.table_widget
+        self.tabs = QTabWidget()
+        self.tabs.addTab(self.createTable(100,2), "No Data")
+        return self.tabs
+
+    # We may want to add a QScrollArea around this and so forth
+    def createTable(self, rows, cols):
+        return QTableWidget(rows, cols)
 
     def droppedData(self, indexList):
         self.agent.addDataIndices(indexList)
 
-    @Slot(list, list)
-    def updateTable(self, headers, values):
+    @Slot(list, list, list)
+    def updateTables(self, tables, headers, values):
+        if tables is None:
+            return
         rows = 100
-        print headers
-        self.table_widget.setColumnCount(len(headers))
-        self.table_widget.setHorizontalHeaderLabels(headers)
-        self.table_widget.setRowCount(rows)
-        for index, value_list in enumerate(values):
-            for i in range(rows):
-                self.table_widget.setItem(i, index,
+        self.tabs.clear()
+        for table, header_list, value_lists in zip(tables, headers, values):
+            if len(value_lists[0]) < 100:
+                rows = len(value_lists[0])
+            tableWidget = self.createTable(rows, len(header_list))
+            tableWidget.setHorizontalHeaderLabels(header_list)
+            for index, value_list in enumerate(value_lists):
+                for i in range(rows):
+                    tableWidget.setItem(i, index,
                         QTableWidgetItem(str(value_list[i])))
-
+            self.tabs.addTab(tableWidget, table)

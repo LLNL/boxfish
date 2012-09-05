@@ -23,40 +23,26 @@ class Torus3dView3dAgent(ModuleAgent):
     def __init__(self, parent, datatree):
         super(Torus3dView3dAgent, self).__init__(parent, datatree)
 
-        self.node_attributes = None
-        self.node_coupler = None
-
         self.addRequirement("nodes")
+        self.coords = None
 
-    def registerAttributes(self, index):
-        self.node_attributes = list()
-        self.node_attributes.append(index)
+    def registerNodeAttributes(self, index):
+        # Eventually these first lines will be unnecessary as these
+        # indices will travel directly to requestAddIndices
+        node_attributes = list()
+        node_attributes.append(index)
+        self.requestAddIndices("nodes", node_attributes)
         self.updateNodeValues()
 
-    # TODO: the agent probably shouldn't have to know about
-    # FilterCoupler -- it can just specify how it wants
-    # the data grouped via some other mechanism and the
-    # base module agent will be smart enough to do what
-    # updateNodeValues is doing now
-    @Slot(FilterCoupler)
-    def requiredCouplerChanged(self, coupler):
-        if coupler.name == "nodes":
-            self.node_coupler = coupler
+    def requestUpdated(self, name):
+        if name == "nodes":
             self.updateNodeValues()
 
     def updateNodeValues(self):
-        if self.node_attributes is None:
+        if self.coords is None:
             return
-
-        attribute = list()
-        attribute.append(self.datatree.getItem(self.node_attributes[0]).name)
-        table = self.datatree.getItem(self.node_attributes[0]).parent()._table
-        identifiers = table.identifiers()
-        for modifier in self.node_coupler.modifier_chain:
-            identifiers = modifier.process(table, identifiers)
-
-        coordinates, attribute_values = table.attributes_by_attributes(
-            identifiers, self.coords, attribute, "mean")
+        coordinates, attribute_values = self.requestGroupBy("nodes",
+            self.coords, None, "mean", "mean")
         self.nodeUpdateSignal.emit(coordinates, attribute_values)
 
 @Module("3D Torus - 3D View")
@@ -79,6 +65,8 @@ class Torus3dView3d(ModuleView):
 
     @Slot(list, list)
     def updateNodeData(self, coords, vals):
+        if vals is None:
+            return
         vals = vals[0]  # TODO: why is this a list nested in a list
         min_val = min(vals)
         max_val = max(vals)
@@ -115,7 +103,7 @@ class Torus3dView3d(ModuleView):
         self.findRunAndGetHardware(item)
 
         if item.typeInfo() == "ATTRIBUTE":
-            self.agent.registerAttributes(index)
+            self.agent.registerNodeAttributes(index)
 
 
 class GLTorus3dView(GLWidget):
