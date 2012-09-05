@@ -487,15 +487,13 @@ class ModuleView(QMainWindow):
 
         self.view = self.createView()
         self.centralWidget = QWidget()
-        self.viewStack = QStackedWidget(self)
-        self.viewStack.addWidget(self.view)
-
+        
         layout = QGridLayout()
         if isinstance(self.parent(), BFDockWidget):
             layout.addWidget(BFAttachLabel(self.parent(), 0),0, 0, 1, 2)
 
         # TODO: Replace magic number with not-magic constant
-        layout.addWidget(self.viewStack, 100, 0, 1, 2) # Added view is at bottom
+        layout.addWidget(self.view, 100, 0, 1, 2) # Add view at bottom
         layout.setRowStretch(100, 5) # view has most row stretch
 
         left, top, right, bottom = layout.getContentsMargins()
@@ -556,6 +554,14 @@ class ModuleView(QMainWindow):
 
     def createDragOverlay(self, tags, texts, images = None):
         self.dragOverlay = True
+        
+        self.graphicsView = DropGraphicsView(self)
+        self.scene = DropGraphicsScene(self.graphicsView)
+        self.viewGraphItem = self.scene.addWidget(self.view)
+        self.graphicsView.setScene(self.scene)
+        self.layout().removeWidget(self.view)
+        self.layout().addWidget(self.graphicsView) 
+
         self.overlay = QFrame(self)
         self.overlay.setVisible(False)
         self.overlay.setAcceptDrops(True)
@@ -573,8 +579,8 @@ class ModuleView(QMainWindow):
 
     def overlayDroppedData(self, indexList, tag):
         self.overlay.setVisible(False)
-        self.viewStack.removeWidget(self.overlay)
-        self.viewStack.setCurrentIndex(0)
+        #self.viewStack.removeWidget(self.overlay)
+        #self.viewStack.setCurrentIndex(0)
         self.droppedData(indexList, tag)
 
     def droppedData(self, indexList, tag = None):
@@ -585,8 +591,8 @@ class ModuleView(QMainWindow):
     def dragLeaveEvent(self, event):
         if self.dragOverlay:
             self.overlay.setVisible(False)
-            self.viewStack.removeWidget(self.overlay)
-            self.viewStack.setCurrentIndex(0)
+            #self.viewStack.removeWidget(self.overlay)
+            #self.viewStack.setCurrentIndex(0)
 
     # We only accept events that are of our type, indicating
     # a dock window change
@@ -596,8 +602,8 @@ class ModuleView(QMainWindow):
         elif isinstance(event.mimeData(), DataIndexMime):
             if self.dragOverlay:
                 self.overlay.setVisible(True)
-                index = self.viewStack.addWidget(self.overlay)
-                self.viewStack.setCurrentIndex(index)
+                #index = self.viewStack.addWidget(self.overlay)
+                #self.viewStack.setCurrentIndex(index)
                 #event.accept()
             else:
                 event.accept()
@@ -749,8 +755,63 @@ class BFDragToolBar(QToolBar):
         drag.setMimeData(ModuleViewMime(self.dock))
         dropAction = drag.start(Qt.MoveAction)
 
+class DropGraphicsScene(QGraphicsScene):
+
+    def __init__(self, parent):
+        super(DropGraphicsScene, self).__init__( parent)
+
+    def dragEnterEvent(self, event):
+        if isinstance(event.mimeData(), DataIndexMime):
+            event.accept()
+        else:
+            self.parent().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event):
+        self.dragEnterEvent(event)
+
+    def dropEvent(self, event):
+        if isinstance(event.mimeData(), DataIndexMime):
+            event.accept()
+            print "I accepted an attribute"
+        else:
+            self.parent().dropEvent(event)
+
+    def viewResized(self, size):
+        for item in self.items():
+            if isinstance(item, QGraphicsProxyWidget)\
+                and item.widget() is not None:
+                item.widget().resize(size)
+        rect = self.sceneRect()
+        self.setSceneRect(rect.x(), rect.y(), size.width(), size.height())
+
+class DropGraphicsView(QGraphicsView):
+
+    def __init__(self, parent):
+        super(DropGraphicsView, self).__init__(parent = parent)
+
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event):
+        if isinstance(event.mimeData(), DataIndexMime):
+            event.accept()
+        else:
+            self.parent().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event):
+        self.dragEnterEvent(event)
+
+    def dropEvent(self, event):
+        if isinstance(event.mimeData(), DataIndexMime):
+            self.scene().dropEvent(event)
+        else:
+            self.parent().dropEvent(event)
+
+    def resizeEvent(self, event):
+        super(DropGraphicsView, self).resizeEvent(event)
+        self.scene().viewResized(self.size())
+
 class DropPanel(QWidget):
-    """This creates a label that can be datatree index drag/drop operations.
+    """This creates a panel that can be datatree index drag/drop operations.
 
        handler - the datatree index list (and only the datatree index list) will
                  be passed to this function if not None.
