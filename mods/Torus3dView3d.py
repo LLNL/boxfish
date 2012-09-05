@@ -25,6 +25,7 @@ class Torus3dView3dAgent(ModuleAgent):
 
         self.addRequirement("nodes")
         self.coords = None
+        self.coords_table = None
 
     def registerNodeAttributes(self, index):
         # Eventually these first lines will be unnecessary as these
@@ -42,8 +43,8 @@ class Torus3dView3dAgent(ModuleAgent):
         if self.coords is None:
             return
         coordinates, attribute_values = self.requestGroupBy("nodes",
-            self.coords, None, "mean", "mean")
-        self.nodeUpdateSignal.emit(coordinates, attribute_values)
+            self.coords, self.coords_table, "mean", "mean")
+        self.nodeUpdateSignal.emit(coordinates, attribute_values[0])
 
 @Module("3D Torus - 3D View")
 class Torus3dView3d(ModuleView):
@@ -67,7 +68,6 @@ class Torus3dView3d(ModuleView):
     def updateNodeData(self, coords, vals):
         if vals is None:
             return
-        vals = vals[0]  # TODO: why is this a list nested in a list
         min_val = min(vals)
         max_val = max(vals)
         range = max_val - min_val
@@ -79,19 +79,17 @@ class Torus3dView3d(ModuleView):
         self.view.updateGL()
 
     def findRunAndGetHardware(self,item):
-        if item.typeInfo() == "RUN":
-            if "hardware" in item:
-                hardware = item["hardware"]
+        if "hardware" in item:
+            hardware = item["hardware"]
 
-                coords = get_from_list(hardware, "coords")
-                shape = [get_from_list(hardware, "dim")[coord] for coord in coords]
-                self.agent.coords = coords
-                self.view.setShape(shape)
+            coords = hardware["coords"]
+            coords_table = hardware["coords_table"]
+            shape = [hardware["dim"][coord] for coord in coords]
+                
+            self.agent.coords = coords
+            self.agent.coords_table = coords_table
+            self.view.setShape(shape)
 
-        elif item.parent():
-            #TODO: not sure this is the best way to figure out whether this is metadata.
-            #TODO: Shouldn't we figure it out from typeinfo?
-            self.findRunAndGetHardware(item.parent())
 
     def droppedData(self, index_list):
         if len(index_list) != 1:

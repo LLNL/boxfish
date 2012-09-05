@@ -2,12 +2,14 @@
 key: BGPCOUNTER_ORIGINAL
 date: 2011-06-06
 author: pave
-hardware:
-- type: bgp
-- network: torus
-- nodes: 512
-- coords: [x, y, z]
-- dim: {x: 8, y: 8, z: 8}
+hardware: {
+ type: bgp,
+ network: torus,
+ nodes: 512,
+ coords: [x, y, z],
+ coords_table: bgpc_nodes.yaml,
+ dim: {x: 8, y: 8, z: 8}
+}
 ---
 filetype: table
 filename: bgpc_nodes.yaml

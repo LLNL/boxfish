@@ -93,7 +93,7 @@ if __name__ == '__main__':
         for f in files:
             print f
     else:
-        meta, data = load_yaml("dummy_key.yaml")
+        meta, data = load_meta("bgpc_meta.yaml")
         for k, v in meta.iteritems():
             print "key: ", k, "value: ", v
 

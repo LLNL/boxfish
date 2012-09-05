@@ -75,7 +75,6 @@ class RunItem(AbstractTreeItem):
         return "RUN"
 
     def hasMetaData(self, key):
-
         if self._metadata is not None \
             and key in self._metadata:
             return True
@@ -89,11 +88,10 @@ class RunItem(AbstractTreeItem):
         return self.getMetaData(key)
 
     def getMetaData(self, key):
-
         if self._metadata is not None \
             and key in self._metadata:
             if isinstance(self._metadata[key], dict):
-                return self._metadata[key].viewitems()
+                return self._metadata[key].copy()
             else:
                 return self._metadata[key]
 
@@ -107,15 +105,22 @@ class GroupItem(AbstractTreeItem):
 
     def typeInfo(self):
         return "GROUP"
+    
+    def __contains__(self, key):
+        return self.hasMetaData(key)
+
+    def __getitem__(self, key):
+        return self.getMetaData(key)
+
 
     # Passed metadata calls up to parent (run)
     def hasMetaData(self, key):
         if self.parent() is not None:
-            self.parent().hasMetaData(key)
+            return self.parent().hasMetaData(key)
 
     def getMetaData(self, key):
         if self.parent() is not None:
-            self.parent().getMetaData(key)
+            return self.parent().getMetaData(key)
 
 
 # REFACTORME: ProjectionItem and TableItem share metadata functions
@@ -132,6 +137,13 @@ class ProjectionItem(AbstractTreeItem):
 
     def typeInfo(self):
         return "PROJECTION"
+    
+    def __contains__(self, key):
+        return self.hasMetaData(key)
+
+    def __getitem__(self, key):
+        return self.getMetaData(key)
+
 
 
     # It first searches its own meta data. Then it passes up the tree.
@@ -171,10 +183,16 @@ class TableItem(AbstractTreeItem):
 
     def typeInfo(self):
         return "TABLE"
+    
+    def __contains__(self, key):
+        return self.hasMetaData(key)
+
+    def __getitem__(self, key):
+        return self.getMetaData(key)
+
 
     # It first searches its own meta data. Then it passes up the tree.
     def hasMetaData(self, key):
-
         if self._metadata is not None \
             and key in self._metadata:
             return True
@@ -184,7 +202,6 @@ class TableItem(AbstractTreeItem):
 
 
     def getMetaData(self, key):
-
         if self._metadata is not None \
             and key in self._metadata:
             if isinstance(self._metadata[key], dict):
@@ -210,6 +227,13 @@ class AttributeItem(AbstractTreeItem):
 
     def typeInfo(self):
         return "ATTRIBUTE"
+    
+    def __contains__(self, key):
+        return self.parent().hasMetaData(key)
+
+    def __getitem__(self, key):
+        return self.parent().getMetaData(key)
+
 
 
 class DataTree(QAbstractItemModel):
