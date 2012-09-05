@@ -456,6 +456,7 @@ class ModuleView(QMainWindow):
             self.realize()
 
         self.acceptDocks = False # Set to True to have child windows
+        self.dragOverlay = False # For having a drag overlay window
 
         self.setAcceptDrops(True)
         self.setWindowFlags(Qt.Widget) # Or else it will try to be a window
@@ -486,13 +487,15 @@ class ModuleView(QMainWindow):
 
         self.view = self.createView()
         self.centralWidget = QWidget()
+        self.viewStack = QStackedWidget(self)
+        self.viewStack.addWidget(self.view)
 
         layout = QGridLayout()
         if isinstance(self.parent(), BFDockWidget):
             layout.addWidget(BFAttachLabel(self.parent(), 0),0, 0, 1, 2)
 
         # TODO: Replace magic number with not-magic constant
-        layout.addWidget(self.view, 100, 0, 1, 2) # Added view is at bottom
+        layout.addWidget(self.viewStack, 100, 0, 1, 2) # Added view is at bottom
         layout.setRowStretch(100, 5) # view has most row stretch
 
         left, top, right, bottom = layout.getContentsMargins()
@@ -551,10 +554,39 @@ class ModuleView(QMainWindow):
     def allowDocks(self, dockable):
         self.acceptDocks = dockable
 
-    def droppedData(self, indexList):
+    def createDragOverlay(self, tags, texts, images = None):
+        self.dragOverlay = True
+        self.overlay = QFrame(self)
+        self.overlay.setVisible(False)
+        self.overlay.setAcceptDrops(True)
+        layout = QVBoxLayout(self.overlay)
+        if images is not None:
+            for tag, text, image in zip(tags, texts, images):
+                layout.addWidget(DropPanel(tag, text, self.overlay,
+                    self.overlayDroppedData, image))
+        else:
+            for tag, text in zip(tags, texts):
+                layout.addWidget(DropPanel(tag, text, self.overlay, 
+                    self.overlayDroppedData))
+            
+        self.overlay.setLayout(layout)
+
+    def overlayDroppedData(self, indexList, tag):
+        self.overlay.setVisible(False)
+        self.viewStack.removeWidget(self.overlay)
+        self.viewStack.setCurrentIndex(0)
+        self.droppedData(indexList, tag)
+
+    def droppedData(self, indexList, tag = None):
         """Handle DataModel indices dropped into this window.
         """
         pass
+
+    def dragLeaveEvent(self, event):
+        if self.dragOverlay:
+            self.overlay.setVisible(False)
+            self.viewStack.removeWidget(self.overlay)
+            self.viewStack.setCurrentIndex(0)
 
     # We only accept events that are of our type, indicating
     # a dock window change
@@ -562,7 +594,13 @@ class ModuleView(QMainWindow):
         if self.acceptDocks and isinstance(event.mimeData(), ModuleViewMime):
             event.accept()
         elif isinstance(event.mimeData(), DataIndexMime):
-            event.accept()
+            if self.dragOverlay:
+                self.overlay.setVisible(True)
+                index = self.viewStack.addWidget(self.overlay)
+                self.viewStack.setCurrentIndex(index)
+                #event.accept()
+            else:
+                event.accept()
         elif self.acceptDocks and isinstance(event.mimeData(), ModuleNameMime):
             event.accept()
         else:
@@ -666,6 +704,7 @@ class ModuleNameMime(QMimeData):
     def getName(self):
         return self.name
 
+
 class BFAttachLabel(QLabel):
     """This creates a label that can be used for BFDockWidget
        Drag & Drop operations.
@@ -710,24 +749,34 @@ class BFDragToolBar(QToolBar):
         drag.setMimeData(ModuleViewMime(self.dock))
         dropAction = drag.start(Qt.MoveAction)
 
-class BFDropLabel(QLabel):
+class DropPanel(QWidget):
     """This creates a label that can be datatree index drag/drop operations.
 
        handler - the datatree index list (and only the datatree index list) will
                  be passed to this function if not None.
     """
 
-    def __init__(self, text, parent = None, handler = None):
-        super(BFDropLabel, self).__init__(text, parent = parent)
+    def __init__(self, tag, text, parent, handler, icon = None):
+        super(DropPanel, self).__init__(parent)
 
-        self.handler = handler
         self.setAcceptDrops(True)
+        self.handler = handler
+        self.tag = tag
+        self.setPalette(QColor(0,0,0,0))
+
+        layout = QHBoxLayout(self)
+        if icon is not None:
+            print "Icon goes here"
+        layout.addWidget(QLabel(text))
     
     def dragEnterEvent(self, event):
         if isinstance(event.mimeData(), DataIndexMime):
             event.accept()
         else:
-            super(BFDropLabel, self).dragEnterEvent(event)
+            super(DropPanel, self).dragEnterEvent(event)
+
+    def dragLeaveEvent(self, event):
+        super(DropPanel, self).dragLeaveEvent(event)
 
     def dropEvent(self, event):
         # Dropped Attribute Data
@@ -736,8 +785,7 @@ class BFDropLabel(QLabel):
             event.accept()
             self.droppedData(indexList)
         else:
-            super(BFDropLabel, self).dropEvent(event)
+            super(DropPanel, self).dropEvent(event)
 
     def droppedData(self, indexList):
-        if self.handler is not None:
-            self.handler(indexList)
+        self.handler(indexList, self.tag)

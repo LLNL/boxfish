@@ -91,6 +91,7 @@ class RunItem(AbstractTreeItem):
         if self._metadata is not None \
             and key in self._metadata:
             if isinstance(self._metadata[key], dict):
+                # Caution: not deep copy, bad modules could do bad things!
                 return self._metadata[key].copy()
             else:
                 return self._metadata[key]

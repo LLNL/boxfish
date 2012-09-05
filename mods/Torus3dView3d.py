@@ -56,8 +56,12 @@ class Torus3dView3d(ModuleView):
         if self.agent:
             self.agent.nodeUpdateSignal.connect(self.updateNodeData)
 
+            self.createDragOverlay(["nodes", "links"], 
+                ["Color Nodes", "Color Links"])
+
     def createAgent(self):
-        self.agent = Torus3dView3dAgent(self.parent_view.agent, self.parent_view.agent.datatree)
+        self.agent = Torus3dView3dAgent(self.parent_view.agent, 
+            self.parent_view.agent.datatree)
         return self.agent
 
     def createView(self):
@@ -91,17 +95,21 @@ class Torus3dView3d(ModuleView):
             self.view.setShape(shape)
 
 
-    def droppedData(self, index_list):
-        if len(index_list) != 1:
-            return
+    def droppedData(self, index_list, tag):
+        print tag
+        if tag == "nodes":
+            if len(index_list) != 1:
+                return
 
-        index = index_list[0]
-        item = self.agent.datatree.getItem(index)
+            index = index_list[0]
+            item = self.agent.datatree.getItem(index)
 
-        self.findRunAndGetHardware(item)
+            self.findRunAndGetHardware(item)
 
-        if item.typeInfo() == "ATTRIBUTE":
-            self.agent.registerNodeAttributes(index)
+            if item.typeInfo() == "ATTRIBUTE":
+                self.agent.registerNodeAttributes(index)
+        elif tag == "links":
+            print "Links!"
 
 
 class GLTorus3dView(GLWidget):
