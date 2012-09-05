@@ -5,6 +5,7 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLE import *
 import numpy as np
+import TorusIcons
 
 from FilterCoupler import FilterCoupler
 import matplotlib
@@ -57,7 +58,8 @@ class Torus3dView3d(ModuleView):
             self.agent.nodeUpdateSignal.connect(self.updateNodeData)
 
             self.createDragOverlay(["nodes", "links"], 
-                ["Color Nodes", "Color Links"])
+                ["Color Nodes", "Color Links"],
+                [QPixmap(":/nodes.png"), QPixmap(":/links.png")])
 
     def createAgent(self):
         self.agent = Torus3dView3dAgent(self.parent_view.agent, 
@@ -75,6 +77,8 @@ class Torus3dView3d(ModuleView):
         min_val = min(vals)
         max_val = max(vals)
         range = max_val - min_val
+        if range <= 1e-9:
+            range = 1.0
 
         cmap = cm.get_cmap("gist_earth_r")
         for coord, val in zip(coords, vals):
@@ -96,8 +100,6 @@ class Torus3dView3d(ModuleView):
 
 
     def droppedData(self, index_list, tag):
-        for index in index_list:
-            print self.agent.datatree.getItem(index).name
         if tag == "nodes":
             if len(index_list) != 1:
                 return

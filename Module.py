@@ -503,11 +503,6 @@ class ModuleView(QMainWindow):
 
         self.setCentralWidget(self.centralWidget)
 
-        # Moving toolbar functionality elsewhere to save space for now,
-        # may add it back later or create own widget of labels that have
-        # same functionality but are not moveable and much smaller
-        #self.createToolBar()
-
 
     # Must be implemented by inheritors
     def createAgent(self):
@@ -567,15 +562,19 @@ class ModuleView(QMainWindow):
         self.overlay = QFrame(self)
         self.overlay.setVisible(False)
         self.overlay.setAcceptDrops(True)
-        layout = QVBoxLayout(self.overlay)
+        layout = QGridLayout(self.overlay)
+        layout.setAlignment(Qt.AlignCenter)
+        layout.setColumnStretch(0, 5)
         if images is not None:
-            for tag, text, image in zip(tags, texts, images):
+            for i, tag, text, image in zip(range(len(tags)), tags, texts, images):
                 layout.addWidget(DropPanel(tag, text, self.overlay,
-                    self.overlayDroppedData, image))
+                    self.overlayDroppedData, image), i, 0, 1, 1)
+                layout.setRowStretch(i, 5)
         else:
-            for tag, text in zip(tags, texts):
+            for i, tag, text in zip(range(len(tags)), tags, texts):
                 layout.addWidget(DropPanel(tag, text, self.overlay, 
-                    self.overlayDroppedData))
+                    self.overlayDroppedData), i, 0, 1, 1)
+                layout.setRowStretch(i, 5)
             
         self.overlay.setLayout(layout)
 
@@ -587,11 +586,8 @@ class ModuleView(QMainWindow):
         self.closeOverlay()
         if self.acceptDocks:
             childDocks = self.findChildren(BFDockWidget)
-            print len(childDocks)
             for dock in childDocks:
                 dock.widget().killRogueOverlays()
-        else:
-            print "No"
     
     def closeOverlay(self):
         if self.overlay_dialog is not None:
@@ -679,15 +675,18 @@ class OverlayDialog(QDialog):
         #self.setAttribute(Qt.WA_TranslucentBackground)
         bgcolor = self.palette().color(QPalette.Background)
         self.setPalette(QColor(bgcolor.red(), bgcolor.green(), bgcolor.blue(),
-            100)) # alpha
+            150)) # alpha
 
         self.setModal(True)
         
         layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignCenter)
         layout.addWidget(widget)
         self.setLayout(layout)
         
         self.resize(0.8 * parent.size().width(), 0.8 * parent.size().height())
+        widget.resize(self.width(), self.height())
+        
 
     def show(self):
         super(OverlayDialog, self).show()
@@ -831,8 +830,12 @@ class DropPanel(QWidget):
         self.setPalette(QColor(0,0,0,0))
 
         layout = QHBoxLayout(self)
+        layout.setAlignment(Qt.AlignCenter)
         if icon is not None:
-            print "Icon goes here"
+            label = QLabel("", parent = self)
+            label.setPixmap(icon)
+            layout.addWidget(label)
+            layout.addSpacing(5)
         layout.addWidget(QLabel(text))
     
     def dragEnterEvent(self, event):
