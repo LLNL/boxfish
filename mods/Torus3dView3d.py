@@ -96,7 +96,8 @@ class Torus3dView3d(ModuleView):
 
 
     def droppedData(self, index_list, tag):
-        print tag
+        for index in index_list:
+            print self.agent.datatree.getItem(index).name
         if tag == "nodes":
             if len(index_list) != 1:
                 return

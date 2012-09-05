@@ -457,6 +457,7 @@ class ModuleView(QMainWindow):
 
         self.acceptDocks = False # Set to True to have child windows
         self.dragOverlay = False # For having a drag overlay window
+        self.overlay_dialog = None
 
         self.setAcceptDrops(True)
         self.setWindowFlags(Qt.Widget) # Or else it will try to be a window
@@ -547,6 +548,14 @@ class ModuleView(QMainWindow):
         return QSize(200, self.heightHint)
         #return QSize(self.size().width(), self.heightHint)
 
+    def findPosition(self):
+        if isinstance(self.parent(), BFDockWidget):
+            # parent is a dockwidget, so coords are relative
+            x, y = self.parent().findPosition()
+            return x + self.x(), y + self.y()
+        else: # parent_view is boxfish main, get absolute coords
+            return self.parent_view.geometry().x() + self.x(),\
+                self.parent_view.geometry().y() + self.y()
 
     # Determine if this window is allowed to have child windows
     def allowDocks(self, dockable):
@@ -555,13 +564,6 @@ class ModuleView(QMainWindow):
     def createDragOverlay(self, tags, texts, images = None):
         self.dragOverlay = True
         
-        self.graphicsView = DropGraphicsView(self)
-        self.scene = DropGraphicsScene(self.graphicsView)
-        self.viewGraphItem = self.scene.addWidget(self.view)
-        self.graphicsView.setScene(self.scene)
-        self.layout().removeWidget(self.view)
-        self.layout().addWidget(self.graphicsView) 
-
         self.overlay = QFrame(self)
         self.overlay.setVisible(False)
         self.overlay.setAcceptDrops(True)
@@ -577,10 +579,29 @@ class ModuleView(QMainWindow):
             
         self.overlay.setLayout(layout)
 
+    def killRogueOverlays(self):
+        """Sometimes an overlay doesn't close on dragEventLeave.
+           This kills any such overlays and is called when someone
+           else takes that drop event.
+        """
+        self.closeOverlay()
+        if self.acceptDocks:
+            childDocks = self.findChildren(BFDockWidget)
+            print len(childDocks)
+            for dock in childDocks:
+                dock.widget().killRogueOverlays()
+        else:
+            print "No"
+    
+    def closeOverlay(self):
+        if self.overlay_dialog is not None:
+            self.overlay_dialog.close()
+            self.overlay_dialog = None
+            self.overlay.setVisible(False)
+
     def overlayDroppedData(self, indexList, tag):
-        self.overlay.setVisible(False)
-        #self.viewStack.removeWidget(self.overlay)
-        #self.viewStack.setCurrentIndex(0)
+        self.closeOverlay()
+        self.killRogueOverlays()
         self.droppedData(indexList, tag)
 
     def droppedData(self, indexList, tag = None):
@@ -589,10 +610,8 @@ class ModuleView(QMainWindow):
         pass
 
     def dragLeaveEvent(self, event):
-        if self.dragOverlay:
-            self.overlay.setVisible(False)
-            #self.viewStack.removeWidget(self.overlay)
-            #self.viewStack.setCurrentIndex(0)
+        self.closeOverlay()
+
 
     # We only accept events that are of our type, indicating
     # a dock window change
@@ -600,11 +619,10 @@ class ModuleView(QMainWindow):
         if self.acceptDocks and isinstance(event.mimeData(), ModuleViewMime):
             event.accept()
         elif isinstance(event.mimeData(), DataIndexMime):
-            if self.dragOverlay:
+            if self.dragOverlay and self.overlay_dialog is None: 
                 self.overlay.setVisible(True)
-                #index = self.viewStack.addWidget(self.overlay)
-                #self.viewStack.setCurrentIndex(index)
-                #event.accept()
+                self.overlay_dialog = OverlayDialog(self, self.overlay)
+                self.overlay_dialog.show()
             else:
                 event.accept()
         elif self.acceptDocks and isinstance(event.mimeData(), ModuleNameMime):
@@ -643,9 +661,45 @@ class ModuleView(QMainWindow):
         elif isinstance(event.mimeData(), DataIndexMime):
             indexList = event.mimeData().getDataIndices()
             event.accept()
+            self.killRogueOverlays()
             self.droppedData(indexList)
         else:
             super(ModuleView, self).dropEvent(event)
+
+
+
+
+class OverlayDialog(QDialog):
+
+    def __init__(self, parent, widget):
+        super(OverlayDialog, self).__init__(parent, Qt.SplashScreen)
+
+        self.setAcceptDrops(True)
+        
+        #self.setAttribute(Qt.WA_TranslucentBackground)
+        bgcolor = self.palette().color(QPalette.Background)
+        self.setPalette(QColor(bgcolor.red(), bgcolor.green(), bgcolor.blue(),
+            100)) # alpha
+
+        self.setModal(True)
+        
+        layout = QVBoxLayout(self)
+        layout.addWidget(widget)
+        self.setLayout(layout)
+        
+        self.resize(0.8 * parent.size().width(), 0.8 * parent.size().height())
+
+    def show(self):
+        super(OverlayDialog, self).show()
+
+        # Get absolute position of parent widget by finding the
+        # relative positions up the chain until the top level window
+        # which will give us the absolute position to add to it.
+        # Then we magical-numerically offset by 0.1 because that's
+        # half of the 20% we don't cover.
+        x, y = self.parent().findPosition()
+        self.move(x + 0.1 * self.parent().size().width(),
+            y + 0.1 * self.parent().size().height())
 
 
 class BFDockWidget(QDockWidget):
@@ -660,7 +714,13 @@ class BFDockWidget(QDockWidget):
         self.setAttribute(Qt.WA_NoMousePropagation)
         self.setAcceptDrops(True)
         self.setAllowedAreas(Qt.BottomDockWidgetArea)
-        self.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable)
+        self.setFeatures(QDockWidget.DockWidgetClosable
+            | QDockWidget.DockWidgetMovable)
+
+    def findPosition(self):
+        # I have relative coords to add because I am a dockwidget
+        x, y = self.parent().findPosition()
+        return x + self.x(), y + self.y()
 
     def changeParent(self, new_parent):
         self.setParent(new_parent)
@@ -754,61 +814,6 @@ class BFDragToolBar(QToolBar):
         drag = QDrag(self)
         drag.setMimeData(ModuleViewMime(self.dock))
         dropAction = drag.start(Qt.MoveAction)
-
-class DropGraphicsScene(QGraphicsScene):
-
-    def __init__(self, parent):
-        super(DropGraphicsScene, self).__init__( parent)
-
-    def dragEnterEvent(self, event):
-        if isinstance(event.mimeData(), DataIndexMime):
-            event.accept()
-        else:
-            self.parent().dragEnterEvent(event)
-
-    def dragMoveEvent(self, event):
-        self.dragEnterEvent(event)
-
-    def dropEvent(self, event):
-        if isinstance(event.mimeData(), DataIndexMime):
-            event.accept()
-            print "I accepted an attribute"
-        else:
-            self.parent().dropEvent(event)
-
-    def viewResized(self, size):
-        for item in self.items():
-            if isinstance(item, QGraphicsProxyWidget)\
-                and item.widget() is not None:
-                item.widget().resize(size)
-        rect = self.sceneRect()
-        self.setSceneRect(rect.x(), rect.y(), size.width(), size.height())
-
-class DropGraphicsView(QGraphicsView):
-
-    def __init__(self, parent):
-        super(DropGraphicsView, self).__init__(parent = parent)
-
-        self.setAcceptDrops(True)
-
-    def dragEnterEvent(self, event):
-        if isinstance(event.mimeData(), DataIndexMime):
-            event.accept()
-        else:
-            self.parent().dragEnterEvent(event)
-
-    def dragMoveEvent(self, event):
-        self.dragEnterEvent(event)
-
-    def dropEvent(self, event):
-        if isinstance(event.mimeData(), DataIndexMime):
-            self.scene().dropEvent(event)
-        else:
-            self.parent().dropEvent(event)
-
-    def resizeEvent(self, event):
-        super(DropGraphicsView, self).resizeEvent(event)
-        self.scene().viewResized(self.size())
 
 class DropPanel(QWidget):
     """This creates a panel that can be datatree index drag/drop operations.
