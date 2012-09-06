@@ -47,19 +47,20 @@ class PlotterView(ModuleView):
 
     def createView(self):
         view = QWidget()
+        self.plotter = PlotterWidget(self)
 
         self.viewarea = QScrollArea()
-        self.viewarea.setWidget(PlotterWidget())
+        self.viewarea.setWidget(self.plotter)
         self.viewarea.setWidgetResizable(True)
         self.viewarea.setMinimumSize(300,300)
 
         # TODO: Use panels to make the attrs flush with the first label
         # and/or change this entirely so we drop into parts of the
         # MPL window.
-        self.xlabel = BFDropLabel("X: ", self, self.droppedXData)
-        self.ylabel = BFDropLabel("Y: ", self, self.droppedYData)
-        self.xattrs = BFDropLabel("", self, self.droppedXData)
-        self.yattrs = BFDropLabel("", self, self.droppedYData)
+        self.xlabel = QLabel("X: ")
+        self.ylabel = QLabel("Y: ")
+        self.xattrs = QLabel("")
+        self.yattrs = QLabel("")
 
         self.xattrs.setWordWrap(True)
         self.yattrs.setWordWrap(True)
@@ -81,11 +82,11 @@ class PlotterView(ModuleView):
         self.droppedYData(indexList)
 
     def droppedXData(self, indexList):
-        self.agent.setXColumns(indexList)
+        self.agent.setXData(indexList)
         self.xattrs.setText(self.buildAttributeString(indexList))
 
     def droppedYData(self, indexList):
-        self.agent.setYColumns(indexList)
+        self.agent.setYData(indexList)
         self.yattrs.setText(self.buildAttributeString(indexList))
 
     def buildAttributeString(self, indexList):
@@ -93,6 +94,41 @@ class PlotterView(ModuleView):
         for index in indexList:
             mytext = mytext + self.agent.datatree.getItem(index).name + ", "
         return mytext[:len(mytext) - 2]
+
+    def dragEnterEvent(self, event):
+        if isinstance(event.mimeData(), DataIndexMime):
+            event.accept()
+        else:
+            super(PlotterView, self).dragEnterEvent(event)
+
+    def dropEvent(self, event):
+        if isinstance(event.mimeData(), DataIndexMime):
+            # if this point is below the bottom of the axes y coordinate
+            # transformed to display coords and inverted (because
+            # matplotlib starts at bottom left), then it is xdata
+            # otherwise it is ydata
+            
+            # Display information
+            desktop = QApplication.desktop()
+            my_screen = desktop.primaryScreen()
+            desktop_rect = desktop.screenGeometry(my_screen)
+
+            # Event position wrt top level window
+            drop_point = event.pos() 
+
+            # Axes position wrt axes coords
+            axes_corner = self.plotter.axes.transAxes.transform((0,0))
+
+
+            print drop_point, axes_corner, desktop_rect
+            event.accept()
+            if drop_point.x() > axes_corner[0] \
+                and desktop_rect.height() - drop_point.y() < axes_corner[1]:
+                self.droppedXData(event.mimeData().getDataIndices())
+            else:
+                self.droppedYData(event.mimeData().getDataIndices())
+        else:
+            super(PlotterView, self).dropEvent(event)
 
 
 class PlotterWidget(QWidget):
@@ -106,8 +142,16 @@ class PlotterWidget(QWidget):
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self)
         self.canvas.mpl_connect('pick_event', self.onPick)
-        #Toolbar Doesn't get along with Kate's MPL at the moment
+        
+        # Toolbar Doesn't get along with Kate's MPL at the moment so the
+        # mpl_connects will handle that for the moment
         #self.toolbar = NavigationToolbar(self.canvas, self.canvas)
+        self.canvas.mpl_connect('motion_notify_event', self.onMouseMotion)
+        self.canvas.mpl_connect('scroll_event', self.onScroll)
+        self.canvas.mpl_connect('button_press_event', self.onMouseButtonPress)
+        self.lastX = 0
+        self.lastY = 0
+        
         self.axes = self.fig.add_subplot(111)
 
         vbox = QVBoxLayout()
@@ -117,6 +161,9 @@ class PlotterWidget(QWidget):
 
         # Test
         self.axes.plot([1,2,3,4,5],[1,2,3,4,5], 'ob')
+        self.axes.set_title("Drag attributes to change graph.")
+        self.axes.set_xlabel("Drag here to set x axis.")
+        self.axes.set_ylabel("Drag here to set y axis.")
         print "Drawing"
         self.canvas.draw() # Why does this take so long on 4726 iMac? 
 
@@ -141,7 +188,6 @@ class PlotterWidget(QWidget):
         self.selected = []
         self.selected.append(thepoint)
 
-        print "self.selected is ", self.selected
         if old_selection == self.selected and old_selection != []:
             self.selected = []
             # HIGHLIGHT_CHANGE
@@ -155,18 +201,70 @@ class PlotterWidget(QWidget):
             pass
 
 
-    def dragEnterEvent(self, event):
-        if isinstance(event.mimeData(), DataIndexMime):
-            event.accept()
-        else:
-            super(PlotterWidget, self).dragEnterEvent(event)
 
-    def dropEvent(self, event):
-        if isinstance(self.mimeData(), DataIndexMime):
-            # if this point is below the bottom of the axes y coordinate
-            # transformed to display coords and inverted (because
-            # matplotlib starts at bottom left), then it is xdata
-            # otherwise it is ydata
-            drop_point = event.pos()
-        else:
-            super(PlotterWidget, self).dropEvent(event)
+# ---------------------- NAVIGATION CONTROLS ---------------------------
+
+    # Mouse movement (with or w/o button press) handling
+    def onMouseMotion(self, event):
+        if event.button == 1:
+            xmotion = self.lastX - event.x
+            ymotion = self.lastY - event.y
+            self.lastX = event.x
+            self.lastY = event.y
+            figsize = min(self.fig.get_figwidth(), self.fig.get_figheight())
+            xmin, xmax = self.calcTranslate(self.axes.get_xlim(),
+                xmotion, figsize)
+            ymin, ymax = self.calcTranslate(self.axes.get_ylim(),
+                ymotion, figsize)
+            self.axes.set_xlim(xmin, xmax)
+            self.axes.set_ylim(ymin, ymax)
+            self.canvas.draw()
+
+    # Calculates the translate required by the drag for a single dimension
+    # dtuple - the current limits in some dimension
+    # motion - the movement of the drag in pixels in that dimension
+    # figsize - estimate of the size of the figure 
+    # Note: the dtuple is in data coordinates, the motion is in pixels,
+    # we estimate how much motion there is based on the figsize and then
+    # scale it appropriately to the data coordinates to get the proper
+    # offset in figure limits.
+    def calcTranslate(self, dtuple, motion, figsize):
+        dmin, dmax = dtuple
+        drange = dmax - dmin
+        dots = self.fig.dpi * figsize
+        offset = float(motion * drange) / float(dots) 
+        newmin = dmin + offset
+        newmax = dmax + offset
+        return tuple([newmin, newmax])
+
+    # When the user clicks the left mouse button, that is the start of 
+    # their drag event, so we set the last-coordinates that are used to 
+    # calculate drag
+    def onMouseButtonPress(self, event):
+        if event.button == 1:
+            self.lastX = event.x
+            self.lastY = event.y
+
+    # On mouse wheel scrool, we zoom 
+    def onScroll(self, event):
+        zoom = event.step
+        xmin, xmax = self.calcZoom(self.axes.get_xlim(), 1. + zoom*0.05)
+        ymin, ymax = self.calcZoom(self.axes.get_ylim(), 1. + zoom*0.05)
+        self.axes.set_xlim(xmin, xmax)
+        self.axes.set_ylim(ymin, ymax)
+        self.canvas.draw()
+
+    # Calculates the zoom required by the wheel scroll for a single dimension
+    # dtuple - the current limits in some dimension
+    # scale - fraction to increase/decrease the image size
+    # This does a zoom by scaling the limits in that direction appropriately
+    def calcZoom(self, dtuple, scale):
+        dmin, dmax = dtuple
+        drange = dmax - dmin
+        dlen = 0.5*drange
+        dcenter = dlen + dmin
+        newmin = dcenter - dlen*scale
+        newmax = dcenter + dlen*scale
+        return tuple([newmin, newmax])
+
+            
