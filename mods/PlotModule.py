@@ -108,22 +108,15 @@ class PlotterView(ModuleView):
             # matplotlib starts at bottom left), then it is xdata
             # otherwise it is ydata
             
-            # Display information
-            desktop = QApplication.desktop()
-            my_screen = desktop.primaryScreen()
-            desktop_rect = desktop.screenGeometry(my_screen)
-
-            # Event position wrt top level window
+            # Event position wrt widget
             drop_point = event.pos() 
 
-            # Axes position wrt axes coords
+            # Axes position wrt plotter coords
             axes_corner = self.plotter.axes.transAxes.transform((0,0))
 
-
-            print drop_point, axes_corner, desktop_rect
             event.accept()
             if drop_point.x() > axes_corner[0] \
-                and desktop_rect.height() - drop_point.y() < axes_corner[1]:
+                and self.height() - drop_point.y() < axes_corner[1]:
                 self.droppedXData(event.mimeData().getDataIndices())
             else:
                 self.droppedYData(event.mimeData().getDataIndices())
