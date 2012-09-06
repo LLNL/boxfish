@@ -24,22 +24,17 @@ class PlotterAgent(ModuleAgent):
 
         self.x_columns = list()
         self.y_columns = list()
+        self.addRequirement("x")
+        self.addRequirement("y")
 
-    def setXColumns(self, indexList):
-        for col in self.x_columns:
-            col.delete()
-        self.x_columns = self.buildColumnsFromIndices(indexList)
+    def setXData(self, indexList):
+        self.requestAddIndices("x", indexList)
 
-    def setYColumns(self, indexList):
-        for col in self.y_columns:
-            col.delete()
-        self.y_columns = self.buildColumnsFromIndices(indexList)
+    def setYData(self, indexList):
+        self.requestAddIndices("y", indexList)
 
 @Module("Plotter")
 class PlotterView(ModuleView):
-
-    display_name = "Plotter"
-    in_use = True
 
     def __init__(self, parent, parent_view = None, title = None):
         super(PlotterView, self).__init__(parent, parent_view, title)
@@ -123,7 +118,7 @@ class PlotterWidget(QWidget):
         # Test
         self.axes.plot([1,2,3,4,5],[1,2,3,4,5], 'ob')
         print "Drawing"
-        self.canvas.draw() # Why does this take so long? DockWidgets issue?
+        self.canvas.draw() # Why does this take so long on 4726 iMac? 
 
 
     def plotData(self, ids, vals):
@@ -159,3 +154,19 @@ class PlotterWidget(QWidget):
             # alert agent about this -- need SceneGraph done
             pass
 
+
+    def dragEnterEvent(self, event):
+        if isinstance(event.mimeData(), DataIndexMime):
+            event.accept()
+        else:
+            super(PlotterWidget, self).dragEnterEvent(event)
+
+    def dropEvent(self, event):
+        if isinstance(self.mimeData(), DataIndexMime):
+            # if this point is below the bottom of the axes y coordinate
+            # transformed to display coords and inverted (because
+            # matplotlib starts at bottom left), then it is xdata
+            # otherwise it is ydata
+            drop_point = event.pos()
+        else:
+            super(PlotterWidget, self).dropEvent(event)
