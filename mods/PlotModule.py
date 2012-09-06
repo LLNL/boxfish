@@ -97,6 +97,8 @@ class PlotterView(ModuleView):
 
     def dragEnterEvent(self, event):
         if isinstance(event.mimeData(), DataIndexMime):
+            # TODO: Depending on whether it will be x or y data where it
+            # is, boldify that axis label. May need dragMoveEvent for this
             event.accept()
         else:
             super(PlotterView, self).dragEnterEvent(event)

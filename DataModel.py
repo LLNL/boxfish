@@ -59,7 +59,6 @@ class AbstractTreeItem(object):
             return self._parent._children.index(self)
 
 
-
 class RunItem(AbstractTreeItem):
     """Item representing an entire run. Holds the run
        metadata. Its children are divided into tables
@@ -70,9 +69,17 @@ class RunItem(AbstractTreeItem):
         super(RunItem, self).__init__(name, parent)
 
         self._metadata = metadata
+        self.subdomains = None
+        self._table_subdomains = None
 
     def typeInfo(self):
         return "RUN"
+
+    def __contains__(self, key):
+        return self.hasMetaData(key)
+
+    def __getitem__(self, key):
+        return self.getMetaData(key)
 
     def hasMetaData(self, key):
         if self._metadata is not None \
@@ -80,12 +87,6 @@ class RunItem(AbstractTreeItem):
             return True
 
         return False
-
-    def __contains__(self, key):
-        return self.hasMetaData(key)
-
-    def __getitem__(self, key):
-        return self.getMetaData(key)
 
     def getMetaData(self, key):
         if self._metadata is not None \
@@ -95,9 +96,129 @@ class RunItem(AbstractTreeItem):
                 return self._metadata[key].copy()
             else:
                 return self._metadata[key]
+        return None
+
+    def getRun(self):
+        return self
+
+    def refreshSubdomains(self):
+        """The Run searches its tree to determine which subdomains
+           it has available and what projections it can perform.
+           This is intended to be called by the DataTree itself 
+           to update a Run after adding/remove tables and projections.
+           This does not occur automatically so we do not waste
+           time recalculating when several tables are being added en masse.
+        """
+        for child in self._children:
+            if child.name == "tables":
+                tables = child
+            else:
+                projections = child
+
+        self._table_subdomains = list()
+        for table in tables._children:
+            self._table_subdomains.append(table._table._domainType)
+
+        self.subdomains = list()
+        for projection in projections._children:
+            self.subdomains.append(projection._projection.source)
+            self.subdomains.append(projection._projection.destination)
+
+        for subdomain in self._table_subdomains:
+            if subdomain not in self.subdomains:
+                self.subdomains.append(subdomain)
 
 
-class GroupItem(AbstractTreeItem):
+    def getTable(self, table_name):
+        """Look up a table by name."""
+        for child in self._children:
+            if child.name == "tables":
+                tables = child
+
+        for table in tables._children:
+            if table.name == table_name:
+                return table
+
+        return None
+
+
+class SubRunItem(AbstractTreeItem):
+    """Item that falls below a Run in the hierarchy."""
+
+    def __init__(self, name, parent = None):
+        super(SubRunItem, self).__init__(name, parent)
+    
+    def __contains__(self, key):
+        return self.hasMetaData(key)
+
+    def __getitem__(self, key):
+        return self.getMetaData(key)
+
+    # Passed metadata calls up to parent
+    def hasMetaData(self, key):
+        if self.parent() is not None:
+            return self.parent().hasMetaData(key)
+        return False
+
+    def getMetaData(self, key):
+        if self.parent() is not None and self.parent().hasMetaData(key):
+            return self.parent().getMetaData(key)
+        return None
+
+    def getRun(self):
+        if self.parent() is not None:
+            return self.parent().getRun()
+        return None
+
+
+
+class DataObjectItem(SubRunItem):
+    """Item attached to a data object and also having
+       metda data. Examples: Table, Projection.
+    """
+
+    def __init__(self, name, metadata, parent = None):
+        super(DataObjectItem, self).__init__(name, parent)
+
+        self._metadata = metadata
+
+    def __contains__(self, key):
+        return self.hasMetaData(key)
+
+    def __getitem__(self, key):
+        return self.getMetaData(key)
+
+    # It first searches its parent data, then its own
+    # This means the run metadata takes precedence
+    def hasMetaData(self, key):
+
+        if self.parent() is not None and self.parent().hasMetaData(key):
+            return True
+
+        if self._metadata is not None \
+            and key in self._metadata:
+            return True
+
+        return False
+
+
+    def getMetaData(self, key):
+
+        if self.parent() is not None and self.parent().hasMetaData(key):
+            return self.parent().getMetaData(key)
+
+        if self._metadata is not None \
+            and key in self._metadata:
+            if isinstance(self._metadata[key], dict):
+                return self._metadata[key].viewitems()
+            else:
+                return self._metadata[key]
+
+        return None
+
+
+
+class GroupItem(SubRunItem):
     """Item for grouping items of similar type, e.g. tables.
     """
 
@@ -106,117 +227,41 @@ class GroupItem(AbstractTreeItem):
 
     def typeInfo(self):
         return "GROUP"
-    
-    def __contains__(self, key):
-        return self.hasMetaData(key)
-
-    def __getitem__(self, key):
-        return self.getMetaData(key)
 
 
-    # Passed metadata calls up to parent (run)
-    def hasMetaData(self, key):
-        if self.parent() is not None:
-            return self.parent().hasMetaData(key)
-
-    def getMetaData(self, key):
-        if self.parent() is not None:
-            return self.parent().getMetaData(key)
-
-
-# REFACTORME: ProjectionItem and TableItem share metadata functions
-class ProjectionItem(AbstractTreeItem):
+class ProjectionItem(DataObjectItem):
     """Item for holding a projection and its metadata. The data types
        of the projection are represented as children.
     """
 
     def __init__(self, name, projection, metadata, parent = None):
-        super(ProjectionItem, self).__init__(name, parent)
+        super(ProjectionItem, self).__init__(name, metadata, parent)
 
-        self._metadata = metadata
         self._projection = projection
 
     def typeInfo(self):
         return "PROJECTION"
     
-    def __contains__(self, key):
-        return self.hasMetaData(key)
-
-    def __getitem__(self, key):
-        return self.getMetaData(key)
 
 
-
-    # It first searches its own meta data. Then it passes up the tree.
-    def hasMetaData(self, key):
-
-        if self._metadata is not None \
-            and key in self._metadata:
-            return True
-
-        if self.parent() is not None:
-            return self.parent().hasMetaData(key)
-
-
-    def getMetaData(self, key):
-
-        if self._metadata is not None \
-            and key in self._metadata:
-            if isinstance(self._metadata[key], dict):
-                return self._metadata[key].viewitems()
-            else:
-                return self._metadata[key]
-
-        if self.parent() is not None:
-            return self.parent().getMetaData(key)
-
-
-class TableItem(AbstractTreeItem):
+class TableItem(DataObjectItem):
     """Item for holding a table and its metadata. The columns of the
        table are the children.
     """
 
     def __init__(self, name, table, metadata, parent = None):
-        super(TableItem, self).__init__(name, parent)
+        super(TableItem, self).__init__(name, metadata, parent)
 
         self._metadata = metadata
         self._table = table
 
     def typeInfo(self):
         return "TABLE"
-    
-    def __contains__(self, key):
-        return self.hasMetaData(key)
-
-    def __getitem__(self, key):
-        return self.getMetaData(key)
-
-
-    # It first searches its own meta data. Then it passes up the tree.
-    def hasMetaData(self, key):
-        if self._metadata is not None \
-            and key in self._metadata:
-            return True
-
-        if self.parent() is not None:
-            return self.parent().hasMetaData(key)
-
-
-    def getMetaData(self, key):
-        if self._metadata is not None \
-            and key in self._metadata:
-            if isinstance(self._metadata[key], dict):
-                return self._metadata[key].viewitems()
-            else:
-                return self._metadata[key]
-
-        if self.parent() is not None:
-            return self.parent().getMetaData(key)
 
 
 # Projection Attribute may be different from table attribute,
 # we may want to separate those out.
-class AttributeItem(AbstractTreeItem):
+class AttributeItem(SubRunItem):
     """Item for containing individual attributes. Access to these
        will be done through parent items.
     """
@@ -229,12 +274,6 @@ class AttributeItem(AbstractTreeItem):
     def typeInfo(self):
         return "ATTRIBUTE"
     
-    def __contains__(self, key):
-        return self.parent().hasMetaData(key)
-
-    def __getitem__(self, key):
-        return self.parent().getMetaData(key)
-
 
 
 class DataTree(QAbstractItemModel):
@@ -462,6 +501,7 @@ class DataTree(QAbstractItemModel):
                         parent = self.createIndex(position, 0, projectionsItem))
 
 
+        runItem.refreshSubdomains()
         return True
 
     # TODO: Add the ability to remove elements
