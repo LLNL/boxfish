@@ -363,7 +363,7 @@ class ModuleRequest(QObject):
             identifiers = table._table.identifiers()
             for modifier in self.coupler.modifier_chain:
                 identifiers = modifier.process(table._table, identifiers)
-            groups, values = table._table.attributes_by_attributes(
+            groups, values = table._table.group_attributes_by_attributes(
                 identifiers, group_by_attributes, attributes, row_aggregator)
         return groups, values
 
@@ -411,7 +411,7 @@ class ModuleRequest(QObject):
             identifiers = table._table.identifiers()
             for modifier in self.coupler.modifier_chain:
                 identifiers = modifier.process(table._table, identifiers)
-            attribute_list = table._table.attribute_by_identifiers(
+            attribute_list = table._table.attributes_by_identifiers(
                 identifiers, attributes, False)
             data_list.append(attribute_list)
 

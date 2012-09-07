@@ -8,7 +8,10 @@ hardware: {
  nodes: 512,
  coords: [x, y, z],
  coords_table: bgpc_nodes.yaml,
- dim: {x: 8, y: 8, z: 8}
+ dim: {x: 8, y: 8, z: 8},
+ source_coords: {x: sx, y: sy, z: sz},
+ destination_coords: {x: tx, y: ty, z: tz},
+ link_coords_table: bgpc_links.yaml
 }
 ---
 filetype: table

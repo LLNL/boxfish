@@ -1,5 +1,6 @@
 import numpy as np
 import itertools
+from Query import *
 
 class Table(object):
   """A (B)ox(F)ishTable is a wrapper around a numpy array of records that
@@ -194,8 +195,8 @@ class Table(object):
 
     return result, True
 
-  def attributes_by_attributes(self, identifiers, given_attrs, desired_attrs, \
-    aggregator):
+  def group_attributes_by_attributes(self, identifiers, given_attrs, 
+    desired_attrs, aggregator):
     """Determine list of desired attributed aggregated by set of given
        attributes. This does an attribute look up/group by type operation.
 
@@ -233,7 +234,7 @@ class Table(object):
 
     return group_list, desired_list
 
-  def attribute_by_identifiers(self, identifiers, attributes, unique = True):
+  def attributes_by_identifiers(self, identifiers, attributes, unique = True):
     """Get list of all attributes from a set of identifiers. Not sure
        this is a good idea.
     """
@@ -251,6 +252,32 @@ class Table(object):
 
     return attr_list
 
+  
+  def attributes_by_conditions(self, identifiers, desired_attrs, conditions,
+    unique = True):
+    """Get all rows of the desired attributes where the conditions
+       are met. Conditions follow the same style as subset_by_attributes.
+    """
+    condition_filter = None
+    for condition in conditions:
+      condition_filter = self.append_clause(condition_filter, condition,
+        identifiers)
+    indices = np.where(condition_filter)
+    new_identifiers = [identifiers[x] for x in indices[0]]
+
+    attr_list = list()
+    if unique:
+      for attr in desired_attrs:
+        attr_list.append(np.unique(self._data[new_identifiers][attr]))
+    else:
+      for attr in attributes:
+        attr_list.append(list())
+
+      for row in self._data[identifiers]:
+        for i, attr in enumerate(attributes):
+          attr_list[i].append(row[attr])
+
+    return attr_list
 
 
   def subset_by_key(self, identifiers, subdomain):
@@ -282,12 +309,54 @@ class Table(object):
        conditions = list of (attribute, relation, value, logical) tuples
                     where attributes are in this table
     """
-    subset_filter = None
-    for condition in conditions:
-      subset_filter = self.append_clause(subset_filter, condition, identifiers)
-    indices = np.where(subset_filter)
+    indices = np.where(self.build_where_clause(conditions, identifiers))
     return [identifiers[x] for x in indices[0]]
 
+  def build_where_clause(self, condition, identifiers):
+
+    if not isinstance(condition, Clause):
+      if isinstance(condition, TableAttribute):
+        return self._data[condition.name][identifiers]
+      else:
+        return condition
+    
+    if condition.relation in self.relations:
+      operator = self.relations[condition.relation]
+    elif condition.relation in self.logicals:
+      operator = self.logicals[condition.relation]
+    else:
+      raise ValueError("Unrecognized relation in clause.")
+
+    where_clause = None
+    if len(condition.clauses) < 1:
+      raise ValueError("No clauses in given condition.")
+
+    # return functools.reduce(operator, 
+    # self.build_where_clause(c, identifiers) for
+    # c in condition.clauses)) ?
+    where_clause = self.build_where_clause(condition.clauses[0], identifiers)
+    for clause in condition.clauses[1:]:
+      where_clause = operator(where_clause,
+        self.build_where_clause(clause, identifiers))
+
+    return where_clause
+
+
+  # Delete me
+  def create_logical(self, conditions, identifiers):
+    """Create a big numpy logical out of an arbitrarily nested list
+       of conditions.
+    """
+    logical = None
+    for condition in conditions:
+        if isinstance(condition, tuple):
+            logical = self.append_clause(logical, condition, identifiers)
+        else:
+            # append something here
+            logical = self.create_logical(conditions[1:], identifiers)
+    return logical
+
+  # Delete me
   def append_clause(self, clauses, condition, identifiers):
     """Append a clause tuple to an existing set of clauses.
 

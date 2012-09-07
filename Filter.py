@@ -2,6 +2,7 @@
 from PySide.QtCore import *
 from PySide.QtGui import *
 from FilterCoupler import *
+from Query import *
 
 class Filter(QObject):
 
@@ -32,6 +33,5 @@ class SimpleWhereFilter(Filter):
         self.value = value
 
     def process(self, table, identifiers):
-        conditions = list()
-        conditions.append((self.attribute, "=", self.value, "and"))
-        return table.subset_by_attributes(identifiers, conditions)
+        return table.subset_by_attributes(identifiers,
+            Clause("=", TableAttribute(self.attribute), self.value))
