@@ -35,4 +35,13 @@ subdomain:
 - { domain: HW, type: NODE, field: nodeid }
 - { domain: COMM, type: RANK, field: mpirank }
 flags: 0
+---
+filetype: projection
+type: node link
+node_policy: Source
+link_policy: Source
+subdomain:
+- { domain: HW, type: NODE, field: nodeid }
+- { domain: HW, type: LINK, field: linkid }
+flags: 0
 ...

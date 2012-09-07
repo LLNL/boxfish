@@ -495,15 +495,24 @@ class DataTree(QAbstractItemModel):
                 # Different projections created here per type. Again, probably
                 # should be moved to different class.
                 if filedict['type'].upper() == "FILE":
-                    filepath = os.path.join(os.path.dirname(filename), filedict['filename'])
+                    filepath = os.path.join(os.path.dirname(filename),
+                        filedict['filename'])
                     metadata, data = yl.load_table(filepath)
                     combined_meta = dict(metadata.items() + filedict.items())
                     atable = Table()
                     atable.fromRecArray(mydomains[0], mykeys[0], data)
-                    aprojection = TableProjection(mydomains[0], mydomains[1], \
-                            mykeys[0], mykeys[1], atable)
-                    self.insertProjection(mydomains[0].typename() + "<->" \
-                        + mydomains[1].typename(), aprojection, combined_meta, \
+                    aprojection = TableProjection(mydomains[0], mydomains[1],
+                        source_key = mykeys[0], destination_key = mykeys[1],
+                        table = atable)
+                    self.insertProjection(mydomains[0].typename() + "<->"
+                        + mydomains[1].typename(), aprojection, combined_meta,
+                        parent = self.createIndex(position, 0, projectionsItem))
+                else:
+                    aprojection = Projection(mydomains[0],
+                        mydomains[1]).instantiate(filedict['type'],
+                        mydomains[0], mydomains[1], run = runItem, **filedict)
+                    self.insertProjection(mydomains[0].typename() + "<->"
+                        + mydomains[1].typename(), aprojection, filedict,
                         parent = self.createIndex(position, 0, projectionsItem))
 
 

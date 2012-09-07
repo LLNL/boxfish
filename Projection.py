@@ -1,8 +1,20 @@
 from SubDomain import *
 
+def InputFileKey(input_file_key, enabled = True):
+    """InputFileKey decorator :
+       input_file_key - name that can be used to instantiate from file
+       enabled - true if the user can create one
+    """
+    def input_file_key_inner(cls):
+        cls.input_file_key = input_file_key
+        cls.enabled = enabled
+        return cls
+    return input_file_key_inner
+
+@InputFileKey("N/A", enabled = False)
 class Projection(object):
 
-  def __init__(self,source = "undefined", destination = "undefined"):
+  def __init__(self,source = "undefined", destination = "undefined", **kwargs):
     object.__init__(self)
 
     if isinstance(source,str):
@@ -25,16 +37,26 @@ class Projection(object):
     return (((self.source == source) and (self.destination == destination)) or
             ((self.source == destination) and (self.destination == source)))
 
+  
+  def instantiate(self, key, source, destination, **kwargs):
 
+      if self.__class__.input_file_key == key:
+          return self.__class__(source, destination, **kwargs)
+      else:
+          for s in self.__class__.__subclasses__():
+              result = s().instantiate(key, source, destination, **kwargs)
+              if result is not None:
+                  return result
+          return None
 
+@InputFileKey("identity")
 class IdentityProjection(Projection):
   """A default identify mapping, for example, for the standard MPI rank <-> core
      mapping
   """
 
-  def __init__(self,source = "undefined", destination = "undefined"):
-
-    Projection.__init__(self,source,destination)
+  def __init__(self,source = "undefined", destination = "undefined", **kwargs):
+    super(IdentityProjection, self).__init__(source,destination,**kwargs)
 
   def project(self,subdomain,destination):
 
@@ -42,18 +64,22 @@ class IdentityProjection(Projection):
     return result
 
 
-
+@InputFileKey("file")
 class TableProjection(Projection):
   """Mapping defined by Table.
   """
 
-  def __init__(self, source = "undefined", destination = "undefined", \
-    source_key = None, destination_key = None, table = None):
-    super(TableProjection, self).__init__(source, destination)
+  def __init__(self, source = "undefined", destination = "undefined", **kwargs):
+    super(TableProjection, self).__init__(source, destination, **kwargs)
 
-    self._table = table
-    self._source_key = source_key
-    self._destination_key = destination_key
+    if kwargs:
+        if 'source_key' not in kwargs or 'destination_key' not in kwargs\
+            or 'table' not in kwargs:
+            raise ValueError("TableProjection constructor requires source_key, "
+                + "destination_key, and table.")
+        self._table = kwargs["table"]
+        self._source_key = kwargs["source_key"]
+        self._destination_key = kwargs["destination_key"]
 
 
   def project(self, subdomain, destination):
@@ -78,7 +104,7 @@ class TableProjection(Projection):
 
 
 
-
+@InputFileKey("node link")
 class NodeLinkProjection(Projection):
     """Common Node-Link mappings, defined by policy:
 
@@ -99,7 +125,7 @@ class NodeLinkProjection(Projection):
        the nodes and coordinates of the source and destination for links.
        The projection is based upon these coordinates.
     """
-    def __init__(self, run, node_policy = 'Source', link_policy = 'Source'):
+    def __init__(self, source = "undefined", destination = "undefined", **kwargs):
         """Construct a NodeLink Projection.
 
         run: RunItem governing this projection
@@ -108,27 +134,33 @@ class NodeLinkProjection(Projection):
 
         Policies: 'Source', 'Destination', and 'Both'
         """
-        super(NodeLinkProjection, self).__init__(Node, Link)
+        super(NodeLinkProjection, self).__init__(Nodes(), Links(), **kwargs)
 
-        self.run = run
-        self.node_policy = node_policy
-        self.link_policy = link_policy
+        if kwargs:
+            if 'run' not in kwargs or 'node_policy' not in kwargs\
+                or 'link_policy' not in kwargs:
+                raise ValueError("NodeLinkProjection constructor requires " 
+                + "run, node_policy, and link_policy.")
 
-        # TODO: A lot of boring stuff to handle errors and set 
-        # defaults. Eventually we would like to read the default
-        # information from the user's .boxfishconfig before going
-        # to our own hardcoded defaults
-        hardware_info = run["hardware"]
+            self.run = kwargs['run']
+            self.node_policy = kwargs['node_policy']
+            self.link_policy = kwargs['link_policy']
 
-        self.source_table = run.getTable(hardware_info["coords_table"])
-        self.destination_table = run.getTable(
-            hardware_info["link_coords_table"])
+            # TODO: A lot of boring stuff to handle errors and set 
+            # defaults. Eventually we would like to read the default
+            # information from the user's .boxfishconfig before going
+            # to our own hardcoded defaults
+            hardware_info = self.run["hardware"]
 
-        self.coords = hardware["coords"]
-        self.source_coords = [hardware["source_coords"][coord] 
-            for coord in self.coords]
-        self.destination_coords = [hardware["destination_coords"][coord] 
-            for coord in self.coords]
+            self.source_table = self.run.getTable(hardware_info["coords_table"])
+            self.destination_table = self.run.getTable(
+                hardware_info["link_coords_table"])
+
+            self.coords = hardware_info["coords"]
+            self.source_coords = [hardware_info["source_coords"][coord] 
+                for coord in self.coords]
+            self.destination_coords = [hardware_info["destination_coords"][coord] 
+                for coord in self.coords]
 
 
     def project(self, subdomain, destination):
