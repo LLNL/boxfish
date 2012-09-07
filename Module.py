@@ -559,9 +559,8 @@ class ModuleView(QMainWindow):
     def createDragOverlay(self, tags, texts, images = None):
         self.dragOverlay = True
         
-        self.overlay = QFrame(self)
-        self.overlay.setVisible(False)
-        self.overlay.setAcceptDrops(True)
+        self.overlay = OverlayFrame(self)
+
         layout = QGridLayout(self.overlay)
         layout.setAlignment(Qt.AlignCenter)
         layout.setColumnStretch(0, 5)
@@ -663,42 +662,6 @@ class ModuleView(QMainWindow):
             super(ModuleView, self).dropEvent(event)
 
 
-
-
-class OverlayDialog(QDialog):
-
-    def __init__(self, parent, widget):
-        super(OverlayDialog, self).__init__(parent, Qt.SplashScreen)
-
-        self.setAcceptDrops(True)
-        
-        #self.setAttribute(Qt.WA_TranslucentBackground)
-        bgcolor = self.palette().color(QPalette.Background)
-        self.setPalette(QColor(bgcolor.red(), bgcolor.green(), bgcolor.blue(),
-            150)) # alpha
-
-        self.setModal(True)
-        
-        layout = QVBoxLayout(self)
-        layout.setAlignment(Qt.AlignCenter)
-        layout.addWidget(widget)
-        self.setLayout(layout)
-        
-        self.resize(0.8 * parent.size().width(), 0.8 * parent.size().height())
-        widget.resize(self.width(), self.height())
-        
-
-    def show(self):
-        super(OverlayDialog, self).show()
-
-        # Get absolute position of parent widget by finding the
-        # relative positions up the chain until the top level window
-        # which will give us the absolute position to add to it.
-        # Then we magical-numerically offset by 0.1 because that's
-        # half of the 20% we don't cover.
-        x, y = self.parent().findPosition()
-        self.move(x + 0.1 * self.parent().size().width(),
-            y + 0.1 * self.parent().size().height())
 
 
 class BFDockWidget(QDockWidget):
@@ -858,3 +821,72 @@ class DropPanel(QWidget):
 
     def droppedData(self, indexList):
         self.handler(indexList, self.tag)
+
+
+class OverlayDialog(QDialog):
+
+    def __init__(self, parent, widget):
+        super(OverlayDialog, self).__init__(parent, Qt.SplashScreen)
+
+        self.setAcceptDrops(True)
+        
+        #self.setAttribute(Qt.WA_TranslucentBackground)
+        bgcolor = self.palette().color(QPalette.Background)
+        self.setPalette(QColor(bgcolor.red(), bgcolor.green(), bgcolor.blue(),
+            0)) # alpha
+
+        self.setModal(True)
+        
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignCenter)
+        layout.addWidget(widget)
+        self.setLayout(layout)
+        
+        self.resize(0.8 * parent.size().width(), 0.8 * parent.size().height())
+        widget.resize(self.width(), self.height())
+        
+
+    def show(self):
+        super(OverlayDialog, self).show()
+
+        # Get absolute position of parent widget by finding the
+        # relative positions up the chain until the top level window
+        # which will give us the absolute position to add to it.
+        # Then we magical-numerically offset by 0.1 because that's
+        # half of the 20% we don't cover.
+        x, y = self.parent().findPosition()
+        self.move(x + 0.1 * self.parent().size().width(),
+            y + 0.1 * self.parent().size().height())
+
+
+class OverlayFrame(QFrame):
+
+    def __init__(self, parent):
+        super(OverlayFrame, self).__init__(parent)
+        
+        self.setVisible(False)
+        self.setAcceptDrops(True)
+
+    # Adapted from developer.nokia.com/Community/Wiki/Qt_rounded_rect_widget
+    def paintEvent(self, event):
+        roundness = 10
+        rect = self.rect()
+        bgcolor = self.palette().color(QPalette.Background)
+        alpha_bgcolor = QColor(bgcolor.red(), bgcolor.green(),
+            bgcolor.blue(), 150)
+
+        painter = QPainter()
+        painter.begin(self)
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(Qt.red)
+        rounded_rect = QPainterPath()
+        rounded_rect.addRoundRect(1, 1, rect.width() - 2, rect.height() - 2,
+            roundness, roundness)
+        painter.setClipPath(rounded_rect)
+        self.setMask(painter.clipRegion())
+        painter.setOpacity(1.0)
+        painter.fillPath(rounded_rect, QBrush(alpha_bgcolor))
+        painter.restore()
+        painter.end()
+
