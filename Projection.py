@@ -26,6 +26,7 @@ class Projection(object):
             ((self.source == destination) and (self.destination == source)))
 
 
+
 class IdentityProjection(Projection):
   """A default identify mapping, for example, for the standard MPI rank <-> core
      mapping
@@ -39,6 +40,7 @@ class IdentityProjection(Projection):
 
     result = SubDomain().instantiate(destination,subdomain)
     return result
+
 
 
 class TableProjection(Projection):
@@ -71,7 +73,11 @@ class TableProjection(Projection):
           keys = self._table.attribute_by_identifiers(identifiers,\
               [self._source_key])
 
-      return keys
+
+      return Subdomain().instantiate(destination, keys)
+
+
+
 
 class NodeLinkProjection(Projection):
     """Common Node-Link mappings, defined by policy:
@@ -88,6 +94,10 @@ class NodeLinkProjection(Projection):
 
        Note: 'node_policy' cover how nodes map onto links; 'link_policy'
        covers how links map onto nodes.
+
+       This class assumes that there will be a table with coordinates for
+       the nodes and coordinates of the source and destination for links.
+       The projection is based upon these coordinates.
     """
     def __init__(self, run, node_policy = 'Source', link_policy = 'Source'):
         """Construct a NodeLink Projection.
@@ -115,27 +125,78 @@ class NodeLinkProjection(Projection):
             hardware_info["link_coords_table"])
 
         self.coords = hardware["coords"]
-        self.source_coords = hardware["source_coords"]
-        self.destination_coords = hardware["destination_coords"]
+        self.source_coords = [hardware["source_coords"][coord] 
+            for coord in self.coords]
+        self.destination_coords = [hardware["destination_coords"][coord] 
+            for coord in self.coords]
 
 
     def project(self, subdomain, destination):
+        source_table = self.source_table._table
+        destination_table = self.destination_table._table
 
         if destination == self.destination: # Nodes -> Links
             # Find coords from given node IDs. Find matching
             # link coords. Return link IDs
-            identifiers = self.source_table._table.subset_by_key(
-                self.source_table._table.identifiers(), #identifiers
+            identifiers = source_table.subset_by_key(
+                source_table.identifiers(), #identifiers
                 subdomain) # valid node IDs
-            valid_coords = self.source_table._table.attributes_by_identifiers(
+            valid_coords = source_table.attributes_by_identifiers(
                 identifiers, self.coords, unique = False) # We want all
+            # Note: valid_coords is a list of lists, one for each coord, 
+            # in the order of self.coords
+            coord_tuples = set(zip(*valid_coords))
             
             conditions = list()
-            if self.node_policy == 'Source':
-                conditions.append(())
+            if self.node_policy == 'Source' or self.node_policy == 'Both':
+                for coord_tuple in coord_tuples:
+                    conditions.append(self.source_coords, coord_tuple)
+            if self.node_policy == 'Destination' or self.node_policy == 'Both':
+                for coord_tuple in coord_tuples:
+                    conditions.append(self.source_coords, coord_tuple)
 
+            links = destination_table.attributes_by_conditions(
+                destination_table.identifiers(), # identifiers
+                [self.destination_table["field"]], # link id
+                Clause('or', *conditions)) # we are fine with unique here
+
+            return Subdomain().instantiate(destination, links)
         else: # Links -> Nodes
             # Find coords from given link IDs. Find matching
             # node coords. Return node IDs.
-            pass
+            identifiers = destination_table.subset_by_key(
+                destination_table.identifiers(), #identifiers
+                subdomain) # valid link IDs
 
+            conditions = list()
+            if self.link_policy == 'Source' or self.link_policy == 'Both':
+                valid_coords = destination_table.attributes_by_identifiers(
+                    identifiers, self.source_coords, unique = False)
+                coord_tuples = set(zip(*valid_coords))
+                for coord_tuple in coord_tuples:
+                    conditions.append(self.coords, coord_tuple)
+            if self.link_policy == 'Destination' or self.link_policy == 'Both':
+                valid_coords = destination_table.attributes_by_identifiers(
+                    identifiers, self.destination_coords, unique = False)
+                coord_tuples = set(zip(*valid_coords))
+                for coord_tuple in coord_tuples:
+                    conditions.append(self.coords, coord_tuple)
+
+            nodes = source_table.attributes_by_conditions(
+                source_table.identifiers(), # identifiers
+                [self.source_table["field"]], # node id
+                Clause('or', conditions)) # we are fine with unique here
+            return Subdomain().instantiate(destination, nodes)
+
+
+    def build_coord_clause(self, coord_names, coord_values):
+        """
+           coord_names: names of the coordinates given in values
+           coord_values: values for each of those coords
+           new_coord_names: what the coord names are for the query.
+        """
+
+        clauses = list()
+        for coord, value in zip(coord_names, coord_values):
+            clauses.append(Clause("=", TableAttribute(coord), value))
+        return Clause("and", *clauses)

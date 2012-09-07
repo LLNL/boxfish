@@ -258,6 +258,12 @@ class TableItem(DataObjectItem):
     def typeInfo(self):
         return "TABLE"
 
+    def hasAttribute(self, attribute):
+        for child in self._children:
+            if child.name == attribute:
+                return True
+        return False
+
 
 # Projection Attribute may be different from table attribute,
 # we may want to separate those out.
