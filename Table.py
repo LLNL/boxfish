@@ -1,5 +1,6 @@
 import numpy as np
 import itertools
+import functools
 from Query import *
 
 class Table(object):
@@ -218,11 +219,11 @@ class Table(object):
       desired_list.append(list())
 
     for given_tuple in groupby_iter:
-      where_clause = None
+      clauses = list()
       for i, attr in enumerate(given_tuple):
-        where_clause = self.append_clause(where_clause, (given_attrs[i], "=", attr, "and"), identifiers)
-
-      indices = np.where(where_clause)[0]
+        clauses.append(Clause("=", TableAttribute(given_attrs[i]), attr))
+      indices = np.where(self.build_where_clause(Clause("and", *clauses),
+          identifiers))[0]
 
       # We only keep the valid combinations
       if len(indices) != 0:
@@ -258,11 +259,7 @@ class Table(object):
     """Get all rows of the desired attributes where the conditions
        are met. Conditions follow the same style as subset_by_attributes.
     """
-    condition_filter = None
-    for condition in conditions:
-      condition_filter = self.append_clause(condition_filter, condition,
-        identifiers)
-    indices = np.where(condition_filter)
+    indices = np.where(self.build_where_clause(conditions, identifiers))
     new_identifiers = [identifiers[x] for x in indices[0]]
 
     attr_list = list()
@@ -301,6 +298,7 @@ class Table(object):
     indices = np.where(subset_filter)
     return [identifiers[x] for x in indices]
 
+
   def subset_by_attributes(self, identifiers, conditions):
     """Determine the subset of valid identifiers based on some conditions
        within this table and an initial set of identifiers.
@@ -311,6 +309,7 @@ class Table(object):
     """
     indices = np.where(self.build_where_clause(conditions, identifiers))
     return [identifiers[x] for x in indices[0]]
+
 
   def build_where_clause(self, condition, identifiers):
 
@@ -327,53 +326,18 @@ class Table(object):
     else:
       raise ValueError("Unrecognized relation in clause.")
 
-    where_clause = None
     if len(condition.clauses) < 1:
       raise ValueError("No clauses in given condition.")
 
-    # return functools.reduce(operator, 
-    # self.build_where_clause(c, identifiers) for
-    # c in condition.clauses)) ?
-    where_clause = self.build_where_clause(condition.clauses[0], identifiers)
-    for clause in condition.clauses[1:]:
-      where_clause = operator(where_clause,
-        self.build_where_clause(clause, identifiers))
+    return functools.reduce(operator, (self.build_where_clause(c, identifiers)
+        for c in condition.clauses))
+    
+    #where_clause = self.build_where_clause(condition.clauses[0], identifiers)
+    #for clause in condition.clauses[1:]:
+    #  where_clause = operator(where_clause,
+    #    self.build_where_clause(clause, identifiers))
 
-    return where_clause
-
-
-  # Delete me
-  def create_logical(self, conditions, identifiers):
-    """Create a big numpy logical out of an arbitrarily nested list
-       of conditions.
-    """
-    logical = None
-    for condition in conditions:
-        if isinstance(condition, tuple):
-            logical = self.append_clause(logical, condition, identifiers)
-        else:
-            # append something here
-            logical = self.create_logical(conditions[1:], identifiers)
-    return logical
-
-  # Delete me
-  def append_clause(self, clauses, condition, identifiers):
-    """Append a clause tuple to an existing set of clauses.
-
-       This is for building where-type clauses in this table scheme.
-    """
-    attr, relation, value, logical = condition
-    if attr not in self.attributes():
-      print "Attribute mismatch. Could not find attribute in table."
-      return clauses
-
-    logic_operator = self.logicals[logical]
-    relation_operator = self.relations[relation]
-    if clauses is not None:
-      return logic_operator(clauses,
-        relation_operator(self._data[attr][identifiers], value))
-    else:
-      return relation_operator(self._data[attr][identifiers], value)
+    #return where_clause
 
 
 if __name__ == '__main__':

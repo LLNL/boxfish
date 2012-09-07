@@ -63,7 +63,8 @@ class TableProjection(Projection):
       else:
           clauses = list()
           for key in subdomain:
-              clauses.append((self._destination_key, "=", key, "or"))
+              clauses.append(Clause("=", TableAttribute(self._destination_key),
+                  key))
           conditions = Clause("or", *clauses)
           identfiers = self._table.subset_by_attributes(\
               self._table.identifiers(), conditions)

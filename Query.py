@@ -34,9 +34,22 @@ class Clause(object):
         self.relation = relation
         self.clauses = clauses
 
-    def addStatements(*clauses):
+    def addStatements(self, *clauses):
         self.clauses.extend(clauses)
 
+    def __str__(self):
+        my_str = ""
+        if len(self.clauses) >= 2:
+            my_str = "( " + str(self.clauses[0]) + " " + self.relation + " "\
+                + str(self.clauses[1]) + " "
+            prev_clause = self.clauses[1]
+            for clause in self.clauses[2:]:
+                my_str = my_str + "and " + str(prev_clause) + " " \
+                    + self.relation + " " + str(clause) + " "
+                prev_clause = clause
+            my_str = my_str + ")"
+       
+        return my_str
 
 class TableAttribute(object):
     """Represents a table attribute for the purpose of querying."""
@@ -45,3 +58,6 @@ class TableAttribute(object):
         super(TableAttribute, self).__init__()
 
         self.name = name
+
+    def __str__(self):
+        return str(self.name)
