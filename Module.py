@@ -653,12 +653,14 @@ class ModuleView(QMainWindow):
             dock.setWidget(new_mod)
             self.addDockWidget(Qt.BottomDockWidgetArea, dock)
         # Dropped Attribute Data
-        elif isinstance(event.mimeData(), DataIndexMime):
+        elif isinstance(event.mimeData(), DataIndexMime) \
+            and not self.dragOverlay:
             indexList = event.mimeData().getDataIndices()
             event.accept()
             self.killRogueOverlays()
             self.droppedData(indexList)
         else:
+            self.killRogueOverlays()
             super(ModuleView, self).dropEvent(event)
 
 
@@ -780,8 +782,8 @@ class BFDragToolBar(QToolBar):
 class DropPanel(QWidget):
     """This creates a panel that can be datatree index drag/drop operations.
 
-       handler - the datatree index list (and only the datatree index list) will
-                 be passed to this function if not None.
+       handler - the datatree index list (and only the datatree index list)
+                 will be passed to this function if not None.
     """
 
     def __init__(self, tag, text, parent, handler, icon = None):
@@ -824,6 +826,7 @@ class DropPanel(QWidget):
 
 
 class OverlayDialog(QDialog):
+    """Transparent dialog for overlays."""
 
     def __init__(self, parent, widget):
         super(OverlayDialog, self).__init__(parent, Qt.SplashScreen)
@@ -860,6 +863,9 @@ class OverlayDialog(QDialog):
 
 
 class OverlayFrame(QFrame):
+    """Creates a rounded rectangular translucent frame and 
+       accepts drops.
+    """
 
     def __init__(self, parent):
         super(OverlayFrame, self).__init__(parent)
