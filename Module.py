@@ -735,6 +735,49 @@ class ModuleNameMime(QMimeData):
         return self.name
 
 
+class TabDialog(QDialog):
+    """This dialog contains tabs with options for everything related
+       to the module. Inheriting modules can add their own tabs
+       to this dialog.
+
+       Example: a module might create a tab that determines what
+       the default aggregation method is for dropped data
+    """
+
+    def __init__(self, parent, title = ""):
+        super(TabDialog, self).__init__(parent)
+
+        self.setWindowTitle(title)
+        self.tabs = QTabWidget(self)
+
+    def addTab(self, widget, label, index = 0):
+
+        viewArea = QScrollArea()
+        viewArea.setWidget(widget)
+        viewArea.setWidgetResizable(True)
+        self.tabs.insertTab(index, viewArea, label)
+
+
+class SceneTab(QWidget):
+    """This widget is for changing the Scene policies of
+       the module.
+    """
+
+    def __init__(self, parent):
+        super(SceneTab, self).__init__(parent)
+
+        layout = QGridLayout()
+        layout.setAlignment(Qt.AlignCenter)
+        layout.addWidget(QLabel("Not yet implemented."))
+        view.setLayout(layout)
+
+        # Widget determines if we accept other people's highlights
+        # based on some information from the module
+        # (to what granularity?)
+
+        # Also widget determines the colormap (?)
+        
+
 class BFAttachLabel(QLabel):
     """This creates a label that can be used for BFDockWidget
        Drag & Drop operations.
