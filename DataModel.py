@@ -6,6 +6,7 @@ from Table import *
 from SubDomain import *
 from Projection import *
 import YamlLoader as yl
+import functools
 
 class AbstractTreeItem(object):
     """Base class for items that are in our data datatree.
@@ -71,6 +72,7 @@ class RunItem(AbstractTreeItem):
         self._metadata = metadata
         self.subdomains = None
         self._table_subdomains = None
+        self._projection_subdomains = None
 
     def typeInfo(self):
         return "RUN"
@@ -92,7 +94,7 @@ class RunItem(AbstractTreeItem):
         if self._metadata is not None \
             and key in self._metadata:
             if isinstance(self._metadata[key], dict):
-                # Caution: not deep copy, bad modules could do bad things!
+                # Caution: not deep copy, bad modules could do bad things 
                 return self._metadata[key].copy()
             else:
                 return self._metadata[key]
@@ -115,19 +117,41 @@ class RunItem(AbstractTreeItem):
             else:
                 projections = child
 
+        # Table subdomains
         self._table_subdomains = list()
         for table in tables._children:
-            self._table_subdomains.append(table._table._domainType)
+            if table._table.subdomain() not in self._table_subdomains:
+                self._table_subdomains.append(table._table.subdomain())
 
+        # Projection subdomains
         self.subdomains = list()
         for projection in projections._children:
-            self.subdomains.append(projection._projection.source)
-            self.subdomains.append(projection._projection.destination)
+            if projection._projection.source not in self.subdomains:
+                self.subdomains.append(projection._projection.source)
+            if projection._projection.destination not in self.subdomains:
+                self.subdomains.append(projection._projection.destination)
 
+        self._projection_subdomains = self.subdomains[:]
+
+        # All subdomains
         for subdomain in self._table_subdomains:
             if subdomain not in self.subdomains:
                 self.subdomains.append(subdomain)
 
+        # Subdomain adjaceny matrix
+        self.subdomain_matrix = list()
+        for i in range(len(self._projection_subdomains)):
+            self.subdomain_matrix.append([None] 
+                * len(self._projection_subdomains))
+               
+        for projection in projections._children:
+            i = self._projection_subdomains.index(
+                projection._projection.source)
+            j = self._projection_subdomains.index(
+                projection._projection.destination)
+            self.subdomain_matrix[i][j] = projection
+            self.subdomain_matrix[j][i] = projection
+            
 
     def getTable(self, table_name):
         """Look up a table by name."""
@@ -141,7 +165,69 @@ class RunItem(AbstractTreeItem):
 
         return None
 
+    # This can find a projection within a Run. We still need
+    # something that can do projections between Runs, where we
+    # will assume identity projections on domains of interest
+    # if we can
+    #
+    # Note to self: We should probably only do cross-run projections
+    # where the second run needs no projections otherwise otherwise
+    # things could get kind of weird or at least we should try to 
+    # minimize the number of projections in the second run. 
+    def getProjection(self, subdomain1, subdomain2):
+        """Look up projection by subdomains. Returns
+           None if there is no such projection.
+        """
+        if subdomain1.subdomain() == subdomain2.subdomain():
+            return IdentityProjection(subdomain1, subdomain2)
 
+        s1_index = self._projection_subdomains.index(subdomain1.subdomain())
+        s2_index = self._projection_subdomains.index(subdomain2.subdomain())
+        if self.subdomain_matrix[s1_index][s2_index] is not None:
+            # We can do this in a single projection
+            return self.subdomain_matrix[s1_index][s2_index]
+
+        # We're going to have to create a composition
+        # Let's Dijkstra!
+        distance = [inf] * len(self._projection_subdomains)
+        previous = [None] * len(self._projection_subdomains)
+        distance[s1_index] = 0
+        subdomain_set = self._projection_subdomains[:]
+        while len(subdomain_set) > 0:
+            closest = subdomain_set[0]
+            for subdomain in subdomain_set:
+                if distance[self._projection_subdomains.index(subdomain)] < \
+                    distance[self._projection_subdomains.index(closest)]:
+                    closest = subdomain
+            
+            index = self._projection_subdomains.index(closest)
+            if distance[index] == inf:
+                return None
+
+            for j in len(self._projection_subdomains):
+                if self.subdomain_matrix[index][j] is not None:
+                    other_distance = distance[index] + 1
+                    if other_distance < distance[j]:
+                        distance[j] = other_distance
+                        previous[j] = index
+
+        # No path found
+        if distance[s2_index] == inf:
+            return None
+
+        # Create composition filter:
+        index = s2_index
+        projection_list = list()
+        while previous[index] is not None:
+            projection_list.insert(0, (
+                self.subdomain_matrix[previous[index][index]],
+                self._projection_subdomains[previous[index]],
+                self._projection_subdomains[index]))
+            index = previous[index]
+
+        return CompositionProjection(subdomain1, subdomain2, projection_list = 
+            projection_list)
+            
 class SubRunItem(AbstractTreeItem):
     """Item that falls below a Run in the hierarchy."""
 
@@ -459,13 +545,14 @@ class DataTree(QAbstractItemModel):
         for filedict in filelist:
             if filedict['filetype'].upper() == "TABLE":
                 type_string = filedict['domain'] + "_" + filedict['type']
-                data_type = SubDomain().findSubdomain(type_string)
+                data_type = SubDomain().instantiate(type_string)
                 if data_type is None:
                     print "No matching type found for", filedict['type'], \
                         "! Skipping table..."
                     continue
 
-                filepath = os.path.join(os.path.dirname(filename), filedict['filename'])
+                filepath = os.path.join(os.path.dirname(filename), 
+                    filedict['filename'])
                 metadata, data = yl.load_table(filepath)
                 combined_meta = dict(metadata.items() + filedict.items())
                 atable = Table()
@@ -479,7 +566,7 @@ class DataTree(QAbstractItemModel):
                 for subdomaindict in domainlist:
                     type_string = subdomaindict['domain'] + "_" \
                         + subdomaindict['type']
-                    data_type = SubDomain().findSubdomain(type_string)
+                    data_type = SubDomain().instantiate(type_string)
                     if data_type is None:
                         print "No matching type found for", \
                             subdomaindict['type'], "! Skipping projection..."
@@ -543,6 +630,79 @@ class DataTree(QAbstractItemModel):
         else:
             pass
 
+
+    # Query evaluation
+    def evaluate(self, conditions, table, identifiers):
+        def unique_identifiers(l1, l2):
+            l2 = set(l2)
+            return [x for x in l1 if x in l2]
+
+        if isinstance(conditions.clauses[0], TableAttribute):
+        # We need to process every pair completely separately and then
+        # and them together.
+            identifiers_lists = list()
+            prev_clause = conditions.clauses[0]
+            for clause in conditions.clauses[1:]:
+                identifiers_lists.append(evaluate_pair(conditions, table,
+                    identifiers, prev_clause, clause))
+                prev_clause = clause
+            return functools.reduce(unique_identifiers, identifiers_lists) 
+        elif isinstance(conditions.clauses[0], Clause):
+        # This means everything in the list is a clause so they 
+        # evaluate in this realm to lists of identifiers which 
+        # we will AND together with unique_ids
+            return functools.reduce(unique_identifiers, 
+                (c.evaluate(table, identifiers) for c in conditions.clauses))
+        else:
+            raise ValueError("Malformed query: " + str(conditions))
+
+    def evaluate_pair(self, conditions, table, identifiers, c1, c2):
+        if isinstance(c1, TableAttribute):
+            if isinstance(c2, TableAttribute): # Comparing attributes
+                if (c1.table is None and table.hasAttribute(c1.name)) \
+                    or c1.table == table:
+                    if (c2.table is None and table.hasAttribute(c2.name)) \
+                        or c2.table == table:
+                        return table._table.subset_by_conditions(identifiers,
+                            Clause(conditions.relation, c1, c2))
+                    else:
+                        # c2 requires projection
+                        pass
+                else: # c1 requires projection
+                    if (c2.table is None and table.hasAttribute(c2.name)) \
+                        or c2.table == table:
+                        pass
+                    else:
+                        pass
+
+            else: # Not comparing attributes, comparing literal
+                if (c1.table is None and table.hasAttribute(c1.name)) \
+                    or c1.table == table:
+                    return table._table.subset_by_conditions(identifiers,
+                        Clause(relation, c1, c2))
+                elif c1.table is not None and c1.table != table \
+                    and c1.table._table.subdomain() == table.subdomain():
+                        # Same subdomain, no projection needed
+
+                        # Get Ids from c1's table. This finds the unique
+                        # ones:
+                        keys = c1.table._table.attributes_by_conditions(
+                            c1.table._table.identifiers(), # identifiers
+                            [c1.table["field"]], # subdomain id
+                            Clause(conditions.relation, c1.name, c2)) #condition
+
+                        # Implicit identity projection since subdomain
+                        # is the same, so get identifiers by key from
+                        # table we care about
+                        return table._table.subset_by_key(
+                            table._table.identifiers(),
+                            Subdomain().instantiate(table._table.subdomain(),
+                            keys))
+                else:
+                    # Find the projection
+                    pass 
+        else:
+            raise ValueError("Malformed query: " + str(conditions))
 
 
 class DataIndexMime(QMimeData):

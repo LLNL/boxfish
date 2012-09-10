@@ -36,29 +36,10 @@ class SubDomain(list):
 
         return ret
 
-    # For getting types from strings like during input file reading.
-    def findSubdomain(self, type_string, sub = list()):
-        type_string = type_string.lower()
-        ret = None
-
-        if len(sub) == 0:
-            sub = SubDomain.__subclasses__()
-
-        for s in sub:
-            if len(s.__subclasses__()) == 0:
-                if type_string == s().subdomain().lower():
-                    return s()
-            else:
-                found = self.findSubdomain(type_string, s.__subclasses__())
-                if found is not None:
-                    ret = found
-
-        return ret
-
     def instantiate(self,subdomain,data=list()):
 
         if len(self.__class__.__subclasses__()) == 0:
-            if self.subdomain() == subdomain:
+            if self.subdomain().upper() == subdomain.upper():
                 return self.__class__(data)
             else:
                 return None

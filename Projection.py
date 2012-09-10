@@ -64,6 +64,42 @@ class IdentityProjection(Projection):
     return result
 
 
+@InputFileKey("composition")
+class CompositionProjection(Projection):
+    """Applies the projections in the list of tuples to get from
+       source to destination.
+
+       projection_list: List of (Projection, source, destination) where
+                        the first entry's source is CompositionProjection's
+                        source and the last entry's destination is
+                        CompositionProjection's destination and in between
+                        each source is the destination of the preceeding tuple.
+    """
+
+    def __init__(self,source="underfined", destination="undefined", **kwargs):
+        super(CompositionProjection, self).__init__(source,destination,**kwargs)
+
+        if kwargs:
+            if 'projection_list' not in kwargs:
+                raise ValueError("CompositionProjection constructor requires "
+                    + "projection_list.")
+            self._projection_list = kwargs["projection_list"]
+
+
+    def project(self, subdomain, destination):
+
+        sub = subdomain
+        if destination.subdomain() == self.destination:
+            for proj, src, dest in self._projection_list:
+                sub = proj.project(sub, src, dest)
+        else:
+            reverse_list = self._project_list[:]
+            reverse_list.reverse()
+            for proj, src, dest in reverse_list:
+                sub = proj.project(sub, dest, src)
+
+        return sub
+
 @InputFileKey("file")
 class TableProjection(Projection):
   """Mapping defined by Table.
@@ -84,9 +120,9 @@ class TableProjection(Projection):
 
   def project(self, subdomain, destination):
 
-      if destination == self.destination:
+      if destination.subdomain() == tself.destination:
           identifiers = self._table.subset_by_key(subdomain)
-          keys = self._table.attribute_by_identfiers(identifiers,\
+          keys = self._table.attribute_by_identfiers(identifiers,
               [self._destination_key])
       else:
           clauses = list()
@@ -94,9 +130,9 @@ class TableProjection(Projection):
               clauses.append(Clause("=", TableAttribute(self._destination_key),
                   key))
           conditions = Clause("or", *clauses)
-          identfiers = self._table.subset_by_attributes(\
+          identfiers = self._table.subset_by_conditions(
               self._table.identifiers(), conditions)
-          keys = self._table.attribute_by_identifiers(identifiers,\
+          keys = self._table.attribute_by_identifiers(identifiers,
               [self._source_key])
 
 
@@ -167,7 +203,7 @@ class NodeLinkProjection(Projection):
         source_table = self.source_table._table
         destination_table = self.destination_table._table
 
-        if destination == self.destination: # Nodes -> Links
+        if destination.subdomain() == tself.destination: # Nodes -> Links
             # Find coords from given node IDs. Find matching
             # link coords. Return link IDs
             identifiers = source_table.subset_by_key(

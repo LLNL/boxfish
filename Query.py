@@ -51,13 +51,16 @@ class Clause(object):
        
         return my_str
 
+
+
 class TableAttribute(object):
     """Represents a table attribute for the purpose of querying."""
 
-    def __init__(self, name):
+    def __init__(self, name, table = None):
         super(TableAttribute, self).__init__()
 
         self.name = name
+        self.table = table # optionally force particular table
 
     def __str__(self):
         return str(self.name)

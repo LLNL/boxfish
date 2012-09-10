@@ -137,21 +137,21 @@ class Table(object):
   def domain(self):
 
     try:
-      return self._domainType().domain()
+      return self._domainType.domain()
     except:
       raise ValueError("Using an uninitialized table.")
 
   def subdomain(self):
 
     try:
-      return self._domainType().subdomain()
+      return self._domainType.subdomain()
     except:
       raise ValueError("Using an uninitialized table.")
 
   def typename(self):
 
     try:
-      return self._domainType().typename()
+      return self._domainType.typename()
     except:
       raise ValueError("Using an uninitialized table.")
 
@@ -257,7 +257,8 @@ class Table(object):
   def attributes_by_conditions(self, identifiers, desired_attrs, conditions,
     unique = True):
     """Get all rows of the desired attributes where the conditions
-       are met. Conditions follow the same style as subset_by_attributes.
+       are met. Conditions is an object of class Clause where each
+       subclause should apply directly to this table.
     """
     indices = np.where(self.build_where_clause(conditions, identifiers))
     new_identifiers = [identifiers[x] for x in indices[0]]
@@ -284,7 +285,7 @@ class Table(object):
        identifiers = initial set of identifiers
        subdomain = subdomain containing list of keys we are subsetting by
 
-       This could be done with subset_by_attributes but we special-case
+       This could be done with subset_by_conditions but we special-case
        this for convenience since we will be using this a lot when we've
        mapped outside data onto the primary key and are performing some
        operation on it in a filter.
@@ -299,13 +300,13 @@ class Table(object):
     return [identifiers[x] for x in indices]
 
 
-  def subset_by_attributes(self, identifiers, conditions):
+  def subset_by_conditions(self, identifiers, conditions):
     """Determine the subset of valid identifiers based on some conditions
        within this table and an initial set of identifiers.
 
        identifiers = initial set of identifiers of rows.
-       conditions = list of (attribute, relation, value, logical) tuples
-                    where attributes are in this table
+       conditions = an object of class Clause that should contain only
+       Clauses that can be evaluated on this table.
     """
     indices = np.where(self.build_where_clause(conditions, identifiers))
     return [identifiers[x] for x in indices[0]]
@@ -331,13 +332,6 @@ class Table(object):
 
     return functools.reduce(operator, (self.build_where_clause(c, identifiers)
         for c in condition.clauses))
-    
-    #where_clause = self.build_where_clause(condition.clauses[0], identifiers)
-    #for clause in condition.clauses[1:]:
-    #  where_clause = operator(where_clause,
-    #    self.build_where_clause(clause, identifiers))
-
-    #return where_clause
 
 
 if __name__ == '__main__':
