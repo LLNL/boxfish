@@ -2,7 +2,6 @@
 key: BGPCOUNTER_ORIGINAL
 date: 2011-06-06
 author: pave
-synch_attributes: [code_region]
 hardware: {
  type: bgp,
  network: torus,

@@ -52,6 +52,20 @@ class Clause(object):
         return my_str
 
 
+    def getAttributes(self):
+        """Returns the set of all TableAttributes found in the
+           query.
+        """
+        my_attributes = set()
+        for c in self.clauses:
+            if isinstance(c, TableAttribute):
+                my_attributes.add(c)
+            elif isinstance(c, Clause):
+                my_attributes = my_attributes.union(c.getAttributes)
+
+        return my_attributes
+
+
 
 class TableAttribute(object):
     """Represents a table attribute for the purpose of querying."""

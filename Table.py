@@ -314,7 +314,10 @@ class Table(object):
 
   def subset_by_outside_values(self, identifiers, attributes,
     relation, outside_list, aggregator = 'sum', table_first = True):
-    # TODO: Add synch_attributes here and turn the default values into kwargs
+    # TODO: turn the default values into kwargs and extend so that
+    # there may be conditions or extra columns or something... or 
+    # never use this query since it was created for a now defunct
+    # scheme of doing queries
     """Determine the subset of valid identifiers based on a relation
        with given outside values.
 
@@ -385,9 +388,23 @@ class Table(object):
     if len(condition.clauses) < 1:
       raise ValueError("No clauses in given condition.")
 
-    return functools.reduce(operator, (self.build_where_clause(c, identifiers)
-        for c in condition.clauses))
+    where_clause = None
+    for c in condition.clauses:
+        # Make sure this isn't a clause we must omit because
+        # we do not have that attribute
+        if not ((isinstance(c.clauses[1], TableAttribute) \
+            and c.clauses[1].name not in self.attributes()) \
+            or (isinstance(c.clauses[2], TableAttribute) \
+            and c.clauses[2].name not in self.attributes())):
 
+            if where_clause is None:
+                where_clause = self.build_where_clause(c, identifiers)
+            else:
+                where_clause = operator(where_clause,
+                    self.build_where_clause(c, identifiers)
+
+    return where_clause
+        
 
 if __name__ == '__main__':
   from YamlLoader import *
