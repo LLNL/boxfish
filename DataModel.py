@@ -686,7 +686,7 @@ class DataTree(QAbstractItemModel):
     # Also, need to do something about the code_region problem as the
     # way I'm doing the joins is not actually the way most people would
     # think of it but so far we have no way to specify how most people
-    # would think of it
+    # would think of it -- see synch_attributes as a potential stopgap
     def evaluate(self, conditions, table, identifiers):
         """Evaluates the conditions on a particular table and set
            of starting identifiers. Returns a list of valid identifiers
@@ -735,23 +735,47 @@ class DataTree(QAbstractItemModel):
            c2 - right side of the conditional
         """
         if isinstance(c1, TableAttribute) and isinstance(c2, TableAttribute): 
-            # Comparing attributes
-            if (c1.table is None and table.hasAttribute(c1.name)) \
-                or c1.table == table:
+            # Comparing attributes ...note, this does not yet fully 
+            # support adding values together across attributes, further
+            # thought is needed here
+            if ((c1.table is None and table.hasAttribute(c1.name)) \
+                or c1.table == table) and ((c2.table is None \
+                and table.hasAttribute(c2.name)) or c2.table == table:)
+                return table._table.subset_by_conditions(identifiers,
+                    Clause(conditions.relation, c1, c2))
+            elif ((c1.table is None and table.hasAttribute(c1.name)) \
+                or c1.table == table) or ((c2.table is None \
+                and table.hasAttribute(c2.name)) or c2.table == table:)
+                # One of the two require projection
+                table_first = True
                 if (c2.table is None and table.hasAttribute(c2.name)) \
                     or c2.table == table:
-                    return table._table.subset_by_conditions(identifiers,
-                        Clause(conditions.relation, c1, c2))
-                else:
-                    # c2 requires projection
-                    pass
-            else: # c1 requires projection
-                if (c2.table is None and table.hasAttribute(c2.name)) \
-                    or c2.table == table: # but not c2
-                    pass
-                else: # both require projection
-                    pass
+                    table_first = False
+                    tmp = c1
+                    c1 = c2
+                    c2 = tmp
 
+                if c2.table is not None:
+                    t2 = c2.table
+                else:
+                    t2 = table.getRun().findAttribute(c2.name)
+
+                # Now get (t2.Id, value) pairs for t2
+
+
+                # Then project into (t1.id, value) pairs
+
+                # Then utilize subset_by_outside_values on table
+
+
+            else: # both require projection
+                pass
+                # Find both tables
+
+                # Project one into the other and use subset_by_outside_values
+                # followed by get key by identifiers
+
+                # use key to project into original table and get identifiers
 
         elif isinstance(c1, TableAttribute) or isinstance(c2, TableAttribute): 
             # Not comparing attributes, comparing attribute to literal
@@ -771,7 +795,7 @@ class DataTree(QAbstractItemModel):
                     return table._table.subset_by_conditions(identifiers,
                         Clause(relation, c2, c1))
             else: # Need a projection
-                if c1.table is not None and c1.table != table: 
+                if c1.table is not None: 
                     # We know the table
                     t2 = c1.table
                 else:

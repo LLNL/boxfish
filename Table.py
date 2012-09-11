@@ -314,6 +314,7 @@ class Table(object):
 
   def subset_by_outside_values(self, identifiers, attributes,
     relation, outside_list, aggregator = 'sum', table_first = True):
+    # TODO: Add synch_attributes here and turn the default values into kwargs
     """Determine the subset of valid identifiers based on a relation
        with given outside values.
 
