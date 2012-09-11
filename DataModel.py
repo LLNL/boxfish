@@ -734,7 +734,7 @@ class DataTree(QAbstractItemModel):
             identifiers_lists.append(table._table.subset_by_key(
                 table._table.identifiers(),
                 Subdomain().instantiate(table._table.subdomain(),
-                    projected_keys))
+                    projected_keys)))
 
         # Question: Does not applying the original tables identifiers
         # to everything else via projection cause a problem?

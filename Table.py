@@ -392,16 +392,24 @@ class Table(object):
     for c in condition.clauses:
         # Make sure this isn't a clause we must omit because
         # we do not have that attribute
-        if not ((isinstance(c.clauses[1], TableAttribute) \
-            and c.clauses[1].name not in self.attributes()) \
-            or (isinstance(c.clauses[2], TableAttribute) \
-            and c.clauses[2].name not in self.attributes())):
+        if isinstance(c, Clause) \
+            and not ((isinstance(c.clauses[0], TableAttribute) \
+            and c.clauses[0].name not in self.attributes()) \
+            or (isinstance(c.clauses[1], TableAttribute) \
+            and c.clauses[1].name not in self.attributes())):
 
             if where_clause is None:
                 where_clause = self.build_where_clause(c, identifiers)
             else:
                 where_clause = operator(where_clause,
-                    self.build_where_clause(c, identifiers)
+                    self.build_where_clause(c, identifiers))
+        else:
+            if where_clause is None:
+                where_clause = self.build_where_clause(c, identifiers)
+            else:
+                where_clause = operator(where_clause,
+                    self.build_where_clause(c, identifiers))
+            
 
     return where_clause
         
