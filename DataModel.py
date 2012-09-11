@@ -734,10 +734,15 @@ class DataTree(QAbstractItemModel):
            c1 - left side of the conditional
            c2 - right side of the conditional
         """
-        if isinstance(c1, TableAttribute) and isinstance(c2, TableAttribute): 
+        if isinstance(c1, TableAttribute) and isinstance(c2, TableAttribute):
+            raise NotImplementedError("We do not yet support queries of "
+                + "this type."
             # Comparing attributes ...note, this does not yet fully 
             # support adding values together across attributes, further
-            # thought is needed here
+            # thought is needed here ...note we're going to need to 
+            # find compound queries of this type too, it's probably more
+            # defined by what the relation is (And/Or versus =/</<=) than
+            # whether something is a table attribute or not.
             if ((c1.table is None and table.hasAttribute(c1.name)) \
                 or c1.table == table) and ((c2.table is None \
                 and table.hasAttribute(c2.name)) or c2.table == table:)
