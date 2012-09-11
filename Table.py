@@ -312,6 +312,60 @@ class Table(object):
     return [identifiers[x] for x in indices[0]]
 
 
+  def subset_by_outside_values(self, identifiers, attributes,
+    relation, outside_list, aggregator = 'sum', table_first = True):
+    """Determine the subset of valid identifiers based on a relation
+       with given outside values.
+
+       identifiers = iniital set of identifiers on rows
+       attributes = list of attributes of this table for comparison
+       relation = comparison relation with outside values
+       outside = list of (id, value) tuples where id maps to this table's id
+       aggregator = aggregator for the attributes if need be
+       table_first = this table is first: attribute relation outside_list
+                     rather than outside_list relation attribute
+    """
+
+    if len(attributes) == 1: # We can build a simple set of queries out of this
+        conditions = list()
+        for table_id, value in outside_list:
+            c1 = Clause('=', TableAttribute(self._key), table_id)
+            if table_first:
+                c2 = Clause(relation, TableAttribute(attributes[0]), value)
+            else:
+                c2 = Clause(relation, value, TableAttribute(attributes[0]))
+            conditions.append(Clause('and', c1, c2))
+        indices = np.where(self.build_where_clause(Clause('or', *conditions)))
+        return [identifiers[x] for x in indices[0]]
+    else:
+        aggregation_operator = self.operator[aggregator]
+        if relation in self.relations:
+            relation_operator = self.relations[relation]
+        elif relation in self.logicals:
+            relation_operator = self.logicals[relation]
+        else:
+            raise ValueError("Unrecognized relation %s in clause" % relation)
+
+        indices = set()
+        for i, row in enumerate(self._data[identifiers]):
+            attribute_list = list()
+            for attribute in attributes:
+                attribute_list.append(row[attribute])
+            attribute_value = aggregation_operator(np.array(attribute_list))
+            for table_id, value in outside_list:
+                if table_id == row[self._key] \
+                    and ((table_first 
+                    and relation_operator(attribute_value, value))
+                    or (not table_first 
+                    and relation_operator(value, attribute_value))):
+                    indices.add(i)
+
+        indices = list(indices)
+        return [identifiers[x] for x in indices]
+
+
+
+
   def build_where_clause(self, condition, identifiers):
 
     if not isinstance(condition, Clause):

@@ -165,6 +165,45 @@ class RunItem(AbstractTreeItem):
 
         return None
 
+    def findAttribute(self, attribute, table):
+        """Find a table with the given attribute. Preference is given
+           to tables with the same subdomain as the given table, 
+           then to tables that are one projection away, then to all 
+           remaining tables.
+        """
+
+        for child in self._children:
+            if child.name == "tables":
+                tables = child
+
+        # Subdomain is same
+        for t in tables._children:
+            if t._table.subdomain() == table._table.subdomain() \
+                and t.hasAttribute(attribute):
+                return t
+        
+        # Make sure we can project the given table
+        if table._table.subdomain() in self._projection_subdomains:
+            index = self._projection_subdomains.index(table._table.subdomain())
+
+            # Subdomain is one hop
+            for t in tables._children:
+                if t._table.subdomain() in self._projection_subdomains:
+                    t_index = self._projection_subdomains.index(
+                        t._table.subdomain())
+                    if self.subdomain_matrix[index][t_index] is not None \
+                        and t.hasAttribute(attribute):
+                        return t
+
+
+        # Subdomain is more than one hop (may be infinite)
+        for t in tables._children:
+            if t.hasAttribute(attribute):
+                return t
+
+        return None
+
+
     # This can find a projection within a Run. We still need
     # something that can do projections between Runs, where we
     # will assume identity projections on domains of interest
@@ -181,8 +220,18 @@ class RunItem(AbstractTreeItem):
         if subdomain1.subdomain() == subdomain2.subdomain():
             return IdentityProjection(subdomain1, subdomain2)
 
-        s1_index = self._projection_subdomains.index(subdomain1.subdomain())
-        s2_index = self._projection_subdomains.index(subdomain2.subdomain())
+        # Make sure projections exist between these subdomaisn
+        if subdomain1.subdomain() in self._projection.subdomains:
+            s1_index = self._projection_subdomains.index(subdomain1.subdomain())
+        else:
+            return None
+        
+        if subdomain1.subdomain() in self._projection.subdomains:
+            s2_index = self._projection_subdomains.index(subdomain2.subdomain())
+        else:
+            return None
+
+
         if self.subdomain_matrix[s1_index][s2_index] is not None:
             # We can do this in a single projection
             return self.subdomain_matrix[s1_index][s2_index]
@@ -631,8 +680,22 @@ class DataTree(QAbstractItemModel):
             pass
 
 
-    # Query evaluation
+    # Query evaluation - maybe this should be put back into the
+    # QueryEngine class that was at some point jettisoned.
+    # 
+    # Also, need to do something about the code_region problem as the
+    # way I'm doing the joins is not actually the way most people would
+    # think of it but so far we have no way to specify how most people
+    # would think of it
     def evaluate(self, conditions, table, identifiers):
+        """Evaluates the conditions on a particular table and set
+           of starting identifiers. Returns a list of valid identifiers
+           on the table.
+
+           conditions - a Clause object
+           table - a tableItem in the DataTree
+           identifiers - list of identifiers from the table
+        """
         def unique_identifiers(l1, l2):
             l2 = set(l2)
             return [x for x in l1 if x in l2]
@@ -656,52 +719,100 @@ class DataTree(QAbstractItemModel):
         else:
             raise ValueError("Malformed query: " + str(conditions))
 
-    def evaluate_pair(self, conditions, table, identifiers, c1, c2):
-        if isinstance(c1, TableAttribute):
-            if isinstance(c2, TableAttribute): # Comparing attributes
-                if (c1.table is None and table.hasAttribute(c1.name)) \
-                    or c1.table == table:
-                    if (c2.table is None and table.hasAttribute(c2.name)) \
-                        or c2.table == table:
-                        return table._table.subset_by_conditions(identifiers,
-                            Clause(conditions.relation, c1, c2))
-                    else:
-                        # c2 requires projection
-                        pass
-                else: # c1 requires projection
-                    if (c2.table is None and table.hasAttribute(c2.name)) \
-                        or c2.table == table:
-                        pass
-                    else:
-                        pass
 
-            else: # Not comparing attributes, comparing literal
-                if (c1.table is None and table.hasAttribute(c1.name)) \
-                    or c1.table == table:
+    def evaluate_pair(self, conditions, table, identifiers, c1, c2):
+        """Evaluates a pair of items and a relation. Neither item 
+           should be of type Clause. This is a helper function
+           for evaluate that handles 'simple' clauses of the form
+           A relates B.
+
+           Returns a list of identifiers on the table
+
+           conditions - the Clause that the pair comes from
+           table - the tableItem on which to evaluate
+           identifiers - the identifiers for that tableItem
+           c1 - left side of the conditional
+           c2 - right side of the conditional
+        """
+        if isinstance(c1, TableAttribute) and isinstance(c2, TableAttribute): 
+            # Comparing attributes
+            if (c1.table is None and table.hasAttribute(c1.name)) \
+                or c1.table == table:
+                if (c2.table is None and table.hasAttribute(c2.name)) \
+                    or c2.table == table:
+                    return table._table.subset_by_conditions(identifiers,
+                        Clause(conditions.relation, c1, c2))
+                else:
+                    # c2 requires projection
+                    pass
+            else: # c1 requires projection
+                if (c2.table is None and table.hasAttribute(c2.name)) \
+                    or c2.table == table: # but not c2
+                    pass
+                else: # both require projection
+                    pass
+
+
+        elif isinstance(c1, TableAttribute) or isinstance(c2, TableAttribute): 
+            # Not comparing attributes, comparing attribute to literal
+            table_first = True
+            if isinstance(c2, TableAttribute):
+                table_first = False
+                tmp = c1
+                c1 = c2
+                c2 = tmp
+
+            if (c1.table is None and table.hasAttribute(c1.name)) \
+                or c1.table == table:
+                if table_first:
                     return table._table.subset_by_conditions(identifiers,
                         Clause(relation, c1, c2))
-                elif c1.table is not None and c1.table != table \
-                    and c1.table._table.subdomain() == table.subdomain():
-                        # Same subdomain, no projection needed
-
-                        # Get Ids from c1's table. This finds the unique
-                        # ones:
-                        keys = c1.table._table.attributes_by_conditions(
-                            c1.table._table.identifiers(), # identifiers
-                            [c1.table["field"]], # subdomain id
-                            Clause(conditions.relation, c1.name, c2)) #condition
-
-                        # Implicit identity projection since subdomain
-                        # is the same, so get identifiers by key from
-                        # table we care about
-                        return table._table.subset_by_key(
-                            table._table.identifiers(),
-                            Subdomain().instantiate(table._table.subdomain(),
-                            keys))
                 else:
-                    # Find the projection
-                    pass 
-        else:
+                    return table._table.subset_by_conditions(identifiers,
+                        Clause(relation, c2, c1))
+            else: # Need a projection
+                if c1.table is not None and c1.table != table: 
+                    # We know the table
+                    t2 = c1.table
+                else:
+                    # We must find the table
+                    t2 = table.getRun().findAttribute(c1.name) 
+                    if t2 is None:
+                        # TODO: Change this to some other error
+                        raise ValueError("Could not find projection.")
+                    
+                if table.getRun() == t2.getRun():
+                    projection = table.getRun().getProjection(
+                        table._table.subdomain(), 
+                        t2._table.subdomain())
+                else:
+                    raise NotImplementedError("Cross-run projection not "
+                        + "yet implemented.")
+          
+
+                # Get Ids from c1's table. This finds the unique ones:
+                if table_first:
+                    keys = t2._table.attributes_by_conditions(
+                        t2._table.identifiers(), # identifiers
+                        [t2["field"]], # subdomain id
+                        Clause(conditions.relation, c1, c2)) #condition
+                else:
+                    keys = t2._table.attributes_by_conditions(
+                        t2._table.identifiers(), # identifiers
+                        [t2["field"]], # subdomain id
+                        Clause(conditions.relation, c2, c1)) #condition
+
+                # Perform projection
+                projected_keys = projection.project(keys, 
+                    table._table.subdomain())
+
+                # Find table identifiers
+                return table._table.subset_by_key(
+                    table._table.identifiers(),
+                    Subdomain().instantiate(table._table.subdomain(),
+                    projected_keys))
+
+        else: # This function only works if first thing is TableAttribute
             raise ValueError("Malformed query: " + str(conditions))
 
 
