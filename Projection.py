@@ -1,4 +1,5 @@
 from SubDomain import *
+from Query import *
 
 def InputFileKey(input_file_key, enabled = True):
     """InputFileKey decorator :
@@ -38,6 +39,22 @@ class Projection(object):
             ((self.source == destination) and (self.destination == source)))
 
   
+  def project(self, subdomain, destination):
+    raise NotImplementedError("Cannot perform projection.")
+
+  def make_projection_dict(self, subdomain, destination):
+    """Makes a dict from each domain_id in the subdomain.
+       Override to make this less slow.
+    """
+
+    projection_dict = dict()
+    for domain_id in subdomain:
+      projection_dict[domain_id] = self.project(
+          SubDomain().instantiate(subdomain.subdomain(), [domain_id]),
+          destination)
+
+    return projection_dict
+
   def instantiate(self, key, source, destination, **kwargs):
 
       if self.__class__.input_file_key == key:
@@ -218,17 +235,19 @@ class NodeLinkProjection(Projection):
             conditions = list()
             if self.node_policy == 'Source' or self.node_policy == 'Both':
                 for coord_tuple in coord_tuples:
-                    conditions.append(self.source_coords, coord_tuple)
+                    conditions.append(self.build_coord_clause(
+                        self.source_coords, coord_tuple))
             if self.node_policy == 'Destination' or self.node_policy == 'Both':
                 for coord_tuple in coord_tuples:
-                    conditions.append(self.source_coords, coord_tuple)
+                    conditions.append(self.build_coord_clause(
+                        self.source_coords, coord_tuple))
 
             links = destination_table.attributes_by_conditions(
                 destination_table.identifiers(), # identifiers
                 [self.destination_table["field"]], # link id
                 Clause('or', *conditions)) # we are fine with unique here
 
-            return Subdomain().instantiate(destination, links)
+            return Subdomain().instantiate(destination, links[0])
         else: # Links -> Nodes
             # Find coords from given link IDs. Find matching
             # node coords. Return node IDs.
@@ -242,19 +261,21 @@ class NodeLinkProjection(Projection):
                     identifiers, self.source_coords, unique = False)
                 coord_tuples = set(zip(*valid_coords))
                 for coord_tuple in coord_tuples:
-                    conditions.append(self.coords, coord_tuple)
+                    conditions.append(self.build_coord_clause(
+                        self.coords, coord_tuple))
             if self.link_policy == 'Destination' or self.link_policy == 'Both':
                 valid_coords = destination_table.attributes_by_identifiers(
                     identifiers, self.destination_coords, unique = False)
                 coord_tuples = set(zip(*valid_coords))
                 for coord_tuple in coord_tuples:
-                    conditions.append(self.coords, coord_tuple)
+                    conditions.append(self.build_coord_clause(
+                        self.coords, coord_tuple))
 
             nodes = source_table.attributes_by_conditions(
                 source_table.identifiers(), # identifiers
                 [self.source_table["field"]], # node id
                 Clause('or', conditions)) # we are fine with unique here
-            return Subdomain().instantiate(destination, nodes)
+            return SubDomain().instantiate(destination, nodes[0])
 
 
     def build_coord_clause(self, coord_names, coord_values):

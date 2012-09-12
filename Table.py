@@ -297,7 +297,7 @@ class Table(object):
       subset_filter = subset_filter | \
         (self._data[self._key][identifiers] == index)
     indices = np.where(subset_filter)
-    return [identifiers[x] for x in indices]
+    return [identifiers[x] for x in indices[0]]
 
 
   def subset_by_conditions(self, identifiers, conditions):

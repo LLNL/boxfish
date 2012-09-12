@@ -406,6 +406,7 @@ class ModuleRequest(QObject):
             # Collect attributes onto proper domain IDs
             for row_values in zip(*attribute_values):
                 domain_ids = projection_memo[row_values[0]]
+                print domain_ids
                 for domain_id in domain_ids:
                     if domain_id in aggregate_values:
                         aggregate_values[domain_id].extend(row_values[1:])
@@ -416,8 +417,11 @@ class ModuleRequest(QObject):
         # and associate them with these attributes
         values = list()
         for domain_id in ids[0]:
-            values.append(self.operator[attribute_aggregator](
-                aggregate_values[int(domain_id)]))
+            if int(domain_id) not in aggregate_values:
+                values.append(0)
+            else:
+                values.append(self.operator[attribute_aggregator](
+                    aggregate_values[int(domain_id)]))
 
         return groups, [values]
 
