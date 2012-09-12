@@ -27,13 +27,18 @@ class Torus3dView3dAgent(ModuleAgent):
         self.addRequirement("nodes")
         self.coords = None
         self.coords_table = None
+        self.shape = [0, 0, 0]
 
-    def registerNodeAttributes(self, index):
-        # Eventually these first lines will be unnecessary as these
-        # indices will travel directly to requestAddIndices
-        node_attributes = list()
-        node_attributes.append(index)
-        self.requestAddIndices("nodes", node_attributes)
+    def registerNodeAttributes(self, indices):
+        # Determine Torus info from first index
+        index = indices[0]
+        run = self.datatree.getItem(index).getRun()
+        hardware = run["hardware"]
+        self.coords = hardware["coords"]
+        self.coords_table = run.getTable(hardware["coords_table"])
+        self.shape = [hardware["dim"][coord] for coord in self.coords]
+
+        self.requestAddIndices("nodes", indices)
         self.updateNodeValues()
 
     def requestUpdated(self, name):
@@ -81,36 +86,21 @@ class Torus3dView3d(ModuleView):
             range = 1.0
 
         cmap = cm.get_cmap("gist_earth_r")
+
+        self.view.setShape(self.agent.shape)
+
         for coord, val in zip(coords, vals):
             x, y, z = coord
             self.view.node_colors[x, y, z] = cmap((val - min_val) / range)
         self.view.updateGL()
 
-    def findRunAndGetHardware(self,item):
-        if "hardware" in item:
-            hardware = item["hardware"]
-
-            coords = hardware["coords"]
-            coords_table = hardware["coords_table"]
-            shape = [hardware["dim"][coord] for coord in coords]
-                
-            self.agent.coords = coords
-            self.agent.coords_table = coords_table
-            self.view.setShape(shape)
-
-
     def droppedData(self, index_list, tag):
         if tag == "nodes":
-            if len(index_list) != 1:
-                return
-
             index = index_list[0]
             item = self.agent.datatree.getItem(index)
 
-            self.findRunAndGetHardware(item)
-
             if item.typeInfo() == "ATTRIBUTE":
-                self.agent.registerNodeAttributes(index)
+                self.agent.registerNodeAttributes(index_list)
         elif tag == "links":
             print "Links!"
 
@@ -119,8 +109,10 @@ class GLTorus3dView(GLWidget):
     def __init__(self, parent):
         super(GLTorus3dView, self).__init__(parent)
 
-        self.default_color = [0.5, 0.5, 0.5, 1.0] # color for when we have no data
-        self.setShape([0, 0, 0])                  # Set shape and set up color matrix
+        self.parent = parent
+
+        self.default_color = [0.5, 0.5, 0.5, 0.5] # color for when we have no data
+        self.shape = [0, 0, 0]                  # Set shape and set up color matrix
         self.seam = [0, 0, 0]                     # Offsets representing seam of the torus
         self.box_size = 0.2                       # Size of one edge of each cube representing a node
         self.link_radius = self.box_size * .1     # Radius of link cylinders
@@ -136,10 +128,8 @@ class GLTorus3dView(GLWidget):
         return self.shape
 
     def setShape(self, shape):
-        self.shape = shape
-        self.node_colors = np.empty(self.shape + [4])
-        self.node_colors.fill(0.5)  # TODO: make this fill with self.default_color
-        self.updateGL()
+        self.shape = self.parent.agent.shape
+        self.node_colors = np.tile(self.default_color, self.shape + [1])
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)

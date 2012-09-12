@@ -217,24 +217,24 @@ class RunItem(AbstractTreeItem):
         """Look up projection by subdomains. Returns
            None if there is no such projection.
         """
-        if subdomain1.subdomain() == subdomain2.subdomain():
+        if subdomain1 == subdomain2:
             return IdentityProjection(subdomain1, subdomain2)
 
         # Make sure projections exist between these subdomaisn
-        if subdomain1.subdomain() in self._projection.subdomains:
-            s1_index = self._projection_subdomains.index(subdomain1.subdomain())
+        if subdomain1 in self._projection_subdomains:
+            s1_index = self._projection_subdomains.index(subdomain1)
         else:
             return None
         
-        if subdomain1.subdomain() in self._projection.subdomains:
-            s2_index = self._projection_subdomains.index(subdomain2.subdomain())
+        if subdomain1 in self._projection_subdomains:
+            s2_index = self._projection_subdomains.index(subdomain2)
         else:
             return None
 
 
         if self.subdomain_matrix[s1_index][s2_index] is not None:
             # We can do this in a single projection
-            return self.subdomain_matrix[s1_index][s2_index]
+            return self.subdomain_matrix[s1_index][s2_index]._projection
 
         # We're going to have to create a composition
         # Let's Dijkstra!
@@ -398,6 +398,74 @@ class TableItem(DataObjectItem):
             if child.name == attribute:
                 return True
         return False
+    
+    # Query evaluation - maybe this should be put back into the
+    # QueryEngine class that was at some point jettisoned.
+    # 
+    # Also, need to do something about the code_region problem as the
+    # way I'm doing the joins is not actually the way most people would
+    # think of it but so far we have no way to specify how most people
+    # would think of it -- see synch_attributes as a potential stopgap
+    def evaluate(self, conditions, identifiers):
+        """Evaluates the conditions on a particular table and set
+           of starting identifiers. Returns a list of valid identifiers
+           on the table.
+
+           conditions - a Clause object
+           table - a tableItem in the DataTree
+           identifiers - list of identifiers from the table
+        """
+
+        # Maybe we should just do this with sets, maintaing order
+        # probably does not grant us any advantages
+        def unique_identifiers(l1, l2):
+            l2 = set(l2)
+            return [x for x in l1 if x in l2]
+
+        # Find tables needed by this query
+        attribute_set = conditions.getAttributes()
+        auxiliary_tables = set()
+        for attribute in attribute_set:
+            if attribute.table is not None:
+                auxiliary_tables.add(attribute.table)
+            elif not self.hasAttribute(attribute.name):
+                aux_table = self.getRun().findAttribute(attribute.name, self)
+                if aux_table is not None:
+                    auxiliary_tables.add(aux_table)
+                # For now, if we don't find this attribute, we'll just
+                # ignore it since the table queries will. Later on 
+                # we might want to kick this up to cross-run queries
+                # or have some sort of error message.
+
+        identifiers_lists = list()
+        identifiers_lists.append(identifiers)
+        for aux_table in auxiliary_tables:
+            projection = self.getRun().getProjection(
+                self._table.subdomain(),
+                aux_table._table.subdomain())
+            keys = aux_table._table.attributes_by_conditions(
+                aux_table._table.identifiers(), # identifiers
+                [aux_table._table._key], # id for table for projection
+                conditions) # we want default unique=true since we want keys
+
+            projected_keys = projection.project(keys, self._table.subdomain())
+
+            identifiers_lists.append(self._table.subset_by_key(
+                self._table.identifiers(),
+                Subdomain().instantiate(self._table.subdomain(),
+                    projected_keys)))
+
+        # Question: Does not applying the original tables identifiers
+        # to everything else via projection cause a problem?
+
+        evaluated_identifiers = functools.reduce(unique_identifiers,
+            identifiers_lists)
+
+        # Now finally apply to target table
+        return self._table.subset_by_conditions(evaluated_identifiers,
+            conditions)
+
+
 
 
 # Projection Attribute may be different from table attribute,
@@ -668,83 +736,6 @@ class DataTree(QAbstractItemModel):
     # want drop actions on standard views anyway.
     def mimeData(self, indices):
         return DataIndexMime(indices)
-
-
-    def findTableBySubdomain(self, index):
-        """Given a subdomain attribute (from a projection), find
-           a list of indices from some other table.
-        """
-        if self.getItem(index).parent().typeInfo() == "PROJECTION":
-            my_type = self.getItem(index).name
-        else:
-            pass
-
-
-    # Query evaluation - maybe this should be put back into the
-    # QueryEngine class that was at some point jettisoned.
-    # 
-    # Also, need to do something about the code_region problem as the
-    # way I'm doing the joins is not actually the way most people would
-    # think of it but so far we have no way to specify how most people
-    # would think of it -- see synch_attributes as a potential stopgap
-    def evaluate(self, conditions, table, identifiers):
-        """Evaluates the conditions on a particular table and set
-           of starting identifiers. Returns a list of valid identifiers
-           on the table.
-
-           conditions - a Clause object
-           table - a tableItem in the DataTree
-           identifiers - list of identifiers from the table
-        """
-
-        # Maybe we should just do this with sets, maintaing order
-        # probably does not grant us any advantages
-        def unique_identifiers(l1, l2):
-            l2 = set(l2)
-            return [x for x in l1 if x in l2]
-
-        # Find tables needed by this query
-        attribute_set = conditions.getAttributes()
-        auxiliary_tables = set()
-        for attribute in attribute_set:
-            if attribute.table is not None:
-                auxiliary_tables.add(attribute.table)
-            elif not table.hasAttribute(attribute.name):
-                aux_table = table.getRun().findAttribute(attribute.name, table)
-                if aux_table is not None:
-                    auxiliary_tables.add(aux_table)
-                # For now, if we don't find this attribute, we'll just
-                # ignore it since the table queries will. Later on 
-                # we might want to kick this up to cross-run queries
-                # or have some sort of error message.
-
-        identifiers_lists = list()
-        identifiers_lists.append(identifiers)
-        for aux_table in auxiliary_tables:
-            projection = table.getRun().getProjection(
-                table._table.subdomain(),
-                aux_table._table.subdomain())
-            keys = aux_table._table.attributes_by_conditions(
-                aux_table._table.identifiers(), # identifiers
-                [aux_table._table._key], # id for table for projection
-                conditions) # we want default unique=true since we want keys
-
-            projected_keys = projection.project(keys, table._table.subdomain())
-
-            identifiers_lists.append(table._table.subset_by_key(
-                table._table.identifiers(),
-                Subdomain().instantiate(table._table.subdomain(),
-                    projected_keys)))
-
-        # Question: Does not applying the original tables identifiers
-        # to everything else via projection cause a problem?
-
-        evaluated_identifiers = functools.reduce(unique_identifiers,
-            identifiers_lists)
-
-        # Now finally apply to target table
-        return table._table.subset_by_conditions(evaluated_identifiers,
-            conditions)
 
 
 class DataIndexMime(QMimeData):

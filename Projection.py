@@ -120,7 +120,7 @@ class TableProjection(Projection):
 
   def project(self, subdomain, destination):
 
-      if destination.subdomain() == tself.destination:
+      if destination == self.destination:
           identifiers = self._table.subset_by_key(subdomain)
           keys = self._table.attribute_by_identfiers(identifiers,
               [self._destination_key])
@@ -203,7 +203,7 @@ class NodeLinkProjection(Projection):
         source_table = self.source_table._table
         destination_table = self.destination_table._table
 
-        if destination.subdomain() == tself.destination: # Nodes -> Links
+        if destination == self.destination: # Nodes -> Links
             # Find coords from given node IDs. Find matching
             # link coords. Return link IDs
             identifiers = source_table.subset_by_key(
