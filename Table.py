@@ -56,7 +56,7 @@ class Table(object):
 
     self._data = yl.load_yaml(filename)
 
-  def fromArray(self,domain_type,primary_key, data):
+  def fromArray(self,domain_type,primary_key, data, names):
     """Load a table from a given numpy array of records. The function will make
        a copy of the given data. The domain type provides the context for the
        attributes and the primary key the corresponding string key used in the
@@ -67,15 +67,17 @@ class Table(object):
                        of this table
          primary_key   the string key used in the file for the primary domain
          data          the numpy array of records
+         names         the column names
     """
 
-    if primary_key not in data.dtype.names:
+    if primary_key not in names:
       raise ValueError("This table does not contain the given key.")
 
     self._domainType = domain_type
     self._key = primary_key
 
-    self._data = np.array(data)
+    self._data = np.array([x for x in zip(*data)])
+    self._data.dtype.names = names
 
   def fromRecArray(self,domain_type,primary_key, data):
     """Load a table from a given numpy recarray. The function will make

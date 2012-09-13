@@ -55,6 +55,22 @@ class Projection(object):
 
     return projection_dict
 
+  def source_ids(self):
+      """Returns all of the ids associated with the source subdomain.
+         If unable to calculate these ids, return None.
+
+         This is for making tables out of the subdomain.
+      """
+      return None
+
+  def destination_ids(self):
+      """Returns all of the ids associated with the destination subdomain.
+         If unable to calculate these ids, return None.
+
+         This is for making tables out of the subdomain.
+      """
+      return None
+
   def instantiate(self, key, source, destination, **kwargs):
 
       if self.__class__.input_file_key == key:
@@ -117,6 +133,13 @@ class CompositionProjection(Projection):
 
         return sub
 
+    def source_ids(self):
+        return self._projection_list[0].source_ids()
+
+    def destination_ids(self):
+        return self._projection_list[-1].destination_ids()
+
+
 @InputFileKey("file")
 class TableProjection(Projection):
   """Mapping defined by Table.
@@ -164,23 +187,21 @@ class TableProjection(Projection):
 
   def project(self, subdomain, destination):
 
+      keys = list()
       if destination == self.destination:
-          identifiers = self._table.subset_by_key(subdomain)
-          keys = self._table.attribute_by_identfiers(identifiers,
-              [self._destination_key])
+          for domain_id in subdomain:
+              keys.extend(self._source_dict[domain_id])
       else:
-          clauses = list()
-          for key in subdomain:
-              clauses.append(Clause("=", TableAttribute(self._destination_key),
-                  key))
-          conditions = Clause("or", *clauses)
-          identfiers = self._table.subset_by_conditions(
-              self._table.identifiers(), conditions)
-          keys = self._table.attribute_by_identifiers(identifiers,
-              [self._source_key])
+          for domain_id in subdomain:
+              keys.extend(self._destination_dict[domain_id])
 
+      return SubDomain().instantiate(destination, list(set(keys)))
 
-      return Subdomain().instantiate(destination, keys)
+  def source_ids(self):
+      return [x for x in self._source_dict]
+
+  def destination_ids(self):
+      return [x for x in self._destination_dict]
 
 
 
@@ -326,15 +347,26 @@ class NodeLinkProjection(Projection):
 
 
     def project(self, subdomain, destination):
-
+        keys = list()
         if destination == self.destination: # Nodes -> Links
-            links = list()
             for node_id in subdomain:
-                links.extend(self.node_dict[node_id])
-            return SubDomain().instantiate(destination, list(set(links)))
+                keys.extend(self.node_dict[node_id])
         else:
-            nodes = list()
             for link_id in subdomain:
-                nodes.extend(self.link_dict[link_id])
-            return SubDomain().instantiate(destination, list(set(nodes)))
+                keys.extend(self.link_dict[link_id])
+            
+        return SubDomain().instantiate(destination, list(set(keys)))
 
+
+    def update_policies(self, node_policy, link_policy):
+
+        self.node_policy = node_policy
+        self.link_policy = link_policy
+
+        self.makedicts()
+
+    def source_ids(self):
+        return [x for x in self.node_dict]
+
+    def destination_ids(self):
+        return [x for x in self.link_dict]

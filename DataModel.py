@@ -151,6 +151,8 @@ class RunItem(AbstractTreeItem):
                 projection._projection.destination)
             self.subdomain_matrix[i][j] = projection
             self.subdomain_matrix[j][i] = projection
+
+
             
 
     def getTable(self, table_name):
@@ -401,11 +403,6 @@ class TableItem(DataObjectItem):
     
     # Query evaluation - maybe this should be put back into the
     # QueryEngine class that was at some point jettisoned.
-    # 
-    # Also, need to do something about the code_region problem as the
-    # way I'm doing the joins is not actually the way most people would
-    # think of it but so far we have no way to specify how most people
-    # would think of it -- see synch_attributes as a potential stopgap
     def evaluate(self, conditions, identifiers):
         """Evaluates the conditions on a particular table and set
            of starting identifiers. Returns a list of valid identifiers
@@ -467,21 +464,30 @@ class TableItem(DataObjectItem):
 
 
 
-
-# Projection Attribute may be different from table attribute,
-# we may want to separate those out.
 class AttributeItem(SubRunItem):
     """Item for containing individual attributes. Access to these
        will be done through parent items.
     """
 
-    # These are more intimately connected with their table/projection and
+    # These are more intimately connected with their table and
     # we will only think of them by name (and potentially type)
     def __init__(self, name, parent=None):
         super(AttributeItem, self).__init__(name, parent)
 
     def typeInfo(self):
         return "ATTRIBUTE"
+    
+
+class SubDomainItem(SubRunItem):
+    """Item for containing individual attributes. Access to these
+       will be done through parent items.
+    """
+
+    def __init__(self, name, parent=None):
+        super(SubDomainItem, self).__init__(name, parent)
+
+    def typeInfo(self):
+        return "SUBDOMAIN"
     
 
 
@@ -551,6 +557,9 @@ class DataTree(QAbstractItemModel):
 
         if item.typeInfo() == "PROJECTION":
             return Qt.ItemIsEnabled | Qt.ItemIsEditable
+        
+        if item.typeInfo() == "SUBDOMAIN":
+            return Qt.ItemIsEnabled 
 
         if item.typeInfo() == "GROUP":
             return Qt.ItemIsEnabled
@@ -600,11 +609,11 @@ class DataTree(QAbstractItemModel):
         self.endInsertRows()
 
         #Create attributes
-        self.beginInsertRows(self.createIndex(position, 0, projectionItem), \
-            0, 2)
-        attItem = AttributeItem(projection.source, projectionItem)
-        attItem = AttributeItem(projection.destination, projectionItem)
-        self.endInsertRows()
+        #self.beginInsertRows(self.createIndex(position, 0, projectionItem), \
+        #    0, 2)
+        #attItem = SubDomainItem(projection.source, projectionItem)
+        #attItem = SubDomainItem(projection.destination, projectionItem)
+        #self.endInsertRows()
 
         return True
 
@@ -721,7 +730,62 @@ class DataTree(QAbstractItemModel):
 
 
         runItem.refreshSubdomains()
+        self.createSubDomainTables(runItem, projectionsItem, tablesItem)
         return True
+
+    def createSubDomainTables(self, run, projections, tables):
+        # Determine which subdomains are not covered by tables
+        uncovered_subdomains = set(run._projection_subdomains) \
+            - set(run._table_subdomains)
+        for subdomain in uncovered_subdomains:
+            # Find projections that cover this subdomain 
+            projection_list = list()
+            for projection in projections._children:
+                if (subdomain == projection._projection.source 
+                    or subdomain == projection._projection.destination):
+                    projection_list.append(projection._projection)
+
+            # Create a Table Meta Information
+            greater_subdomain = SubDomain().instantiate(subdomain)
+            table_meta = dict()
+            table_meta['filetype'] = 'table'
+            table_meta['domain'] = greater_subdomain.domain()
+            table_meta['type'] = greater_subdomain.typename()
+            table_meta['flags'] = 0
+            table_meta['field'] = table_meta['type'] + "_id"
+            # Find a list of IDs for this subdomain from those projections
+            id_list = list()
+            for projection in projection_list:
+                
+                if subdomain == projection.source:
+                    ids = projection.source_ids()
+                    if isinstance(projection, TableProjection):
+                        # If there's a TableProjection, use that field name
+                        # instead
+                        table_meta['field'] = projection._source_key
+                else: # destination
+                    ids = projection.destination_ids()
+                    if isinstance(projection, TableProjection):
+                        table_meta['field'] = projection._destination_key
+                
+                if ids is not None:
+                    id_list.extend(ids)
+
+            id_list = list(set(id_list))
+
+            # Create Table
+            data = np.rec.fromrecords([(x,) for x in id_list])
+            data.dtype.names = (table_meta['field'],)
+            atable = Table()
+            atable.fromRecArray(greater_subdomain, table_meta['field'], data)
+
+            # Insert Table
+            self.insertTable(subdomain, atable, table_meta, \
+                parent = self.createIndex(tables.childCount(), 0, tables))
+
+            # Update subdomain list
+            run._table_subdomains.append(subdomain)
+
 
     # TODO: Add the ability to remove elements
     def removeTable(self, position, rows, parent=QModelIndex()):
