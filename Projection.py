@@ -134,6 +134,33 @@ class TableProjection(Projection):
         self._source_key = kwargs["source_key"]
         self._destination_key = kwargs["destination_key"]
 
+        self._source_dict = dict()
+        self._destination_dict = dict()
+        key_lists = self._table.attributes_by_identifiers(
+            self._table.identifiers(), [self._source_key, self._destination_key],
+            unique = False)
+        for source, destination in zip(*key_lists):
+            if source in self._source_dict:
+                self._source_dict[source].append(destination)
+            else:
+                self._source_dict[source] = [destination]
+            
+            if destination in self._destination_dict:
+                self._destination_dict[destination].append(source)
+            else:
+                self._destination_dict[destination] = [source]
+
+
+  def make_projection_dict(self, subdomain, destination):
+      if destination == self.destination:
+          #return self._source_dict
+          return { key : val for key, val in self._source_dict.iteritems()
+              if key in subdomain }
+      else:
+          #return self._destination_dict
+          return { key : val for key, val in self._destination_dict.iteritems()
+              if key in subdomain }
+
 
   def project(self, subdomain, destination):
 
@@ -216,76 +243,98 @@ class NodeLinkProjection(Projection):
                 for coord in self.coords]
 
 
+            # Nodes and Links are a join on coordinates. We're going to
+            # make coordinate dictionaries so we can use them later
+            # to build node-link dictionaries based on coords and policies
+            self.node_coord_dict = dict()
+            self.coord_node_dict = dict()
+            self.link_coord_dict_source = dict()
+            self.link_coord_dict_destination = dict()
+            self.coord_link_dict_source = dict()
+            self.coord_link_dict_destination = dict()
+            # We can use a group by here because we know there is one
+            # node per coordinate
+            node_coords, node_ids \
+                = self.source_table._table.group_attributes_by_attributes(
+                self.source_table._table.identifiers(), self.coords,
+                [self.source_table['field']], 'mean')
+            for node_coord, node_id in zip(node_coords, node_ids[0]):
+                self.node_coord_dict[int(node_id)] = node_coord
+                self.coord_node_dict[node_coord] = int(node_id)
+
+            # For links, we also do a group-by, but on both the source
+            # and destination coordinates
+            coord_len = len(self.coords)
+            source_index = coord_len
+            destination_index = source_index + coord_len
+            #link_coord_names = [self.destination_table['field']]
+            link_coord_names = list()
+            link_coord_names.extend(self.source_coords)
+            link_coord_names.extend(self.destination_coords)
+            link_coords, link_ids \
+                = self.destination_table._table.group_attributes_by_attributes(
+                self.destination_table._table.identifiers(), 
+                link_coord_names, [self.destination_table['field']], 'mean')
+            for link_id, link_tuple in zip(link_ids[0], link_coords):
+                link_id = int(link_id)
+                source = link_tuple[0:source_index]
+                destination = link_tuple[source_index:destination_index]
+                if link_id not in self.link_coord_dict_source:
+                    self.link_coord_dict_source[link_id] = source
+                if link_id not in self.link_coord_dict_destination:
+                    self.link_coord_dict_destination[link_id] = destination
+
+                if source not in self.coord_link_dict_source:
+                    self.coord_link_dict_source[source] = [link_id]
+                elif link_id not in self.coord_link_dict_source[source]:
+                    self.coord_link_dict_source[source].append(link_id)
+                if destination not in self.coord_link_dict_destination:
+                    self.coord_link_dict_destination[destination] = [link_id]
+                elif link_id not in self.coord_link_dict_destination[destination]:
+                    self.coord_link_dict_destination[destination].append(link_id)
+
+
+            self.make_dicts()
+
+    
+    def make_dicts(self):
+        self.node_dict = dict()
+        self.link_dict = dict()
+        for node_id in self.node_coord_dict:
+            link_list = list()
+            if self.node_policy == 'Source' or self.node_policy == 'Both':
+                link_list.extend(self.coord_link_dict_source[
+                    self.node_coord_dict[node_id]])
+            if self.node_policy == 'Destination' or self.node_policy == 'Both':
+                link_list.extend(self.coord_link_dict_destination[
+                    self.node_coord_dict[node_id]])
+
+            for link_id in link_list:
+                if link_id not in self.link_dict:
+                    self.link_dict[link_id] = [node_id]
+                elif node_id not in self.link_dict[link_id]:
+                    self.link_dict[link_id].append(node_id)
+  
+  
+    def make_projection_dict(self, subdomain, destination):
+        if destination == self.destination:
+            return { key : val for key, val in self.node_dict.iteritems()
+                if key in subdomain }
+        else:
+            return { key : val for key, val in self.link_dict.iteritems()
+                if key in subdomain }
+
+
     def project(self, subdomain, destination):
-        source_table = self.source_table._table
-        destination_table = self.destination_table._table
 
         if destination == self.destination: # Nodes -> Links
-            # Find coords from given node IDs. Find matching
-            # link coords. Return link IDs
-            identifiers = source_table.subset_by_key(
-                source_table.identifiers(), #identifiers
-                subdomain) # valid node IDs
-            valid_coords = source_table.attributes_by_identifiers(
-                identifiers, self.coords, unique = False) # We want all
-            # Note: valid_coords is a list of lists, one for each coord, 
-            # in the order of self.coords
-            coord_tuples = set(zip(*valid_coords))
-            
-            conditions = list()
-            if self.node_policy == 'Source' or self.node_policy == 'Both':
-                for coord_tuple in coord_tuples:
-                    conditions.append(self.build_coord_clause(
-                        self.source_coords, coord_tuple))
-            if self.node_policy == 'Destination' or self.node_policy == 'Both':
-                for coord_tuple in coord_tuples:
-                    conditions.append(self.build_coord_clause(
-                        self.source_coords, coord_tuple))
+            links = list()
+            for node_id in subdomain:
+                links.extend(self.node_dict[node_id])
+            return SubDomain().instantiate(destination, list(set(links)))
+        else:
+            nodes = list()
+            for link_id in subdomain:
+                nodes.extend(self.link_dict[link_id])
+            return SubDomain().instantiate(destination, list(set(nodes)))
 
-            links = destination_table.attributes_by_conditions(
-                destination_table.identifiers(), # identifiers
-                [self.destination_table["field"]], # link id
-                Clause('or', *conditions)) # we are fine with unique here
-
-            return Subdomain().instantiate(destination, links[0])
-        else: # Links -> Nodes
-            # Find coords from given link IDs. Find matching
-            # node coords. Return node IDs.
-            identifiers = destination_table.subset_by_key(
-                destination_table.identifiers(), #identifiers
-                subdomain) # valid link IDs
-
-            conditions = list()
-            if self.link_policy == 'Source' or self.link_policy == 'Both':
-                valid_coords = destination_table.attributes_by_identifiers(
-                    identifiers, self.source_coords, unique = False)
-                coord_tuples = set(zip(*valid_coords))
-                for coord_tuple in coord_tuples:
-                    conditions.append(self.build_coord_clause(
-                        self.coords, coord_tuple))
-            if self.link_policy == 'Destination' or self.link_policy == 'Both':
-                valid_coords = destination_table.attributes_by_identifiers(
-                    identifiers, self.destination_coords, unique = False)
-                coord_tuples = set(zip(*valid_coords))
-                for coord_tuple in coord_tuples:
-                    conditions.append(self.build_coord_clause(
-                        self.coords, coord_tuple))
-
-            nodes = source_table.attributes_by_conditions(
-                source_table.identifiers(), # identifiers
-                [self.source_table["field"]], # node id
-                Clause('or', conditions)) # we are fine with unique here
-            return SubDomain().instantiate(destination, nodes[0])
-
-
-    def build_coord_clause(self, coord_names, coord_values):
-        """
-           coord_names: names of the coordinates given in values
-           coord_values: values for each of those coords
-           new_coord_names: what the coord names are for the query.
-        """
-
-        clauses = list()
-        for coord, value in zip(coord_names, coord_values):
-            clauses.append(Clause("=", TableAttribute(coord), value))
-        return Clause("and", *clauses)

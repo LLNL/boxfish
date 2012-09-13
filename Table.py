@@ -212,26 +212,29 @@ class Table(object):
 
     groupby_iter = itertools.product(*givens_list)
     group_list = list()
+    group_dict = dict()
+    for given_tuple in groupby_iter:
+        group_dict[given_tuple] = list()
+        for attr in desired_attrs:
+            group_dict[given_tuple].append(list())
 
     # For the found values
     desired_list = list()
     for attr in desired_attrs:
       desired_list.append(list())
 
-    for given_tuple in groupby_iter:
-      clauses = list()
-      for i, attr in enumerate(given_tuple):
-        clauses.append(Clause("=", TableAttribute(given_attrs[i]), attr))
-      indices = np.where(self.build_where_clause(Clause("and", *clauses),
-          identifiers))[0]
+    # Only go through the numpy table once for this group by
+    for row in self._data:
+        row_tuple = tuple([row[x] for x in given_attrs])
+        for i, attr in enumerate(desired_attrs):
+            group_dict[row_tuple][i].append(row[attr])
 
-      # We only keep the valid combinations
-      if len(indices) != 0:
-        new_identifiers = [identifiers[x] for x in indices]
-        group_list.append(given_tuple)
-        for i, attr_list in enumerate(desired_list):
-          attr_list.append(self.operator[aggregator](\
-            self._data[new_identifiers][desired_attrs[i]]))
+    for group_tuple in group_dict:
+        if len(group_dict[group_tuple][0]) > 0:
+            group_list.append(group_tuple)
+            for i, attr_list in enumerate(desired_list):
+                attr_list.append(self.operator[aggregator](
+                    group_dict[group_tuple][i]))
 
     return group_list, desired_list
 
@@ -245,11 +248,7 @@ class Table(object):
         attr_list.append(np.unique(self._data[identifiers][attr]))
     else:
       for attr in attributes:
-        attr_list.append(list())
-
-      for row in self._data[identifiers]:
-        for i, attr in enumerate(attributes):
-          attr_list[i].append(row[attr])
+        attr_list.append(list(self._data[identifiers][attr]))
 
     return attr_list
 
@@ -268,12 +267,8 @@ class Table(object):
       for attr in desired_attrs:
         attr_list.append(np.unique(self._data[new_identifiers][attr]))
     else:
-      for attr in attributes:
-        attr_list.append(list())
-
-      for row in self._data[identifiers]:
-        for i, attr in enumerate(attributes):
-          attr_list[i].append(row[attr])
+      for attr in desired_attrs:
+        attr_list.append(list(self._data[new_identifiers][attr]))
 
     return attr_list
 

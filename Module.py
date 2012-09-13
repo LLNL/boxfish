@@ -394,24 +394,32 @@ class ModuleRequest(QObject):
             attribute_values = table._table.attributes_by_identifiers(
                 identifiers, attributes, False) # We don't want unique values
 
-            # Find relevant projection per id
-            projection_memo = dict() # store projections
-            for table_id in set(attribute_values[0]): # unique ids
-                domain_ids = projection.project(
-                    SubDomain().instantiate(table._table.subdomain(),
-                        [table_id]),
-                    group_by_table._table.subdomain())
-                projection_memo[table_id] = domain_ids
-
-            # Collect attributes onto proper domain IDs
-            for row_values in zip(*attribute_values):
-                domain_ids = projection_memo[row_values[0]]
-                print domain_ids
-                for domain_id in domain_ids:
+            if isinstance(projection, IdentityProjection):
+                # Since the projection is Identity, we don't need to process it
+                for row_values in zip(*attribute_values):
+                    domain_id = row_values[0]
                     if domain_id in aggregate_values:
                         aggregate_values[domain_id].extend(row_values[1:])
                     else:
                         aggregate_values[domain_id] = list(row_values[1:])
+            else: # Other type of projection
+                # Find relevant projection per id
+                projection_memo = dict() # store projections
+                for table_id in set(attribute_values[0]): # unique ids
+                    domain_ids = projection.project(
+                        SubDomain().instantiate(table._table.subdomain(),
+                            [table_id]),
+                        group_by_table._table.subdomain())
+                    projection_memo[table_id] = domain_ids
+
+                # Collect attributes onto proper domain IDs
+                for row_values in zip(*attribute_values):
+                    domain_ids = projection_memo[row_values[0]]
+                    for domain_id in domain_ids:
+                        if domain_id in aggregate_values:
+                            aggregate_values[domain_id].extend(row_values[1:])
+                        else:
+                            aggregate_values[domain_id] = list(row_values[1:])
 
         # Then get the IDs from the group by table that matter
         # and associate them with these attributes
