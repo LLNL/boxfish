@@ -106,7 +106,7 @@ class RunItem(AbstractTreeItem):
     def refreshSubdomains(self):
         """The Run searches its tree to determine which subdomains
            it has available and what projections it can perform.
-           This is intended to be called by the DataTree itself 
+           This is intended to be called by the DataTree itself
            to update a Run after adding/remove tables and projections.
            This does not occur automatically so we do not waste
            time recalculating when several tables are being added en masse.
@@ -141,9 +141,9 @@ class RunItem(AbstractTreeItem):
         # Subdomain adjaceny matrix
         self.subdomain_matrix = list()
         for i in range(len(self._projection_subdomains)):
-            self.subdomain_matrix.append([None] 
+            self.subdomain_matrix.append([None]
                 * len(self._projection_subdomains))
-               
+
         for projection in projections._children:
             i = self._projection_subdomains.index(
                 projection._projection.source)
@@ -153,7 +153,7 @@ class RunItem(AbstractTreeItem):
             self.subdomain_matrix[j][i] = projection
 
 
-            
+
 
     def getTable(self, table_name):
         """Look up a table by name."""
@@ -169,8 +169,8 @@ class RunItem(AbstractTreeItem):
 
     def findAttribute(self, attribute, table):
         """Find a table with the given attribute. Preference is given
-           to tables with the same subdomain as the given table, 
-           then to tables that are one projection away, then to all 
+           to tables with the same subdomain as the given table,
+           then to tables that are one projection away, then to all
            remaining tables.
         """
 
@@ -183,7 +183,7 @@ class RunItem(AbstractTreeItem):
             if t._table.subdomain() == table._table.subdomain() \
                 and t.hasAttribute(attribute):
                 return t
-        
+
         # Make sure we can project the given table
         if table._table.subdomain() in self._projection_subdomains:
             index = self._projection_subdomains.index(table._table.subdomain())
@@ -227,7 +227,7 @@ class RunItem(AbstractTreeItem):
             s1_index = self._projection_subdomains.index(subdomain1)
         else:
             return None
-        
+
         if subdomain1 in self._projection_subdomains:
             s2_index = self._projection_subdomains.index(subdomain2)
         else:
@@ -250,7 +250,7 @@ class RunItem(AbstractTreeItem):
                 if distance[self._projection_subdomains.index(subdomain)] < \
                     distance[self._projection_subdomains.index(closest)]:
                     closest = subdomain
-            
+
             subdomain_set.remove(closest)
             index = self._projection_subdomains.index(closest)
             if distance[index] == float('inf'):
@@ -278,15 +278,15 @@ class RunItem(AbstractTreeItem):
                 self._projection_subdomains[index]))
             index = previous[index]
 
-        return CompositionProjection(subdomain1, subdomain2, projection_list = 
+        return CompositionProjection(subdomain1, subdomain2, projection_list =
             projection_list)
-            
+
 class SubRunItem(AbstractTreeItem):
     """Item that falls below a Run in the hierarchy."""
 
     def __init__(self, name, parent = None):
         super(SubRunItem, self).__init__(name, parent)
-    
+
     def __contains__(self, key):
         return self.hasMetaData(key)
 
@@ -380,7 +380,7 @@ class ProjectionItem(DataObjectItem):
 
     def typeInfo(self):
         return "PROJECTION"
-    
+
 
 
 class TableItem(DataObjectItem):
@@ -402,7 +402,7 @@ class TableItem(DataObjectItem):
             if child.name == attribute:
                 return True
         return False
-    
+
     # Query evaluation - maybe this should be put back into the
     # QueryEngine class that was at some point jettisoned.
     def evaluate(self, conditions, identifiers):
@@ -447,11 +447,12 @@ class TableItem(DataObjectItem):
                 [aux_table._table._key], # id for table for projection
                 conditions) # we want default unique=true since we want keys
 
+            keys = list(keys[0])
             projected_keys = projection.project(keys, self._table.subdomain())
 
             identifiers_lists.append(self._table.subset_by_key(
                 self._table.identifiers(),
-                Subdomain().instantiate(self._table.subdomain(),
+                SubDomain().instantiate(self._table.subdomain(),
                     projected_keys)))
 
         # Question: Does not applying the original tables identifiers
@@ -478,7 +479,7 @@ class AttributeItem(SubRunItem):
 
     def typeInfo(self):
         return "ATTRIBUTE"
-    
+
 
 class SubDomainItem(SubRunItem):
     """Item for containing individual attributes. Access to these
@@ -490,7 +491,7 @@ class SubDomainItem(SubRunItem):
 
     def typeInfo(self):
         return "SUBDOMAIN"
-    
+
 
 
 class DataTree(QAbstractItemModel):
@@ -559,9 +560,9 @@ class DataTree(QAbstractItemModel):
 
         if item.typeInfo() == "PROJECTION":
             return Qt.ItemIsEnabled | Qt.ItemIsEditable
-        
+
         if item.typeInfo() == "SUBDOMAIN":
-            return Qt.ItemIsEnabled 
+            return Qt.ItemIsEnabled
 
         if item.typeInfo() == "GROUP":
             return Qt.ItemIsEnabled
@@ -679,7 +680,7 @@ class DataTree(QAbstractItemModel):
                         "! Skipping table..."
                     continue
 
-                filepath = os.path.join(os.path.dirname(filename), 
+                filepath = os.path.join(os.path.dirname(filename),
                     filedict['filename'])
                 metadata, data = yl.load_table(filepath)
                 combined_meta = dict(metadata.items() + filedict.items())
@@ -743,7 +744,7 @@ class DataTree(QAbstractItemModel):
             # Find projections that cover this subdomain 
             projection_list = list()
             for projection in projections._children:
-                if (subdomain == projection._projection.source 
+                if (subdomain == projection._projection.source
                     or subdomain == projection._projection.destination):
                     projection_list.append(projection._projection)
 
@@ -758,7 +759,7 @@ class DataTree(QAbstractItemModel):
             # Find a list of IDs for this subdomain from those projections
             id_list = list()
             for projection in projection_list:
-                
+
                 if subdomain == projection.source:
                     ids = projection.source_ids()
                     if isinstance(projection, TableProjection):
@@ -769,7 +770,7 @@ class DataTree(QAbstractItemModel):
                     ids = projection.destination_ids()
                     if isinstance(projection, TableProjection):
                         table_meta['field'] = projection._destination_key
-                
+
                 if ids is not None:
                     id_list.extend(ids)
 

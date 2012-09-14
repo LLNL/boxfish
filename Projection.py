@@ -38,7 +38,7 @@ class Projection(object):
     return (((self.source == source) and (self.destination == destination)) or
             ((self.source == destination) and (self.destination == source)))
 
-  
+
   def project(self, subdomain, destination):
     raise NotImplementedError("Cannot perform projection.")
 
@@ -166,7 +166,7 @@ class TableProjection(Projection):
                 self._source_dict[source].append(destination)
             else:
                 self._source_dict[source] = [destination]
-            
+
             if destination in self._destination_dict:
                 self._destination_dict[destination].append(source)
             else:
