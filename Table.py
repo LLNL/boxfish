@@ -261,8 +261,12 @@ class Table(object):
        are met. Conditions is an object of class Clause where each
        subclause should apply directly to this table.
     """
-    indices = np.where(self.build_where_clause(conditions, identifiers))
-    new_identifiers = [identifiers[x] for x in indices[0]]
+    where_clause = self.build_where_clause(conditions, identifiers)
+    if where_clause is None:
+        new_identifiers = identifiers
+    else:
+        indices = np.where(where_clause)
+        new_identifiers = [identifiers[x] for x in indices[0]]
 
     attr_list = list()
     if unique:
@@ -305,7 +309,11 @@ class Table(object):
        conditions = an object of class Clause that should contain only
        Clauses that can be evaluated on this table.
     """
-    indices = np.where(self.build_where_clause(conditions, identifiers))
+    where_clause = self.build_where_clause(conditions, identifiers)
+    if where_clause is None:
+        return identifiers
+    
+    indices = np.where(where_clause)
     return [identifiers[x] for x in indices[0]]
 
 
@@ -336,7 +344,12 @@ class Table(object):
             else:
                 c2 = Clause(relation, value, TableAttribute(attributes[0]))
             conditions.append(Clause('and', c1, c2))
-        indices = np.where(self.build_where_clause(Clause('or', *conditions)))
+        
+        where_clause = self.build_where_clause(Clause('or', *conditions))
+        if where_clause is None:
+            return identifiers
+
+        indices = np.where(where_clause) 
         return [identifiers[x] for x in indices[0]]
     else:
         aggregation_operator = self.operator[aggregator]
@@ -369,46 +382,63 @@ class Table(object):
 
   def build_where_clause(self, condition, identifiers):
 
-    if not isinstance(condition, Clause):
-      if isinstance(condition, TableAttribute):
-        return self._data[condition.name][identifiers]
-      else:
-        return condition
-    
-    if condition.relation in self.relations:
-      operator = self.relations[condition.relation]
-    elif condition.relation in self.logicals:
-      operator = self.logicals[condition.relation]
-    else:
-      raise ValueError("Unrecognized relation in clause.")
+    operator = self.get_operator(condition.relation)
 
     if len(condition.clauses) < 1:
       raise ValueError("No clauses in given condition.")
 
     where_clause = None
-    for c in condition.clauses:
-        # Make sure this isn't a clause we must omit because
-        # we do not have that attribute
-        if isinstance(c, Clause) \
-            and not ((isinstance(c.clauses[0], TableAttribute) \
-            and c.clauses[0].name not in self.attributes()) \
-            or (isinstance(c.clauses[1], TableAttribute) \
-            and c.clauses[1].name not in self.attributes())):
+    if isinstance(condition.clauses[0], Clause): # These are clauses, recurse
+        for c in condition.clauses:
+            if where_clause is None:
+                where_clause = self.build_where_clause(c, identifiers)
+            else:
+                child_clause = self.build_where_clause(c, identifiers)
+                if child_clause is not None:
+                    where_clause = operator(where_clause, child_clause)
 
-            if where_clause is None:
-                where_clause = self.build_where_clause(c, identifiers)
-            else:
-                where_clause = operator(where_clause,
-                    self.build_where_clause(c, identifiers))
+    elif ((isinstance(condition.clauses[0], TableAttribute) \
+        and condition.clauses[0].name in self.attributes()) \
+        or (isinstance(condition.clauses[1], TableAttribute)
+        and condition.clauses[1].name in self.attributes())):
+        # This is a simple clause that we can just build 
+
+        if isinstance(condition.clauses[0], TableAttribute):
+            attribute = condition.clauses[0]
+            value = condition.clauses[1]
         else:
-            if where_clause is None:
-                where_clause = self.build_where_clause(c, identifiers)
-            else:
-                where_clause = operator(where_clause,
-                    self.build_where_clause(c, identifiers))
+            attribute = condition.clauses[1]
+            value = condition.clauses[0]
+
+        np_type = self._data[attribute.name].dtype
+        value = self.numpy_cast(value, np_type, attribute.name)
             
+        if isinstance(condition.clauses[0], TableAttribute):
+            return operator(self._data[attribute.name][identifiers], value)
+        else:
+            return operator(value, self._data[attribute.name][identifiers])
+
 
     return where_clause
+
+  def get_operator(self, relation):
+    if relation in self.relations:
+      return self.relations[relation]
+    elif relation in self.logicals:
+      return self.logicals[relation]
+    else:
+      raise ValueError("Unrecognized relation in clause.")
+
+  def numpy_cast(self, value, np_type, name):
+
+      try:
+          caster = np.empty((1), dtype=[('cast', np_type)])
+          caster[0]['cast'] = value
+          return caster[0]['cast']
+      except:
+          raise ValueError("Incompatible value: %s for attribute %s",
+              value, name)
+        
         
 
 if __name__ == '__main__':

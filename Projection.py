@@ -120,16 +120,15 @@ class CompositionProjection(Projection):
 
 
     def project(self, subdomain, destination):
-
         sub = subdomain
-        if destination.subdomain() == self.destination:
+        if destination == self.destination:
             for proj, src, dest in self._projection_list:
-                sub = proj.project(sub, src, dest)
+                sub = proj.project(sub, dest)
         else:
-            reverse_list = self._project_list[:]
+            reverse_list = self._projection_list[:]
             reverse_list.reverse()
             for proj, src, dest in reverse_list:
-                sub = proj.project(sub, dest, src)
+                sub = proj.project(sub, src)
 
         return sub
 

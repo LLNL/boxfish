@@ -240,7 +240,7 @@ class RunItem(AbstractTreeItem):
 
         # We're going to have to create a composition
         # Let's Dijkstra!
-        distance = [inf] * len(self._projection_subdomains)
+        distance = [float('inf')] * len(self._projection_subdomains)
         previous = [None] * len(self._projection_subdomains)
         distance[s1_index] = 0
         subdomain_set = self._projection_subdomains[:]
@@ -251,11 +251,12 @@ class RunItem(AbstractTreeItem):
                     distance[self._projection_subdomains.index(closest)]:
                     closest = subdomain
             
+            subdomain_set.remove(closest)
             index = self._projection_subdomains.index(closest)
-            if distance[index] == inf:
+            if distance[index] == float('inf'):
                 return None
 
-            for j in len(self._projection_subdomains):
+            for j in range(len(self._projection_subdomains)):
                 if self.subdomain_matrix[index][j] is not None:
                     other_distance = distance[index] + 1
                     if other_distance < distance[j]:
@@ -263,15 +264,16 @@ class RunItem(AbstractTreeItem):
                         previous[j] = index
 
         # No path found
-        if distance[s2_index] == inf:
+        if distance[s2_index] == float('inf'):
             return None
 
         # Create composition filter:
         index = s2_index
         projection_list = list()
         while previous[index] is not None:
+            print self.subdomain_matrix[previous[index]][index].name
             projection_list.insert(0, (
-                self.subdomain_matrix[previous[index][index]],
+                self.subdomain_matrix[previous[index]][index]._projection,
                 self._projection_subdomains[previous[index]],
                 self._projection_subdomains[index]))
             index = previous[index]

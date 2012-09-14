@@ -95,7 +95,7 @@ class FilterBoxView(ModuleView):
 
     # Goes with FakeDialog
     def fakeNewVals(self, title, filtertext):
-        self.agent.createSimpleFilter(title, int(filtertext))
+        self.agent.createSimpleFilter(title, filtertext)
         self.fake_label.setText("Filter: " + title + " = " + filtertext)
         #self.setTitle(title)
         #self.parent().setWindowTitle(title)
