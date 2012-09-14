@@ -384,7 +384,7 @@ class ModuleRequest(QObject):
             identifiers = table._table.identifiers()
             for modifier in self.coupler.modifier_chain:
                 identifiers = modifier.process(table, identifiers)
-            
+
             # Determine the attributes
             attributes = [self.datatree.getItem(x).name
                 for x in attribute_group]

@@ -2,7 +2,7 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 from SubDomain import *
 from Module import *
-#from Query import *
+from Query import *
 #from QueryEngine import *
 from DataModel import *
 from Filter import *
@@ -12,9 +12,9 @@ class FilterBox(ModuleAgent):
     def __init__(self, parent, datatree):
         super(FilterBox, self).__init__(parent, datatree)
 
-    def createSimpleFilter(self, attribute, value):
+    def createSimpleFilter(self, conditions):
         self.filters = list()
-        self.filters.append(SimpleWhereFilter(attribute, value))
+        self.filters.append(SimpleWhereFilter(conditions))
         for coupler in self.requirements:
             coupler.modifier = self.filters[0]
         for coupler in self.child_requirements:
@@ -95,7 +95,8 @@ class FilterBoxView(ModuleView):
 
     # Goes with FakeDialog
     def fakeNewVals(self, title, filtertext):
-        self.agent.createSimpleFilter(title, filtertext)
+        self.agent.createSimpleFilter(Clause("=", TableAttribute(title),
+            filtertext))
         self.fake_label.setText("Filter: " + title + " = " + filtertext)
         #self.setTitle(title)
         #self.parent().setWindowTitle(title)

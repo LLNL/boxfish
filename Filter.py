@@ -26,14 +26,11 @@ class IdentityFilter(Filter):
 
 class SimpleWhereFilter(Filter):
 
-    def __init__(self, attribute, value):
+    def __init__(self, conditions):
         super(SimpleWhereFilter, self).__init__()
 
-        self.attribute = attribute
-        self.value = value
+        self.conditions = conditions
 
     def process(self, table, identifiers):
 
-        return table.evaluate(
-            Clause("=", TableAttribute(self.attribute), self.value),
-            identifiers)
+        return table.evaluate(self.conditions, identifiers)
