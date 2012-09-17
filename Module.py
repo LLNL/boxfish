@@ -19,7 +19,6 @@ class ModuleAgent(QObject):
     highlightSignal          = Signal(SubDomain)
     addCouplerSignal         = Signal(FilterCoupler, QObject)
     #evaluateSignal           = Signal(Query)
-    getSubDomainSignal       = Signal(object,str)
 
     # Name template for the highlight signal
     highlightSignal_base = "%s_highlight_signal"
@@ -158,8 +157,6 @@ class ModuleAgent(QObject):
         child.unsubscribeSignal.connect(self.unsubscribe)
         child.highlightSignal.connect(self.highlight)
         child.addCouplerSignal.connect(self.addChildCoupler)
-        #child.evaluateSignal.connect(self.evaluate)
-        child.getSubDomainSignal.connect(self.getSubDomain)
 
         # "Adopt" child's column requests
         for coupler in child.getCouplerRequests():
@@ -175,8 +172,6 @@ class ModuleAgent(QObject):
         child.unsubscribeSignal.disconnect(self.unsubscribe)
         child.highlightSignal.disconnect(self.highlight)
         child.addCouplerSignal.disconnect(self.addChildCoupler)
-        #child.evaluateSignal.disconnect(self.evaluate)
-        child.getSubDomainSignal.disconnect(self.getSubDomain)
 
         # Abandon child's column requests
         for coupler in self.child_requirements:
@@ -249,56 +244,24 @@ class ModuleAgent(QObject):
 
         self.disconnectSubscription(agent,name)
 
-
-    #@Slot(Query)
-    def evaluate(self,query):
-        pass
-        #answer, success = self.queryEngine.evaluate(query,self.context)
-        #if success:
-        #    self.publish[query.subdomain.subdomain()].emit(query,answer)
-
-    # Slot must be added after class definition
-    #@Slot(ModuleAgent,str)
-    def getSubDomain(self,agent,subdomain):
-        pass
-        #data,success = self.queryEngine.getSubDomain(subdomain)
-        #if success:
-        #    agent.setSubDomain(data)
-
     def connectSubscription(self,agent,name):
 
         self.highlights[name].connect(agent.highlightChanged)
-        self.publish[name].connect(agent.receive)
 
 
     def disconnectSubscription(self,agent,name):
 
         self.highlights[name].disconnect(agent.highlightChanged)
-        self.publish[name].disconnect(agent.receive)
-
-    def evaluate(self,query):
-        pass
-        #self.evaluateSignal.emit(query)
-
-    def getSubDomain(self,subdomain):
-        self.getSubDomainSignal.emit(self,subdomain)
-
-    def setSubDomain(self,subdomain):
-        self.subdomain = subdomain
 
     @Slot(SubDomain)
     def highlightChanged(self,subdomain):
         print "Highlight", subdomain.subdomain()
 
-    #@Slot(Query,np.ndarray)
-    def receive(self,query,data):
-        print "ModuleAgent got an answer for ", query
 
 # The slots need to be added down here because ModuleAgent is not defined
 # at the time that the functions are defined
 ModuleAgent.subscribe = Slot(ModuleAgent, str)(ModuleAgent.subscribe)
 ModuleAgent.unsubscribe = Slot(ModuleAgent, str)(ModuleAgent.unsubscribe)
-ModuleAgent.getSubDomain = Slot(ModuleAgent, str)(ModuleAgent.getSubDomain)
 ModuleAgent.addChildCoupler = Slot(FilterCoupler, ModuleAgent)(ModuleAgent.addChildCoupler)
 
 class ModuleRequest(QObject):

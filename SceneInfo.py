@@ -1,12 +1,22 @@
 import ColorMaps
 from PySide.QtCore import Slot,Signal,QObject
 
-class SubdomainScene(QObject):
+class Scene(QObject):
+    """Parent class for all Scene classes."""
+
+    changeSignal = Signal(QObject)
+
+    def __init__(self):
+        super(Scene, self).__init__()
+
+    def announceChange(self):
+        self.changeSignal.emit(self)
+
+
+class SubdomainScene(Scene):
     """This holds subdomain specific scene information that we might want to
        propogate among views.
     """
-
-    changeSignal = Signal(QObject)
 
     def __init__(self, subdomain, highlight_set = None, run = None):
         super(SubdomainScene, self).__init__()
@@ -15,10 +25,9 @@ class SubdomainScene(QObject):
         self.highlight_set = highlight_set # Subdomain
         self.run = run # QModelIndex
 
-    def announceChange(self):
-        self.changeSignal.emit(self)
 
-class AttributeScene(QObject):
+
+class AttributeScene(Scene):
     """This holds attribute-specific scene information that we might
        want to propogate among views.
 
@@ -26,9 +35,8 @@ class AttributeScene(QObject):
        combination of attributes. 
     """
 
-    changeSignal = Signal(QObject)
-
-    def __init__(self, attributes, color_map = ColorMaps.getMap('gist_eart_r'),\
+    def __init__(self, attributes,
+        color_map = ColorMaps.getMap('gist_eart_r'),
         color_range = (0.0, 1.0)):
         super(AttributeScene, self).__init__()
 
@@ -36,10 +44,10 @@ class AttributeScene(QObject):
         self.color_map = color_map # Move to something completely general?
         self.color_range = color_range
 
-    def announceChange(self):
-        self.changeSignal.emit(self)
 
-class ModuleScene(QObject):
+
+
+class ModuleScene(Scene):
     """This holds agent-specific scene information that we might
        want to propogate among views.
 
@@ -47,15 +55,7 @@ class ModuleScene(QObject):
     """
 
     moduleType = None #Change for subclass
-    changeSignal = Signal(QObject)
 
     def __init__(self):
         super(ModuleScene, self).__init__()
-
-
-    def announceChange(self):
-        self.changeSignal.emit(self)
-
-
-
 

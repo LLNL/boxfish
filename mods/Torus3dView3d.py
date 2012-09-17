@@ -11,13 +11,6 @@ from FilterCoupler import FilterCoupler
 import matplotlib
 import matplotlib.cm as cm
 
-# TODO: this is a hack.  we should change our yaml format so that hardware
-# is a dict and not a list of single-item dicts.
-def get_from_list(dict_list, key):
-    for dict in dict_list:
-        if key in dict:
-            return dict[key]
-
 class Torus3dView3dAgent(ModuleAgent):
     nodeUpdateSignal = Signal(list, list)
 
