@@ -141,7 +141,7 @@ class GLTorus3dView(GLWidget):
             origin.
         """
         x_span, y_span, z_span = self.shape
-        glTranslatef(-(x_span-1)/2.0,-(y_span-1)/2.0,-(z_span-1)/2.)
+        glTranslatef(-(x_span-1)/2.0,(y_span-1)/2.0,(z_span-1)/2.)
 
     def drawCubes(self):
         glPushMatrix()
@@ -153,8 +153,8 @@ class GLTorus3dView(GLWidget):
 
             glColor4f(*self.node_colors[x,y,z])
             glTranslatef((x + self.seam[0]) % x_span,
-                         (y + self.seam[1]) % y_span,
-                         ((z + self.seam[2]) % z_span))
+                         -((y + self.seam[1]) % y_span),
+                         -((z + self.seam[2]) % z_span))
 
             # glut will draw a cube with its center at (0,0,0)
             glutSolidCube(self.box_size)
@@ -176,12 +176,12 @@ class GLTorus3dView(GLWidget):
 
             glColor4f(0.5, 0.5, 0.5, 1.0)
             glTranslatef((x + self.seam[0]) % x_span,
-                         (y + self.seam[1]) % y_span,
-                         ((z + self.seam[2]) % z_span))
+                         -((y + self.seam[1]) % y_span),
+                         -((z + self.seam[2]) % z_span))
 
             glePolyCylinder([(-1, 0, 0), (0, 0, 0), (1, 0, 0), (2, 0, 0)], None, self.link_radius)
-            glePolyCylinder([(0, -1, 0), (0, 0, 0), (0, 1, 0), (0, 2, 0)], None, self.link_radius)
-            glePolyCylinder([(0, 0, -1), (0, 0, 0), (0, 0, 1), (0, 0, 2)], None, self.link_radius)
+            glePolyCylinder([(0, -2, 0), (0, -1, 0), (0, 0, 0), (0, 1, 0)], None, self.link_radius)
+            glePolyCylinder([(0, 0, -2), (0, 0, -1), (0, 0, 0), (0, 0, 1)], None, self.link_radius)
             glPopMatrix()
         glPopMatrix()
 

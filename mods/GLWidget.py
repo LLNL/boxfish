@@ -228,11 +228,11 @@ class GLWidget(QGLWidget):
 
             glColor4f(0.0, 1.0, 0.0, 1.0)
             glVertex3f (0, 0, 0)
-            glVertex3f (0, len, 0)
+            glVertex3f (0, -len, 0)
 
             glColor4f(0.0, 0.0, 1.0, 1.0)
             glVertex3f (0, 0, 0)
-            glVertex3f (0, 0, len)
+            glVertex3f (0, 0, -len)
 
         glEnable(GL_DEPTH_TEST)
 
