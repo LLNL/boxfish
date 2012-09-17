@@ -25,6 +25,8 @@ class GLWidget(QGLWidget):
         and paintGL() to get their scene drawn.
     """
 
+    rotationChangeSignal = Signal(np.ndarray)
+
     def __init__(self, parent=None, **keywords):
         """Sets up initial values for dragging variables, translation, and rotation matrices."""
         QGLWidget.__init__(self, parent)
@@ -121,7 +123,6 @@ class GLWidget(QGLWidget):
         glLoadIdentity()
 
     def paintGL(self):
-        self.drawAxis()
         glFlush()
 
     def mousePressEvent(self, event):
@@ -171,6 +172,7 @@ class GLWidget(QGLWidget):
             glRotatef(0.5*tb_angle, tb_axis[0] , tb_axis[1], tb_axis[2])
             glMultMatrixd(self.rotation)
             self.rotation = glGetDouble(GL_MODELVIEW_MATRIX)
+            self.rotationChangeSignal.emit(self.rotation)
 
             self.updateGL()
 
@@ -206,41 +208,6 @@ class GLWidget(QGLWidget):
         glLoadIdentity()
         glTranslatef(*self.translation)
         glMultMatrixd(self.rotation)
-
-    def drawAxis(self):
-        glViewport(0,0,80,80)
-
-        glPushMatrix()
-        glPushAttrib(GL_CURRENT_BIT)
-        glPushAttrib(GL_LINE_BIT)
-        glLineWidth(2.0)
-
-        len = 0.3
-        glLoadIdentity()
-        glTranslatef(0,0, -len)
-        glMultMatrixd(self.rotation)
-        glDisable(GL_DEPTH_TEST)
-
-        with glSection(GL_LINES):
-            glColor4f(1.0, 0.0, 0.0, 1.0)
-            glVertex3f (0, 0, 0)
-            glVertex3f (len, 0, 0)
-
-            glColor4f(0.0, 1.0, 0.0, 1.0)
-            glVertex3f (0, 0, 0)
-            glVertex3f (0, -len, 0)
-
-            glColor4f(0.0, 0.0, 1.0, 1.0)
-            glVertex3f (0, 0, 0)
-            glVertex3f (0, 0, -len)
-
-        glEnable(GL_DEPTH_TEST)
-
-        glPopAttrib()
-        glPopAttrib()
-        glPopMatrix()
-
-        glViewport(0, 0, self.width(), self.height())
 
     def set_rotation(self, rotation):
         if self.enable_rotation:

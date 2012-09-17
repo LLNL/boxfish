@@ -1,6 +1,7 @@
 from PySide.QtCore import *
 from Module import *
 from GLWidget import GLWidget
+from GLUtils import *
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLE import *
@@ -68,7 +69,11 @@ class Torus3dView3d(ModuleView):
 
     def createView(self):
         self.view = GLTorus3dView(self)
+        self.view.rotationChangeSignal.connect(self.rotationChanged)
         return self.view
+
+    def rotationChanged(self, rotation):
+        print rotation
 
     @Slot(list, list)
     def updateNodeData(self, coords, vals):
@@ -131,6 +136,7 @@ class GLTorus3dView(GLWidget):
         self.orient_scene()
         self.drawCubes()
         self.drawLinks()
+        self.drawAxis()
 
         super(GLTorus3dView, self).paintGL()
 
@@ -179,10 +185,50 @@ class GLTorus3dView(GLWidget):
                          -((y + self.seam[1]) % y_span),
                          -((z + self.seam[2]) % z_span))
 
+            # x+
             glePolyCylinder([(-1, 0, 0), (0, 0, 0), (1, 0, 0), (2, 0, 0)], None, self.link_radius)
+            # y+
             glePolyCylinder([(0, -2, 0), (0, -1, 0), (0, 0, 0), (0, 1, 0)], None, self.link_radius)
+            # z+
             glePolyCylinder([(0, 0, -2), (0, 0, -1), (0, 0, 0), (0, 0, 1)], None, self.link_radius)
             glPopMatrix()
         glPopMatrix()
+    
+    
+    def drawAxis(self):
+        glViewport(0,0,80,80)
+
+        glPushMatrix()
+        glPushAttrib(GL_CURRENT_BIT)
+        glPushAttrib(GL_LINE_BIT)
+        glLineWidth(2.0)
+
+        len = 0.3
+        glLoadIdentity()
+        glTranslatef(0,0, -len)
+        glMultMatrixd(self.rotation)
+        glDisable(GL_DEPTH_TEST)
+
+        with glSection(GL_LINES):
+            glColor4f(1.0, 0.0, 0.0, 1.0)
+            glVertex3f (0, 0, 0)
+            glVertex3f (len, 0, 0)
+
+            glColor4f(0.0, 1.0, 0.0, 1.0)
+            glVertex3f (0, 0, 0)
+            glVertex3f (0, -len, 0)
+
+            glColor4f(0.0, 0.0, 1.0, 1.0)
+            glVertex3f (0, 0, 0)
+            glVertex3f (0, 0, -len)
+
+        glEnable(GL_DEPTH_TEST)
+
+        glPopAttrib()
+        glPopAttrib()
+        glPopMatrix()
+
+        glViewport(0, 0, self.width(), self.height())
+
 
 

@@ -13,10 +13,17 @@ from SceneInfo import *
 
 class ModuleAgent(QObject):
 
-    # Signals that I send
-    subscribeSignal          = Signal(object,str)
-    unsubscribeSignal        = Signal(object,str)
+    # Timo - probably getting rid of these. While it makes sense for Subdomain
+    # based Scene info, there are way too many attribute-based scene infos
+    # and I don't want to needlessly create signals for all of them
+    # Because we probably won't have too many children at any level, we 
+    # might as well just go through all of them and determine who needs
+    # to be notified.
+    subscribeSignal          = Signal(object,str) 
+    unsubscribeSignal        = Signal(object,str) 
     highlightSignal          = Signal(SubDomain)
+    
+    # Signals that I send
     addCouplerSignal         = Signal(FilterCoupler, QObject)
 
     # Name template for the highlight signal
