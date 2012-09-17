@@ -37,7 +37,7 @@ class AttributeScene(Scene):
 
     def __init__(self, attributes,
         color_map = ColorMaps.getMap('gist_eart_r'),
-        color_range = (0.0, 1.0)):
+        color_range = (0.0, 0.0)):
         super(AttributeScene, self).__init__()
 
         self.attributes = attributes # Needs to identify combination of attrs
@@ -46,16 +46,21 @@ class AttributeScene(Scene):
 
 
 
-
 class ModuleScene(Scene):
     """This holds agent-specific scene information that we might
-       want to propogate among views.
+       want to propagate among views. Inherit from this class to
+       handle this scene information.
 
        Example: May be used to hold ModelView matrix.
     """
 
-    moduleType = None #Change for subclass
-
     def __init__(self):
         super(ModuleScene, self).__init__()
 
+
+class GLModuleScene(ModuleScene):
+
+    def __init__(self, modelview = None):
+        super(ModuleScene, self).__init__()
+
+        self.modelview_matrix = modelview

@@ -232,7 +232,7 @@ class GLWidget(QGLWidget):
 
             glColor4f(0.0, 0.0, 1.0, 1.0)
             glVertex3f (0, 0, 0)
-            glVertex3f (0, 0, -len)
+            glVertex3f (0, 0, len)
 
         glEnable(GL_DEPTH_TEST)
 
@@ -241,6 +241,11 @@ class GLWidget(QGLWidget):
         glPopMatrix()
 
         glViewport(0, 0, self.width(), self.height())
+
+    def set_rotation(self, rotation):
+        if self.enable_rotation:
+            self.rotation = rotation
+            self.updateGL()
 
 
 def set_perspective(fovY, aspect, zNear, zFar):

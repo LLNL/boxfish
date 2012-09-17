@@ -18,13 +18,9 @@ class ModuleAgent(QObject):
     unsubscribeSignal        = Signal(object,str)
     highlightSignal          = Signal(SubDomain)
     addCouplerSignal         = Signal(FilterCoupler, QObject)
-    #evaluateSignal           = Signal(Query)
 
     # Name template for the highlight signal
     highlightSignal_base = "%s_highlight_signal"
-
-    # Name template for the data publishing signal
-    publishSignal_base = "%s_publish_signal"
 
     # The list of registered signals for highlights and yes the exec stuff is
     # necessary since PySide seems to mangle the signal otherwise. It is not
@@ -34,7 +30,6 @@ class ModuleAgent(QObject):
     # this hack to create a bunch of named static variables
     for name in SubDomain().subclasses():
         exec highlightSignal_base % name + ' = Signal(SubDomain)'
-        #exec publishSignal_base % name + ' = Signal(Query,np.ndarray)'
 
     # INIT IS DOWN HERE
     def __init__(self, parent, datatree = None):
@@ -46,16 +41,12 @@ class ModuleAgent(QObject):
         self.domain_scenes = dict()
         self.attribute_scenes = dict()
         self.module_scenes = dict()
-        self.publish = dict()
         for name in SubDomain().subclasses():
             self.listenerCount[name] = 0
             exec 'self.highlights[\"%s\"] = self.' % name \
                 + self.highlightSignal_base % name
-            #exec 'self.publish[\"%s\"] = self.' % name \
-                # + self.publishSignal_base % name
 
-        #self.context = Context()
-        #self.queryEngine = QueryEngine()
+        self.children = list()
 
         # List of filter streams (couplers) the agent wants
         self.requirements = dict()
@@ -64,6 +55,8 @@ class ModuleAgent(QObject):
         self.child_requirements = list()
 
         self.filters = list()
+
+        self.module_scene = ModuleScene()
 
 
     # factory method for subclasses
@@ -78,24 +71,13 @@ class ModuleAgent(QObject):
                     return result
             return None
 
-    def sortIndicesByTable(self, indexList):
-        """Creates an iterator of passed indices grouped by
-        the tableItem that they come from.
-        """
-        get_parent = lambda x: self.datatree.getItem(x).parent()
-        sorted_indices = sorted(indexList, key = get_parent)
-        attribute_groups = itertools.groupby(sorted_indices, key = get_parent)
-
-        return attribute_groups
-
-    def addRequirement(self, *names):
-        for name in names:
-            coupler = FilterCoupler(name, self, None)
-            self.requirements[name] = ModuleRequest(self.datatree, name,
-                coupler)
-            coupler.changeSignal.connect(self.requiredCouplerChanged)
-            #Now send this new one to the parent
-            self.addCouplerSignal.emit(coupler, self)
+    def addRequirement(self, name, subdomain = None):
+        coupler = FilterCoupler(name, self, None)
+        self.requirements[name] = ModuleRequest(self.datatree, name, coupler,
+            subdomain)
+        coupler.changeSignal.connect(self.requiredCouplerChanged)
+        #Now send this new one to the parent
+        self.addCouplerSignal.emit(coupler, self)
 
     def requestUpdated(self, name):
         pass
@@ -153,12 +135,13 @@ class ModuleAgent(QObject):
                     del self.requirements[key]
 
     def registerChild(self, child):
+        self.children.append(child)
         child.subscribeSignal.connect(self.subscribe)
         child.unsubscribeSignal.connect(self.unsubscribe)
         child.highlightSignal.connect(self.highlight)
         child.addCouplerSignal.connect(self.addChildCoupler)
 
-        # "Adopt" child's column requests
+        # "Adopt" child's requests
         for coupler in child.getCouplerRequests():
             my_filter = None
             if self.filters:
@@ -168,12 +151,13 @@ class ModuleAgent(QObject):
             self.addCouplerSignal.emit(new_coupler, self)
 
     def unregisterChild(self, child):
+        self.children.remove(child)
         child.subscribeSignal.disconnect(self.subscribe)
         child.unsubscribeSignal.disconnect(self.unsubscribe)
         child.highlightSignal.disconnect(self.highlight)
         child.addCouplerSignal.disconnect(self.addChildCoupler)
 
-        # Abandon child's column requests
+        # Abandon child's requests
         for coupler in self.child_requirements:
             if coupler.parent == child:
                 coupler.delete()
@@ -277,14 +261,44 @@ class ModuleRequest(QObject):
         'min' : min,
     }
 
-    def __init__(self, datatree, name, coupler, indices = list()):
+    def __init__(self, datatree, name, coupler, subdomain = None,
+        indices = list()):
         super(ModuleRequest, self).__init__()
 
+        self.datatree = datatree
         self.name = name
         self.coupler = coupler
-        self.indices = indices
-        self.datatree = datatree
+        self.subdomain = subdomain
+        self._indices = indices
 
+        if self.subdomain:
+            self.subdomain_scene = SubdomainScene(self.subdomain)
+        else:
+            self.subdomain_scene = None
+
+        if self._indices is None:
+            self.attribute_scene = AttributeScene(set())
+        else:
+            self.attribute_scene = AttributeScene(self.attributeNameSet())
+
+
+    @property
+    def indices(self):
+        return self._indices
+
+    @indices.setter
+    def indices(self, indices):
+        self._indices = indices
+        if self._indices is None or len(self._indices) > 0:
+            self.attribute_scene.attributes = set()
+        else:
+            self.attribute_scene.attributes = self.attributeNameSet()
+
+    def attributeNameSet(self):
+        attribute_set = set()
+        for index in self._indices:
+            attribute_set.add(self.datatree.getItem(index).name)
+        return attribute_set
 
     def sortIndicesByTable(self, indexList):
         """Creates an iterator of passed indices grouped by
@@ -300,7 +314,7 @@ class ModuleRequest(QObject):
     def preprocess(self):
         """Verifies that this ModuleRequest can be fulfilled.
         """
-        if self.indices is None or len(self.indices) <= 0:
+        if self._indices is None or len(self._indices) <= 0:
             return False
         return True
 
@@ -334,7 +348,7 @@ class ModuleRequest(QObject):
             group_by_table._table.identifiers(), group_by_attributes,
             [group_by_table._table._key], row_aggregator)
 
-        self.attribute_groups = self.sortIndicesByTable(self.indices)
+        self.attribute_groups = self.sortIndicesByTable(self._indices)
         for table, attribute_group in self.attribute_groups:
             # Determine if projection exists, if not, skip
             projection = group_by_table.getRun().getProjection(
@@ -410,7 +424,7 @@ class ModuleRequest(QObject):
         if not self.preprocess():
             return None, None, None
 
-        self.attribute_groups = self.sortIndicesByTable(self.indices)
+        self.attribute_groups = self.sortIndicesByTable(self._indices)
         data_list = list()
         headers = list()
         table_list = list()
