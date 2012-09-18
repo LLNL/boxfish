@@ -126,7 +126,7 @@ class Torus3dView3d(ModuleView):
         if range <= sys.float_info.epsilon:
             range = 1.0
 
-        cmap = cm.get_cmap("gist_earth_r")
+        cmap = cm.get_cmap("jet")
 
         if self.agent.shape != self.shape:
             self.view.setShape(self.agent.shape)
@@ -144,7 +144,7 @@ class Torus3dView3d(ModuleView):
         if vals is None:
             return
         
-        cmap = cm.get_cmap("gist_earth_r")
+        cmap = cm.get_cmap("jet")
         
         if self.agent.shape != self.shape:
             self.view.setShape(self.agent.shape)
@@ -161,10 +161,16 @@ class Torus3dView3d(ModuleView):
                 in zip((sx, sy, sz), (tx, ty, tz))]
 
             # plus direction link
-            if sum(coord_difference) > 0:
+            if sum(coord_difference) == -1: # plus direction link
+                link_dir = coord_difference.index(-1)
+                link_values[sx, sy, sz, link_dir] += val
+            elif sum(coord_difference) == 1: # minus direction link
+                link_dir = coord_difference.index(1)
+                link_values[tx, ty, tz, link_dir] += val
+            elif sum(coord_difference) > 0: # plus torus seam link
                 link_dir = list(np.sign(coord_difference)).index(1)
                 link_values[sx, sy, sz, link_dir] += val
-            else: # minus direction link
+            elif sum(coord_difference) < 0: # minus torus seam link
                 link_dir = list(np.sign(coord_difference)).index(-1)
                 link_values[tx, ty, tz, link_dir] += val
 

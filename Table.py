@@ -207,18 +207,8 @@ class Table(object):
        perhaps a list of lists style such that we could aggregate multiple
        columns and produce a single column.
     """
-    # We need all possible combinations of the given attributes
-    givens_list = list()
-    for attr in given_attrs:
-      givens_list.append(np.unique(self._data[attr][identifiers]))
-
-    groupby_iter = itertools.product(*givens_list)
     group_list = list()
     group_dict = dict()
-    for given_tuple in groupby_iter:
-        group_dict[given_tuple] = list()
-        for attr in desired_attrs:
-            group_dict[given_tuple].append(list())
 
     # For the found values
     desired_list = list()
@@ -228,8 +218,13 @@ class Table(object):
     # Only go through the numpy table once for this group by
     for row in self._data:
         row_tuple = tuple([row[x] for x in given_attrs])
-        for i, attr in enumerate(desired_attrs):
-            group_dict[row_tuple][i].append(row[attr])
+        if row_tuple in group_dict:
+            for i, attr in enumerate(desired_attrs):
+                group_dict[row_tuple][i].append(row[attr])
+        else:
+            group_dict[row_tuple] = list()
+            for i, attr in enumerate(desired_attrs):
+                group_dict[row_tuple].append([row[attr]])
 
     for group_tuple in group_dict:
         if len(group_dict[group_tuple][0]) > 0:
