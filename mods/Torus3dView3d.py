@@ -111,10 +111,12 @@ class Torus3dView3d(ModuleView):
         return self.view
 
     def rotationChanged(self, rotation):
-        print rotation
+        self.agent.module_scene.rotation = rotation
+        self.agent.module_scene.announceChange()
     
     def translationChanged(self, translation):
-        print translation
+        self.agent.module_scene.translation = translation
+        self.agent.module_scene.announceChange()
 
     @Slot(list, list)
     def updateNodeData(self, coords, vals):
@@ -343,5 +345,18 @@ class GLModuleScene(ModuleScene):
         self.rotation = rotation
         self.translation = translation
 
+    def __equals__(self, other):
+        if self.rotation == other.rotation \
+            and self.translation == other.translation:
+            return True
+        return False
+
     def copy(self):
-        return GLModuleScene(self.rotation.copy(), self.translation.copy())
+        if self.rotation is not None and self.translation is not None:
+            return GLModuleScene(self.rotation.copy(), self.translation.copy())
+        elif self.rotation is not None:
+            return GLModuleScene(self.rotation.copy(), None)
+        elif self.translation is not None:
+            return GLModuleScene(None, self.translation.copy())
+        else:
+            return GLModuleScene()

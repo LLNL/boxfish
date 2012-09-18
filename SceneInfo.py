@@ -4,12 +4,16 @@ from PySide.QtCore import Slot,Signal,QObject
 class Scene(QObject):
     """Parent class for all Scene classes."""
 
-    changeSignal = Signal(QObject)
+    causeChangeSignal = Signal(QObject) # For changes originating w/this scene
+    changeSignal = Signal(QObject) # For changes applied to this scene
 
     def __init__(self):
         super(Scene, self).__init__()
 
     def announceChange(self):
+        self.changeSignal.emit(self)
+
+    def acceptChanges(self):
         self.changeSignal.emit(self)
 
 

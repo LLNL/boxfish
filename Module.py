@@ -25,6 +25,7 @@ class ModuleAgent(QObject):
     
     # Signals that I send
     addCouplerSignal         = Signal(FilterCoupler, QObject)
+    moduleSceneChangedSignal = Signal(ModuleScene, object)
 
     # Name template for the highlight signal
     highlightSignal_base = "%s_highlight_signal"
@@ -63,9 +64,10 @@ class ModuleAgent(QObject):
         self.filters = list()
 
         # Module Scene information
-        self.module_scenes_list = dict()
+        self.module_scenes_dict = dict()
         self.module_scene = ModuleScene()
-        self.accept_module_scenes = True
+        self.apply_module_scenes = True
+        self.propagate_module_scenes = True
 
 
     # factory method for subclasses
@@ -79,6 +81,12 @@ class ModuleAgent(QObject):
                 if result is not None:
                     return result
             return None
+
+
+    def connectScenes(self):
+        self.module_scene.causeChangeSignal.connect(self.moduleSceneChanged)
+        self.module_scenes_dict[type(self.module_scene)] \
+            = self.module_scene.copy()
 
     def addRequirement(self, name, subdomain = None):
         coupler = FilterCoupler(name, self, None)
@@ -149,7 +157,8 @@ class ModuleAgent(QObject):
         child.unsubscribeSignal.connect(self.unsubscribe)
         child.highlightSignal.connect(self.highlight)
         child.addCouplerSignal.connect(self.addChildCoupler)
-
+        child.moduleSceneChangedSignal.connect(self.receiveModuleScene)
+        
         # "Adopt" child's requests
         for coupler in child.getCouplerRequests():
             my_filter = None
@@ -165,6 +174,7 @@ class ModuleAgent(QObject):
         child.unsubscribeSignal.disconnect(self.unsubscribe)
         child.highlightSignal.disconnect(self.highlight)
         child.addCouplerSignal.disconnect(self.addChildCoupler)
+        child.moduleSceneChangedSignal.disconnect(self.receiveModuleScene)
 
         # Abandon child's requests
         for coupler in self.child_requirements:
@@ -183,6 +193,20 @@ class ModuleAgent(QObject):
         for child in self.children:
             child.delete()
         self.parent().unregisterChild(self)
+
+    def moduleSceneChanged(self, module_scene):
+        self.module_scenes_dict[type(self.module_scene)] \
+            = self.module_scene.copy()
+
+        self.moduleSceneChangedSignal.emit(self.module_scene.copy(), self)
+
+    def receiveModuleScene(self, module_scene, child_agent):
+        pass
+
+
+
+    # EVERYTHING UNDER HERE (in this class) NOT CURRENTLY IN USE, LEFTOVER FROM 
+    # ORIGINAL QT BOXFISH, TO BE CONVERTED WHEN WE ADD HIGHLIGHTS
 
     # REWRITEME to apply child policy and use projections through the
     # data datatree as well as handle other Scenegraph changes
@@ -501,11 +525,6 @@ class ModuleView(QMainWindow):
         self.setAcceptDrops(True)
         self.setWindowFlags(Qt.Widget) # Or else it will try to be a window
 
-        # Tab Dialog stuff
-        self.enable_tab_dialog = True
-        self.tab_dialog = TabDialog(self)
-        self.tab_dialog.addTab(SceneTab(self.tab_dialog), "Scene Policy")
-
         # Makes color bar flush with top
         left, top, right, bottom = self.layout().getContentsMargins()
         self.layout().setContentsMargins(0, 0, right, bottom)
@@ -529,6 +548,9 @@ class ModuleView(QMainWindow):
     def realize(self):
         self.agent = self.createAgent()
         self.parent_view.agent.registerChild(self.agent)
+        self.agent.connectScenes()
+        self.agent.module_scene.changeSignal.connect(
+            self.moduleSceneChanged)
 
         self.view = self.createView()
         self.centralWidget = QWidget()
@@ -546,6 +568,13 @@ class ModuleView(QMainWindow):
         self.centralWidget.setLayout(layout)
 
         self.setCentralWidget(self.centralWidget)
+        
+        # Tab Dialog stuff
+        self.enable_tab_dialog = True
+        self.tab_dialog = TabDialog(self)
+        self.tab_dialog.addTab(SceneTab(self.tab_dialog, self.agent),
+            "Scene Policy")
+
 
 
     # Must be implemented by inheritors
@@ -711,6 +740,8 @@ class ModuleView(QMainWindow):
         if self.enable_tab_dialog:
             self.tab_dialog.show()
 
+    def moduleSceneChanged(self, module_scene):
+        pass
 
 class BFDockWidget(QDockWidget):
     """We can move windows using the QDockWidget. This class sets all of
@@ -820,19 +851,35 @@ class SceneTab(QWidget):
        the module.
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent, agent):
         super(SceneTab, self).__init__(parent)
+
+        self.agent = agent
 
         self.layout = QVBoxLayout()
         self.layout.setAlignment(Qt.AlignCenter)
-        self.layout.addWidget(QLabel("Not yet implemented."))
+
+        # self.propagate_module_scenes
+        self.propagate = QCheckBox("Propagate module scene to other modules.")
+        self.propagate.setChecked(self.agent.propagate_module_scenes)
+        self.propagate.stateChanged.connect(self.propagateChanged)
+
+        # self.apply_module_scenes
+        self.applyScene = QCheckBox("Apply module scene from other modules.")
+        self.applyScene.setChecked(self.agent.apply_module_scenes)
+        self.applyScene.stateChanged.connect(self.applyChanged)
+
+        self.layout.addWidget(self.applyScene)
+        self.layout.addItem(QSpacerItem(5,5))
+        self.layout.addWidget(self.propagate)
+        
         self.setLayout(self.layout)
 
-        # Widget determines if we accept other people's highlights
-        # based on some information from the module
-        # (to what granularity?)
-
-        # Also widget determines the colormap (?)
+    def propagateChanged(self):
+        self.agent.propagate_module_scenes = self.propagate.isChecked()
+        
+    def applyChanged(self):
+        self.agent.apply_module_scenes = self.applyScene.isChecked()
         
 
 class DragLabel(QLabel):
