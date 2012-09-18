@@ -27,6 +27,7 @@ class SubdomainScene(Scene):
 
 
 
+
 class AttributeScene(Scene):
     """This holds attribute-specific scene information that we might
        want to propogate among views.
@@ -57,10 +58,6 @@ class ModuleScene(Scene):
     def __init__(self):
         super(ModuleScene, self).__init__()
 
+    def copy(self):
+        return ModuleScene()
 
-class GLModuleScene(ModuleScene):
-
-    def __init__(self, modelview = None):
-        super(ModuleScene, self).__init__()
-
-        self.modelview_matrix = modelview

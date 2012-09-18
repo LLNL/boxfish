@@ -47,7 +47,7 @@ class ModuleAgent(QObject):
         self.highlights = dict() # domain based information
         self.domain_scenes = dict()
         self.attribute_scenes = dict()
-        self.module_scenes = dict()
+        self.module_scenes_list = dict()
         for name in SubDomain().subclasses():
             self.listenerCount[name] = 0
             exec 'self.highlights[\"%s\"] = self.' % name \
@@ -131,7 +131,7 @@ class ModuleAgent(QObject):
         reqs.extend(self.child_requirements)
         return reqs
 
-    # Remove column that has sent a delete signal
+    # Remove coupler that has sent a delete signal
     @Slot(FilterCoupler)
     def deleteCoupler(self, coupler):
         if coupler in self.child_requirements:

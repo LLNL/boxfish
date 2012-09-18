@@ -26,6 +26,7 @@ class GLWidget(QGLWidget):
     """
 
     rotationChangeSignal = Signal(np.ndarray)
+    translationChangeSignal = Signal(np.ndarray)
 
     def __init__(self, parent=None, **keywords):
         """Sets up initial values for dragging variables, translation, and rotation matrices."""
@@ -191,6 +192,8 @@ class GLWidget(QGLWidget):
         elif event.orientation() == Qt.Orientation.Horizontal:
             self.translation[0] -= .01 * event.delta()
 
+        self.translationChangeSignal.emit(self.translation)
+
         self.updateGL()
 
     def keyPressEvent(self, event):
@@ -213,6 +216,10 @@ class GLWidget(QGLWidget):
         if self.enable_rotation:
             self.rotation = rotation
             self.updateGL()
+    
+    def set_translation(self, translation):
+        self.translation = translation
+        self.updateGL()
 
 
 def set_perspective(fovY, aspect, zNear, zFar):
