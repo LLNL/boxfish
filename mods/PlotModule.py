@@ -1,6 +1,4 @@
-from SubDomain import *
 from Module import *
-from DataModel import *
 
 import sys
 import matplotlib

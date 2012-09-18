@@ -1,6 +1,4 @@
-from SubDomain import *
 from Module import *
-from DataModel import *
 
 import sys
 from PySide.QtCore import *
@@ -12,9 +10,6 @@ class TableAgent(ModuleAgent):
 
     def __init__(self, parent, datatree):
         super(TableAgent, self).__init__(parent, datatree)
-
-        self.indices = None
-        self.table_coupler = None
 
         self.addRequirement("table columns")
 

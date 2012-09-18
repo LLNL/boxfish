@@ -11,7 +11,6 @@ import sys
 import itertools
 
 from SceneInfo import *
-from FilterCoupler import FilterCoupler
 import matplotlib
 import matplotlib.cm as cm
 
