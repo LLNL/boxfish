@@ -3,6 +3,7 @@ from PySide.QtGui import *
 from SubDomain import *
 from Module import *
 from Query import *
+from Table import Table
 #from QueryEngine import *
 from DataModel import *
 from Filter import *
@@ -29,13 +30,16 @@ class FilterBoxView(ModuleView):
         super(FilterBoxView, self).__init__(parent, parent_view, title)
 
         self.allowDocks(True)
+        if self.agent is not None:
+            self.tab_dialog.addTab(FilterTab(self.tab_dialog, self, 
+                self.windowTitle(), ""), "Filters")
 
     def createAgent(self):
         return FilterBox(self.parent_view.agent, \
             self.parent_view.agent.datatree)
 
     def createView(self):
-        view = QWidget() # Later this may be a FilterBoxWidget w/Filter controls
+        view = QWidget() 
 
         layout = QGridLayout()
         self.fake_label = QLabel("")
@@ -66,12 +70,6 @@ class FilterBoxView(ModuleView):
         self.addToolBar(self.toolbar)
 
     def droppedData(self, indexList):
-        #mytext = self.fake_label.text()
-        #for index in indexList:
-        #    print self.agent.datatree.getItem(index).name
-        #    mytext = mytext + "\n" + self.agent.datatree.getItem(index).name + \
-                #        " from " + self.agent.datatree.getItem(index).parent().name
-        #self.fake_label.setText(mytext)
         dial = FakeDialog(self, self.agent.datatree.getItem(indexList[0]).name, "")
         dial.show()
 
@@ -86,12 +84,6 @@ class FilterBoxView(ModuleView):
             event.accept()
         else:
             super(FilterBoxView, self).dropEvent(event)
-
-
-    # Goes with FakeDialog
-    def mouseDoubleClickEvent(self, e):
-        dial = FakeDialog(self, self.windowTitle(), "")
-        dial.show()
 
     # Goes with FakeDialog
     def fakeNewVals(self, title, filtertext):
@@ -117,12 +109,12 @@ class FilterMime(QMimeData):
 # Convenient way for me to rename the window and added text for
 # Boxfish poster. May want to change this into something permanent
 # involving actual filtering.
-class FakeDialog(QDialog):
+class FilterTab(QWidget):
 
-    def __init__(self, parent, title, filtertext = ""):
-        super(FakeDialog, self).__init__(parent, Qt.Dialog)
+    def __init__(self, parent, view, title, filtertext = ""):
+        super(FilterTab, self).__init__(parent)
 
-        self.setModal(False)
+        self.view = view
         self.parent = parent
 
         nameLabel = QLabel("Attribute: ")
@@ -134,7 +126,6 @@ class FakeDialog(QDialog):
         changeButton = QPushButton("Set")
         changeButton.clicked.connect(self.sendBack)
 
-
         mainLayout = QGridLayout()
         mainLayout.addWidget(nameLabel, 0, 0)
         mainLayout.addWidget(self.nameEdit, 0, 1)
@@ -145,8 +136,8 @@ class FakeDialog(QDialog):
         self.setLayout(mainLayout)
 
     def sendBack(self):
-        self.parent.fakeNewVals(self.nameEdit.text(), self.filterEdit.text())
-        self.close()
+        self.view.fakeNewVals(self.nameEdit.text(), self.filterEdit.text())
+        self.parent.close()
 
 # ??? Not sure what I was thinking here... previous ideas on filtering.
 # This has all of the information that actually gets shown in the filter

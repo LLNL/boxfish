@@ -47,7 +47,6 @@ class ModuleAgent(QObject):
         self.highlights = dict() # domain based information
         self.domain_scenes = dict()
         self.attribute_scenes = dict()
-        self.module_scenes_list = dict()
         for name in SubDomain().subclasses():
             self.listenerCount[name] = 0
             exec 'self.highlights[\"%s\"] = self.' % name \
@@ -63,7 +62,10 @@ class ModuleAgent(QObject):
 
         self.filters = list()
 
+        # Module Scene information
+        self.module_scenes_list = dict()
         self.module_scene = ModuleScene()
+        self.accept_module_scenes = True
 
 
     # factory method for subclasses
@@ -176,6 +178,11 @@ class ModuleAgent(QObject):
         if self.parent() is not None and \
             isinstance(self.parent(), ModuleAgent):
             self.parent().registerChild(self)
+
+    def delete(self):
+        for child in self.children:
+            child.delete()
+        self.parent().unregisterChild(self)
 
     # REWRITEME to apply child policy and use projections through the
     # data datatree as well as handle other Scenegraph changes
@@ -494,6 +501,11 @@ class ModuleView(QMainWindow):
         self.setAcceptDrops(True)
         self.setWindowFlags(Qt.Widget) # Or else it will try to be a window
 
+        # Tab Dialog stuff
+        self.enable_tab_dialog = True
+        self.tab_dialog = TabDialog(self)
+        self.tab_dialog.addTab(SceneTab(self.tab_dialog), "Scene Policy")
+
         # Makes color bar flush with top
         left, top, right, bottom = self.layout().getContentsMargins()
         self.layout().setContentsMargins(0, 0, right, bottom)
@@ -523,7 +535,7 @@ class ModuleView(QMainWindow):
         
         layout = QGridLayout()
         if isinstance(self.parent(), BFDockWidget):
-            layout.addWidget(BFAttachLabel(self.parent(), 0),0, 0, 1, 2)
+            layout.addWidget(DragLabel(self.parent(), 0),0, 0, 1, 2)
 
         # TODO: Replace magic number with not-magic constant
         layout.addWidget(self.view, 100, 0, 1, 2) # Add view at bottom
@@ -695,7 +707,9 @@ class ModuleView(QMainWindow):
             self.killRogueOverlays()
             super(ModuleView, self).dropEvent(event)
 
-
+    def mouseDoubleClickEvent(self, event):
+        if self.enable_tab_dialog:
+            self.tab_dialog.show()
 
 
 class BFDockWidget(QDockWidget):
@@ -737,6 +751,11 @@ class BFDockWidget(QDockWidget):
             dropAction = drag.start(Qt.MoveAction)
         else:
             super(BFDockWidget, self).mouseMoveEvent(e)
+
+
+    def closeEvent(self, e):
+        self.widget().agent.delete()
+        super(BFDockWidget, self).closeEvent(e)
 
 
 class ModuleViewMime(QMimeData):
@@ -781,6 +800,11 @@ class TabDialog(QDialog):
 
         self.setWindowTitle(title)
         self.tabs = QTabWidget(self)
+        
+        # Need a layout to get resizing to work
+        layout = QGridLayout()
+        layout.addWidget(self.tabs, 0, 0)
+        self.setLayout(layout)
 
     def addTab(self, widget, label, index = 0):
 
@@ -788,6 +812,7 @@ class TabDialog(QDialog):
         viewArea.setWidget(widget)
         viewArea.setWidgetResizable(True)
         self.tabs.insertTab(index, viewArea, label)
+        self.tabs.setCurrentIndex(0)
 
 
 class SceneTab(QWidget):
@@ -798,10 +823,10 @@ class SceneTab(QWidget):
     def __init__(self, parent):
         super(SceneTab, self).__init__(parent)
 
-        layout = QGridLayout()
-        layout.setAlignment(Qt.AlignCenter)
-        layout.addWidget(QLabel("Not yet implemented."))
-        view.setLayout(layout)
+        self.layout = QVBoxLayout()
+        self.layout.setAlignment(Qt.AlignCenter)
+        self.layout.addWidget(QLabel("Not yet implemented."))
+        self.setLayout(self.layout)
 
         # Widget determines if we accept other people's highlights
         # based on some information from the module
@@ -810,13 +835,13 @@ class SceneTab(QWidget):
         # Also widget determines the colormap (?)
         
 
-class BFAttachLabel(QLabel):
+class DragLabel(QLabel):
     """This creates a label that can be used for BFDockWidget
        Drag & Drop operations.
     """
 
     def __init__(self, dock, color):
-        super(BFAttachLabel,self).__init__("Drag Me")
+        super(DragLabel,self).__init__("Drag Me")
 
         self.dock = dock
         self.setAcceptDrops(True)
@@ -836,13 +861,13 @@ class BFAttachLabel(QLabel):
         drag.setMimeData(ModuleViewMime(self.dock))
         dropAction = drag.start(Qt.MoveAction)
 
-class BFDragToolBar(QToolBar):
+class DragToolBar(QToolBar):
     """This creates a toolbar that can be used for BFDockWidget
        Drag & Drop operations.
     """
 
     def __init__(self, title, parent, dock):
-        super(BFDragToolBar, self).__init__(title, parent)
+        super(DragToolBar, self).__init__(title, parent)
 
         self.dock = dock
 
@@ -853,6 +878,15 @@ class BFDragToolBar(QToolBar):
         drag = QDrag(self)
         drag.setMimeData(ModuleViewMime(self.dock))
         dropAction = drag.start(Qt.MoveAction)
+
+class DropLineEdit(QLineEdit):
+    """This created a LineEdit (textfield) for datatree drop operations.
+    """
+
+    def __init__(self, parent, default_text):
+        super(DropLineEdit, self).__init__(default_text, parent)
+
+        
 
 class DropPanel(QWidget):
     """This creates a panel that can be datatree index drag/drop operations.
