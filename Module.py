@@ -881,7 +881,7 @@ class SceneTab(QWidget):
     def applyChanged(self):
         self.agent.apply_module_scenes = self.applyScene.isChecked()
         
-
+# Some of these should probably be broken out into a Utils class
 class DragLabel(QLabel):
     """This creates a label that can be used for BFDockWidget
        Drag & Drop operations.

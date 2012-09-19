@@ -4,7 +4,6 @@ from SubDomain import *
 from Module import *
 from Query import *
 from Table import Table
-#from QueryEngine import *
 from DataModel import *
 from Filter import *
 
@@ -31,7 +30,7 @@ class FilterBoxView(ModuleView):
 
         self.allowDocks(True)
         if self.agent is not None:
-            self.tab_dialog.addTab(FilterTab(self.tab_dialog, self, 
+            self.tab_dialog.addTab(SimpleFilterTab(self.tab_dialog, self, 
                 self.windowTitle(), ""), "Filters")
 
     def createAgent(self):
@@ -109,10 +108,10 @@ class FilterMime(QMimeData):
 # Convenient way for me to rename the window and added text for
 # Boxfish poster. May want to change this into something permanent
 # involving actual filtering.
-class FilterTab(QWidget):
+class SimpleFilterTab(QWidget):
 
     def __init__(self, parent, view, title, filtertext = ""):
-        super(FilterTab, self).__init__(parent)
+        super(SimpleFilterTab, self).__init__(parent)
 
         self.view = view
         self.parent = parent
@@ -139,13 +138,41 @@ class FilterTab(QWidget):
         self.view.fakeNewVals(self.nameEdit.text(), self.filterEdit.text())
         self.parent.close()
 
-# ??? Not sure what I was thinking here... previous ideas on filtering.
-# This has all of the information that actually gets shown in the filter
-# Will need to subscribe to the DocTree datatree as well as its own internal datatree
-# of what data it has which is subscribed to something more specific as well
-# as up the tree and the highlight selection
-class FilterModel():
+class FilterTab(QWidget):
 
-    def __init__(self):
-        pass
+    def __init__(self, parent, view):
+        super(FilterTTab, self).__init__(parent)
+
+        self.view = view
+        self.parent = parent
+
+
+        layout = QHBoxLayout(self)
+        self.sidesplitter = QSplitter(Qt.Vertical)
+
+        # You can only select one at a time
+        self.data_view = QTreeView(self)
+        self.data_view.setModel(self.view.agent.datatree)
+        self.data_view.setDragEnabled(True)
+        self.data_view.setDropIndicatorShown(True)
+        self.sidesplitter.addWidget(self.data_view)
+        self.sidesplitter.setStretchFactor(0,1)
+
+        self.filter_widget = self.buildFilterWidget()
+        self.sidesplitter.addWidget(self.filter_widget)
+        self.sidesplitter.setStretchFactor(1,0)
+
+        layout.addWidget(self.sidesplitter)
+        self.setLayout(layout)
+        
+
+    def buildFilterWidget(self):
+        filter_widget = QWidget()
+
+        filter_layout = QVBoxLayout(filter_widget)
+
+        filter_widget.setLayout(filter_layout)
+
+
+        return filter_widget
 
