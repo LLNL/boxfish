@@ -59,6 +59,12 @@ class AbstractTreeItem(object):
         if self._parent is not None:
             return self._parent._children.index(self)
 
+    def buildAttributeList(self, attributes = set()):
+        for child in self.children:
+            child.buildAttributeList(attributes)
+
+        return attributes
+
 
 class RunItem(AbstractTreeItem):
     """Item representing an entire run. Holds the run
@@ -480,6 +486,9 @@ class AttributeItem(SubRunItem):
     def typeInfo(self):
         return "ATTRIBUTE"
 
+    def buildAttributeList(self, attributes = set()):
+        attributes.add(self.name)
+        return attributes
 
 class SubDomainItem(SubRunItem):
     """Item for containing individual attributes. Access to these
@@ -597,6 +606,10 @@ class DataTree(QAbstractItemModel):
                 return item
 
         return self._rootItem
+
+    def generateAttributeList(self):
+        return sorted(self._rootItem.buildAttributeList())
+
 
     # Add a projection and its domains to the datatree.
     def insertProjection(self, name, projection, metadata, position=-1, \

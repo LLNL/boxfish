@@ -19,10 +19,10 @@ class ModuleAgent(QObject):
     # Because we probably won't have too many children at any level, we 
     # might as well just go through all of them and determine who needs
     # to be notified.
-    subscribeSignal          = Signal(object,str) 
-    unsubscribeSignal        = Signal(object,str) 
+    subscribeSignal          = Signal(object,str)
+    unsubscribeSignal        = Signal(object,str)
     highlightSignal          = Signal(SubDomain)
-    
+
     # Signals that I send
     addCouplerSignal         = Signal(FilterCoupler, QObject)
     moduleSceneChangedSignal = Signal(ModuleScene, object)
@@ -158,7 +158,7 @@ class ModuleAgent(QObject):
         child.highlightSignal.connect(self.highlight)
         child.addCouplerSignal.connect(self.addChildCoupler)
         child.moduleSceneChangedSignal.connect(self.receiveModuleScene)
-        
+
         # "Adopt" child's requests
         for coupler in child.getCouplerRequests():
             my_filter = None
@@ -554,10 +554,10 @@ class ModuleView(QMainWindow):
 
         self.view = self.createView()
         self.centralWidget = QWidget()
-        
+
         layout = QGridLayout()
         if isinstance(self.parent(), BFDockWidget):
-            layout.addWidget(DragLabel(self.parent(), 0),0, 0, 1, 2)
+            layout.addWidget(DragDockLabel(self.parent(), 0),0, 0, 1, 2)
 
         # TODO: Replace magic number with not-magic constant
         layout.addWidget(self.view, 100, 0, 1, 2) # Add view at bottom
@@ -568,7 +568,7 @@ class ModuleView(QMainWindow):
         self.centralWidget.setLayout(layout)
 
         self.setCentralWidget(self.centralWidget)
-        
+
         # Tab Dialog stuff
         self.enable_tab_dialog = True
         self.tab_dialog = TabDialog(self)
@@ -631,7 +631,7 @@ class ModuleView(QMainWindow):
 
     def createDragOverlay(self, tags, texts, images = None):
         self.dragOverlay = True
-        
+
         self.overlay = OverlayFrame(self)
 
         layout = QGridLayout(self.overlay)
@@ -647,7 +647,7 @@ class ModuleView(QMainWindow):
                 layout.addWidget(DropPanel(tag, text, self.overlay, 
                     self.overlayDroppedData), i, 0, 1, 1)
                 layout.setRowStretch(i, 5)
-            
+
         self.overlay.setLayout(layout)
 
     def killRogueOverlays(self):
@@ -660,7 +660,7 @@ class ModuleView(QMainWindow):
             childDocks = self.findChildren(BFDockWidget)
             for dock in childDocks:
                 dock.widget().killRogueOverlays()
-    
+
     def closeOverlay(self):
         if self.overlay_dialog is not None:
             self.overlay_dialog.close()
@@ -831,7 +831,7 @@ class TabDialog(QDialog):
 
         self.setWindowTitle(title)
         self.tabs = QTabWidget(self)
-        
+
         # Need a layout to get resizing to work
         layout = QGridLayout()
         layout.addWidget(self.tabs, 0, 0)
@@ -872,23 +872,24 @@ class SceneTab(QWidget):
         self.layout.addWidget(self.applyScene)
         self.layout.addItem(QSpacerItem(5,5))
         self.layout.addWidget(self.propagate)
-        
+
         self.setLayout(self.layout)
 
     def propagateChanged(self):
         self.agent.propagate_module_scenes = self.propagate.isChecked()
-        
+
     def applyChanged(self):
         self.agent.apply_module_scenes = self.applyScene.isChecked()
-        
+
+
 # Some of these should probably be broken out into a Utils class
-class DragLabel(QLabel):
+class DragDockLabel(QLabel):
     """This creates a label that can be used for BFDockWidget
        Drag & Drop operations.
     """
 
     def __init__(self, dock, color):
-        super(DragLabel,self).__init__("Drag Me")
+        super(DragDockLabel,self).__init__("Drag Me")
 
         self.dock = dock
         self.setAcceptDrops(True)
@@ -908,9 +909,10 @@ class DragLabel(QLabel):
         drag.setMimeData(ModuleViewMime(self.dock))
         dropAction = drag.start(Qt.MoveAction)
 
+
 class DragToolBar(QToolBar):
     """This creates a toolbar that can be used for BFDockWidget
-       Drag & Drop operations.
+       Drag & Drop operatioxtns.
     """
 
     def __init__(self, title, parent, dock):
@@ -926,14 +928,86 @@ class DragToolBar(QToolBar):
         drag.setMimeData(ModuleViewMime(self.dock))
         dropAction = drag.start(Qt.MoveAction)
 
+
+class DragTextLabel(QLabel):
+    """This creates a label that can be used for text toolbox
+       Drag & Drop operations.
+    """
+
+    def __init__(self, text):
+        super(DragTextLabel,self).__init__(text)
+
+        self.text = text
+        self.setAcceptDrops(True)
+        self.setScaledContents(True)
+        self.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.setToolTip("Drag me.")
+
+        self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+
+    def mousePressEvent(self, e):
+        pass
+
+    def mouseMoveEvent(self, e):
+        drag = QDrag(self)
+        drag.setMimeData(LabelTextMime(self.text))
+        drag.setPixmap(QPixmap.fromImage(self.createPixmap()))
+        dropAction = drag.start(Qt.MoveAction)
+
+    def createPixmap(self):
+        font_metric = QFontMetrics(QFont())
+        text_size = font_metric.size(Qt.TextSingleLine, self.text)
+        image = QImage(text_size.width() + 4, text_size.height() + 4,
+            QImage.Format_ARGB32_Premultiplied)
+        image.fill(qRgba(240, 240, 120, 255))
+
+        painter = QPainter()
+        painter.begin(image)
+        painter.setFont(QFont())
+        painter.setBrush(Qt.black)
+        painter.drawText(QRect(QPoint(2, 2), text_size), Qt.AlignCenter,
+            self.text)
+        painter.end()
+        return image
+
+
+class LabelTextMime(QMimeData):
+    """This is for passing text from DragTextLabels during
+       Drag & Drop operations.
+    """
+
+    def __init__(self, text):
+        super(LabelTextMime, self).__init__()
+
+        self.text = text
+
+    def getText(self):
+        return self.text
+
+
 class DropLineEdit(QLineEdit):
     """This created a LineEdit (textfield) for datatree drop operations.
     """
 
-    def __init__(self, parent, default_text):
+    def __init__(self, parent, datatree, default_text = "", completer = None):
         super(DropLineEdit, self).__init__(default_text, parent)
 
-        
+        self.datatree = datatree
+        if completer:
+            self.setCompleter(completer)
+
+    def dragEnterEvent(self, e):
+        if isinstance(e.mimeData(), DataIndexMime):
+            e.accept()
+        else:
+            super(DropLineEdit, self).dragEnterEvent(e)
+
+    def dropEvent(self, e):
+        if isinstance(e.mimeData(), DataIndexMime):
+            index = e.mimeData().getDataIndices()
+            self.setText(self.datatree.getItem(index).name)
+        else:
+            super(DropLineEdit, self).dropEvent(e)
 
 class DropPanel(QWidget):
     """This creates a panel that can be datatree index drag/drop operations.
@@ -958,7 +1032,7 @@ class DropPanel(QWidget):
             layout.addWidget(label)
             layout.addSpacing(5)
         layout.addWidget(QLabel(text))
-    
+
     def dragEnterEvent(self, event):
         if isinstance(event.mimeData(), DataIndexMime):
             event.accept()
@@ -988,22 +1062,22 @@ class OverlayDialog(QDialog):
         super(OverlayDialog, self).__init__(parent, Qt.SplashScreen)
 
         self.setAcceptDrops(True)
-        
+
         #self.setAttribute(Qt.WA_TranslucentBackground)
         bgcolor = self.palette().color(QPalette.Background)
         self.setPalette(QColor(bgcolor.red(), bgcolor.green(), bgcolor.blue(),
             0)) # alpha
 
         self.setModal(True)
-        
+
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignCenter)
         layout.addWidget(widget)
         self.setLayout(layout)
-        
+
         self.resize(0.8 * parent.size().width(), 0.8 * parent.size().height())
         widget.resize(self.width(), self.height())
-        
+
 
     def show(self):
         super(OverlayDialog, self).show()
@@ -1019,13 +1093,13 @@ class OverlayDialog(QDialog):
 
 
 class OverlayFrame(QFrame):
-    """Creates a rounded rectangular translucent frame and 
+    """Creates a rounded rectangular translucent frame and
        accepts drops.
     """
 
     def __init__(self, parent):
         super(OverlayFrame, self).__init__(parent)
-        
+
         self.setVisible(False)
         self.setAcceptDrops(True)
 

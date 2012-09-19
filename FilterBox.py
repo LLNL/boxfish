@@ -30,7 +30,7 @@ class FilterBoxView(ModuleView):
 
         self.allowDocks(True)
         if self.agent is not None:
-            self.tab_dialog.addTab(SimpleFilterTab(self.tab_dialog, self, 
+            self.tab_dialog.addTab(SimpleFilterTab(self.tab_dialog, self,
                 self.windowTitle(), ""), "Filters")
 
     def createAgent(self):
@@ -38,7 +38,7 @@ class FilterBoxView(ModuleView):
             self.parent_view.agent.datatree)
 
     def createView(self):
-        view = QWidget() 
+        view = QWidget()
 
         layout = QGridLayout()
         self.fake_label = QLabel("")
@@ -145,6 +145,7 @@ class FilterTab(QWidget):
 
         self.view = view
         self.parent = parent
+        self.attributes = self.view.agent.datatree.generateAttributeList()
 
 
         layout = QHBoxLayout(self)
@@ -164,15 +165,29 @@ class FilterTab(QWidget):
 
         layout.addWidget(self.sidesplitter)
         self.setLayout(layout)
-        
+
 
     def buildFilterWidget(self):
         filter_widget = QWidget()
-
         filter_layout = QVBoxLayout(filter_widget)
 
+        filter_layout.addWidget(self.buildRelationsWidget)
+        filter_layout.addItem(QSpacerItem(5,5))
+
         filter_widget.setLayout(filter_layout)
-
-
         return filter_widget
 
+    def buildWorkFrame(self):
+
+        DropLineEdit(self, self.view.agent.datatree, text,
+            QCompleter(self.attributes))
+
+    def buildRelationsWidget(self):
+        relations_widget = QWidget()
+        layout = QHBoxLayout(relations_widget)
+
+        for relation in Table.relations:
+            layout.addWidget(DragTextLabel(relation))
+
+        relations_widget.setLayout(layout)
+        return relations_widget
