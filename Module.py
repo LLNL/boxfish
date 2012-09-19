@@ -1009,6 +1009,7 @@ class DropLineEdit(QLineEdit):
         else:
             super(DropLineEdit, self).dropEvent(e)
 
+
 class DropPanel(QWidget):
     """This creates a panel that can be datatree index drag/drop operations.
 
