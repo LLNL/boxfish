@@ -16,7 +16,7 @@ class ModuleAgent(QObject):
     # Timo - probably getting rid of these. While it makes sense for Subdomain
     # based Scene info, there are way too many attribute-based scene infos
     # and I don't want to needlessly create signals for all of them
-    # Because we probably won't have too many children at any level, we 
+    # Because we probably won't have too many children at any level, we
     # might as well just go through all of them and determine who needs
     # to be notified.
     subscribeSignal          = Signal(object,str)
@@ -205,7 +205,7 @@ class ModuleAgent(QObject):
 
 
 
-    # EVERYTHING UNDER HERE (in this class) NOT CURRENTLY IN USE, LEFTOVER FROM 
+    # EVERYTHING UNDER HERE (in this class) NOT CURRENTLY IN USE, LEFTOVER FROM
     # ORIGINAL QT BOXFISH, TO BE CONVERTED WHEN WE ADD HIGHLIGHTS
 
     # REWRITEME to apply child policy and use projections through the
@@ -377,10 +377,10 @@ class ModuleRequest(QObject):
         # Get mapping of group_by_attributes to their subdomain ID
         # THIS IS PAINFULLY SLOW
 
-        # This is where we store intermediate values 
+        # This is where we store intermediate values
         aggregate_values = dict()
 
-        # The groups we need and their corresponding primary key so 
+        # The groups we need and their corresponding primary key so
         # we can project data onto them.
         groups, ids = group_by_table._table.group_attributes_by_attributes(
             group_by_table._table.identifiers(), group_by_attributes,
@@ -644,7 +644,7 @@ class ModuleView(QMainWindow):
                 layout.setRowStretch(i, 5)
         else:
             for i, tag, text in zip(range(len(tags)), tags, texts):
-                layout.addWidget(DropPanel(tag, text, self.overlay, 
+                layout.addWidget(DropPanel(tag, text, self.overlay,
                     self.overlayDroppedData), i, 0, 1, 1)
                 layout.setRowStretch(i, 5)
 
@@ -687,7 +687,7 @@ class ModuleView(QMainWindow):
         if self.acceptDocks and isinstance(event.mimeData(), ModuleViewMime):
             event.accept()
         elif isinstance(event.mimeData(), DataIndexMime):
-            if self.dragOverlay and self.overlay_dialog is None: 
+            if self.dragOverlay and self.overlay_dialog is None:
                 self.overlay.setVisible(True)
                 self.overlay_dialog = OverlayDialog(self, self.overlay)
                 self.overlay_dialog.show()
@@ -721,8 +721,8 @@ class ModuleView(QMainWindow):
         elif self.acceptDocks and isinstance(event.mimeData(), ModuleNameMime):
             mod_name = event.mimeData().getName()
             dock = BFDockWidget(mod_name, self)
-            new_mod = ModuleView().instantiate(mod_name, dock, self, \
-                mod_name)
+            # TODO: figure out how to make instantiate a class method
+            new_mod = ModuleView().instantiate(mod_name, dock, self, mod_name)
             dock.setWidget(new_mod)
             self.addDockWidget(Qt.BottomDockWidgetArea, dock)
         # Dropped Attribute Data
