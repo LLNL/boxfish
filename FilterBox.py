@@ -30,8 +30,8 @@ class FilterBoxView(ModuleView):
 
         self.allowDocks(True)
         if self.agent is not None:
-            self.tab_dialog.addTab(SimpleFilterTab(self.tab_dialog, self,
-                self.windowTitle(), ""), "Filters")
+            self.filter_tab = SimpleFilterTab(self.tab_dialog, self, self.windowTitle(), "")
+            self.tab_dialog.addTab(self.filter_tab, "Filters")
 
     def createAgent(self):
         return FilterBox(self.parent_view.agent, \
@@ -69,8 +69,8 @@ class FilterBoxView(ModuleView):
         self.addToolBar(self.toolbar)
 
     def droppedData(self, indexList):
-        dial = FakeDialog(self, self.agent.datatree.getItem(indexList[0]).name, "")
-        dial.show()
+        self.filter_tab.setAttribute(self.agent.datatree.getItem(indexList[0]).name)
+        self.tab_dialog.show()
 
 
     # Demonstration of changing Drag & Drop behavior for window unique data
@@ -137,6 +137,9 @@ class SimpleFilterTab(QWidget):
     def sendBack(self):
         self.view.fakeNewVals(self.nameEdit.text(), self.filterEdit.text())
         self.parent.close()
+
+    def setAttribute(self, attribute):
+        self.nameEdit.setText(attribute)
 
 class FilterTab(QWidget):
 
