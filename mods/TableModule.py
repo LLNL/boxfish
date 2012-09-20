@@ -27,7 +27,7 @@ class TableAgent(ModuleAgent):
         self.tableUpdateSignal.emit(tables, headers, data_lists)
 
 
-@Module("Table")
+@Module("Table", TableAgent)
 class TableView(ModuleView):
 
     def __init__(self, parent, parent_view = None, title = None):
@@ -37,10 +37,6 @@ class TableView(ModuleView):
 
         if self.agent is not None:
             self.agent.tableUpdateSignal.connect(self.updateTables)
-
-    def createAgent(self):
-        return TableAgent(self.parent_view.agent,
-                            self.parent_view.agent.datatree)
 
     def createView(self):
         self.tabs = QTabWidget()

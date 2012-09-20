@@ -20,7 +20,7 @@ class FilterBox(ModuleAgent):
         for coupler in self.child_requirements:
             coupler.modifier = self.filters[0]
 
-@Module("Filter Box")
+@Module("Filter Box", FilterBox)
 class FilterBoxView(ModuleView):
     """Window for handling filtering operations.
     """
@@ -29,10 +29,6 @@ class FilterBoxView(ModuleView):
         super(FilterBoxView, self).__init__(parent, parent_view, title)
 
         self.allowDocks(True)
-
-    def createAgent(self):
-        return FilterBox(self.parent_view.agent, \
-            self.parent_view.agent.datatree)
 
     def createView(self):
         view = QWidget()

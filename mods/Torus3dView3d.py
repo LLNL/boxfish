@@ -11,9 +11,9 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLE import *
 
-from Torus3dModule import Torus3dView
+from Torus3dModule import Torus3dView, Torus3dAgent
 
-@Module("3D Torus - 3D View")
+@Module("3D Torus - 3D View", Torus3dAgent)
 class Torus3dView3d(Torus3dView):
     """This is a 3d rendering of a 3d torus.
     """
@@ -245,7 +245,7 @@ class GLTorus3dView(GLWidget):
         glViewport(0, 0, self.width(), self.height())
 
 
-class GLModuleScene(ModuleScene):
+class GL3DModuleScene(ModuleScene):
     """TODO: Docs"""
 
     def __init__(self, rotation = None, translation = None):

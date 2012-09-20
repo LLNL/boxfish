@@ -25,7 +25,8 @@ class ModuleAgent(QObject):
 
     # Signals that I send
     addCouplerSignal         = Signal(FilterCoupler, QObject)
-    moduleSceneChangedSignal = Signal(ModuleScene, object)
+    moduleSceneChangedSignal = Signal(ModuleScene, object) # my scene info changed
+    receiveModuleSceneSignal = Signal(ModuleScene, object) # we receive scene info
 
     # Name template for the highlight signal
     highlightSignal_base = "%s_highlight_signal"
@@ -66,8 +67,8 @@ class ModuleAgent(QObject):
         # Module Scene information
         self.module_scenes_dict = dict()
         self.module_scene = ModuleScene()
-        self.apply_module_scenes = True
-        self.propagate_module_scenes = True
+        self.apply_module_scenes = False
+        self._propagate_module_scenes = False
 
 
     # factory method for subclasses
@@ -157,7 +158,7 @@ class ModuleAgent(QObject):
         child.unsubscribeSignal.connect(self.unsubscribe)
         child.highlightSignal.connect(self.highlight)
         child.addCouplerSignal.connect(self.addChildCoupler)
-        child.moduleSceneChangedSignal.connect(self.receiveModuleScene)
+        child.moduleSceneChangedSignal.connect(self.receiveModuleSceneFromChild)
 
         # "Adopt" child's requests
         for coupler in child.getCouplerRequests():
@@ -174,7 +175,8 @@ class ModuleAgent(QObject):
         child.unsubscribeSignal.disconnect(self.unsubscribe)
         child.highlightSignal.disconnect(self.highlight)
         child.addCouplerSignal.disconnect(self.addChildCoupler)
-        child.moduleSceneChangedSignal.disconnect(self.receiveModuleScene)
+        child.moduleSceneChangedSignal.disconnect(
+            self.receiveModuleSceneFromChild)
 
         # Abandon child's requests
         for coupler in self.child_requirements:
@@ -194,14 +196,42 @@ class ModuleAgent(QObject):
             child.delete()
         self.parent().unregisterChild(self)
 
+    @property
+    def propagate_module_scenes(self):
+        return self._propagate_module_scenes
+
+    @propagate_module_scenes.setter
+    def propagate_module_scenes(self, policy):
+        # You can only turn off (policy is False) if your parent is
+        # also False. 
+        if policy or self.parent.propagate_module_scenes == policy:
+            self._propagate_module_scenes = policy
+        if policy: # Push policy on to all children
+            for child in self.children:
+                child.propagate_module_scenes = policy
+
     def moduleSceneChanged(self, module_scene):
-        self.module_scenes_dict[type(self.module_scene)] \
-            = self.module_scene.copy()
+        #self.module_scenes_dict[type(self.module_scene)] \
+        #    = self.module_scene.copy()
 
         self.moduleSceneChangedSignal.emit(self.module_scene.copy(), self)
 
-    def receiveModuleScene(self, module_scene, child_agent):
-        pass
+    def receiveModuleSceneFromChild(self, module_scene, source_agent):
+        if self.propagate_module_scenes: 
+            # Continue to propagate up
+            self.moduleSceneChangedSignal.emti(module_scene, self)
+        else: # Not propagating, just give back to child
+            source_agent.receiveModuleSceneFromParent(module_scene)
+
+    def receiveModuleSceneFromParent(self, module_scene):
+        # If this function is being called, we know we propagate things
+        # so we send to all our children
+        for child in self.children:
+            child.receiveModuleSceneFromParent(module_scene)
+
+        # Then we determine how we should handle it
+        if isinstance(module_scene, self.module_scene):
+            self.receiveModuleSceneSignal.emit(module_scene)
 
 
 
@@ -483,20 +513,25 @@ class ModuleRequest(QObject):
 
 # -------------------------- VIEW -------------------------------------
 
-def Module(display_name, enabled = True):
+def Module(display_name, agent_type, scene_type = ModuleScene,
+    enabled = True):
     """Module decorator :
        display_name - name of agent the user will see
+       agent_type - type of the agent that goes with this module
+       scene_type - type of the module scene info that goes with this module
        enabled - true if the user can created one
     """
     def module_inner(cls):
         cls.display_name = display_name
+        cls.agent_type = agent_type
+        cls.scene_type = scene_type
         cls.enabled = enabled
         return cls
     return module_inner
 
 # All ModuleWindows must be decorated with their display name and
 # optionally a bool indicating they are not for user creation.
-@Module("Module Window", enabled = False)
+@Module("Module Window", ModuleScene, enabled = False)
 class ModuleView(QMainWindow):
     """This is the parent of what we will think of as a
        agent/extension/plug-in. It has the interface to create the single
@@ -578,8 +613,10 @@ class ModuleView(QMainWindow):
 
     # Must be implemented by inheritors
     def createAgent(self):
-        raise NotImplementedError("Realize not implemented,"\
-            + " cannot create agent")
+        #raise NotImplementedError("Realize not implemented,"\
+        #    + " cannot create agent")
+        return self.agent_type(self.parent_view.agent,
+            self.parent_view.agent.datatree)
 
     # Must be implemented by inheritors
     def createView(self):

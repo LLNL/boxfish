@@ -95,12 +95,6 @@ class Torus3dView(ModuleView):
                 ["Color Nodes", "Color Links"],
                 [QPixmap(":/nodes.png"), QPixmap(":/links.png")])
 
-
-    def createAgent(self):
-        self.agent = Torus3dAgent(self.parent_view.agent,
-            self.parent_view.agent.datatree)
-        return self.agent
-
     def rotationChanged(self, rotation):
         self.agent.module_scene.rotation = rotation
         self.agent.module_scene.announceChange()

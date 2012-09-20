@@ -31,17 +31,13 @@ class PlotterAgent(ModuleAgent):
     def setYData(self, indexList):
         self.requestAddIndices("y", indexList)
 
-@Module("Plotter")
+@Module("Plotter", PlotterAgent)
 class PlotterView(ModuleView):
 
     def __init__(self, parent, parent_view = None, title = None):
         super(PlotterView, self).__init__(parent, parent_view, title)
 
         self.selected = []
-
-    def createAgent(self):
-        return PlotterAgent(self.parent_view.agent,
-                            self.parent_view.agent.datatree)
 
     def createView(self):
         view = QWidget()
