@@ -29,9 +29,6 @@ class FilterBoxView(ModuleView):
         super(FilterBoxView, self).__init__(parent, parent_view, title)
 
         self.allowDocks(True)
-        if self.agent is not None:
-            self.filter_tab = SimpleFilterTab(self.tab_dialog, self, self.windowTitle(), "")
-            self.tab_dialog.addTab(self.filter_tab, "Filters")
 
     def createAgent(self):
         return FilterBox(self.parent_view.agent, \
@@ -92,6 +89,13 @@ class FilterBoxView(ModuleView):
         #self.setTitle(title)
         #self.parent().setWindowTitle(title)
 
+    def buildTabDialog(self):
+        super(FilterBoxView, self).buildTabDialog()
+        self.filter_tab = SimpleFilterTab(self.tab_dialog, self, self.windowTitle(), "")
+        self.tab_dialog.addTab(self.filter_tab, "Filters")
+        self.new_filter_tab = FilterTab(self.tab_dialog, self)
+        self.tab_dialog.addTab(self.new_filter_tab, "Advanced Filters")
+
 
 class FilterMime(QMimeData):
     """This is for passing Filter information between filter windows.
@@ -143,22 +147,26 @@ class SimpleFilterTab(QWidget):
 
 class FilterTab(QWidget):
 
+    applySignal = Signal(Clause)
+
     def __init__(self, parent, view):
-        super(FilterTTab, self).__init__(parent)
+        super(FilterTab, self).__init__(parent)
 
         self.view = view
         self.parent = parent
         self.attributes = self.view.agent.datatree.generateAttributeList()
-
+        self.clause_list = list()
+        self.clause_dict = dict()
 
         layout = QHBoxLayout(self)
-        self.sidesplitter = QSplitter(Qt.Vertical)
+        self.sidesplitter = QSplitter(Qt.Horizontal)
 
         # You can only select one at a time
         self.data_view = QTreeView(self)
         self.data_view.setModel(self.view.agent.datatree)
         self.data_view.setDragEnabled(True)
         self.data_view.setDropIndicatorShown(True)
+        self.data_view.expandAll()
         self.sidesplitter.addWidget(self.data_view)
         self.sidesplitter.setStretchFactor(0,1)
 
@@ -174,16 +182,32 @@ class FilterTab(QWidget):
         filter_widget = QWidget()
         filter_layout = QVBoxLayout(filter_widget)
 
-        filter_layout.addWidget(self.buildRelationsWidget)
+        filter_layout.addWidget(self.buildRelationsWidget())
         filter_layout.addItem(QSpacerItem(5,5))
+        filter_layout.addWidget(self.buildWorkFrame())
+        filter_layout.addItem(QSpacerItem(5,5))
+        self.list_view = QListView
 
         filter_widget.setLayout(filter_layout)
         return filter_widget
 
     def buildWorkFrame(self):
+        groupBox = QGroupBox("Clause Workspace")
+        layout = QHBoxLayout(groupBox)
 
-        DropLineEdit(self, self.view.agent.datatree, text,
+        self.dropAttribute = DropLineEdit(self, self.view.agent.datatree, "",
             QCompleter(self.attributes))
+        self.dropRelation = DropTextLabel("__")
+        self.dropValue = FilterValueLineEdit(groupBox,
+            self.view.agent.datatree, self.dropAttribute)
+        layout.addWidget(self.dropAttribute)
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(self.dropRelation)
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(self.dropValue)
+
+        groupBox.setLayout(layout)
+        return groupBox
 
     def buildRelationsWidget(self):
         relations_widget = QWidget()
@@ -194,3 +218,20 @@ class FilterTab(QWidget):
 
         relations_widget.setLayout(layout)
         return relations_widget
+
+
+
+class FilterValueLineEdit(QLineEdit):
+    
+    def __init__(self, parent, datatree, watchLineEdit):
+        super(FilterValueLineEdit, self).__init__("", parent)
+
+        self.datatree = datatree
+        self.watchLineEdit = watchLineEdit
+
+    def focusInEvent(self, e):
+        super(FilterValueLineEdit, self).focusInEvent(e)
+        values = self.datatree.getAttributeValues(self.watchLineEdit.text())
+        self.setCompleter(None)
+        self.setCompleter(QCompleter(values))
+

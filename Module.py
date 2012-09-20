@@ -571,9 +571,8 @@ class ModuleView(QMainWindow):
 
         # Tab Dialog stuff
         self.enable_tab_dialog = True
-        self.tab_dialog = TabDialog(self)
-        self.tab_dialog.addTab(SceneTab(self.tab_dialog, self.agent),
-            "Scene Policy")
+        self.dialog = list()
+
 
 
 
@@ -736,8 +735,15 @@ class ModuleView(QMainWindow):
             self.killRogueOverlays()
             super(ModuleView, self).dropEvent(event)
 
+    def buildTabDialog(self):
+        self.tab_dialog = TabDialog(self)
+        self.tab_dialog.addTab(SceneTab(self.tab_dialog, self.agent),
+            "Scene Policy")
+
+
     def mouseDoubleClickEvent(self, event):
         if self.enable_tab_dialog:
+            self.buildTabDialog()
             self.tab_dialog.show()
 
     def moduleSceneChanged(self, module_scene):
@@ -817,6 +823,9 @@ class ModuleNameMime(QMimeData):
         return self.name
 
 
+# TODO: Add a manager so we save all the pieces but only construct
+# on double click to get around the out-of-date problems on some of 
+# the information
 class TabDialog(QDialog):
     """This dialog contains tabs with options for everything related
        to the module. Inheriting modules can add their own tabs
@@ -934,16 +943,24 @@ class DragTextLabel(QLabel):
        Drag & Drop operations.
     """
 
-    def __init__(self, text):
+    def __init__(self, text, size_sample = "<<"):
         super(DragTextLabel,self).__init__(text)
 
         self.text = text
         self.setAcceptDrops(True)
-        self.setScaledContents(True)
+        #self.setScaledContents(True)
         self.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         self.setToolTip("Drag me.")
 
         self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+
+        font_metric = QFontMetrics(QFont())
+        two_size = font_metric.size(Qt.TextSingleLine, size_sample)
+        max_size = max([two_size.width(), two_size.height()]) + 4
+        self.setMaximumHeight(max_size)
+        self.setMinimumHeight(max_size)
+        self.setMaximumWidth(max_size)
+        self.setMinimumWidth(max_size)
 
     def mousePressEvent(self, e):
         pass
@@ -984,9 +1001,43 @@ class LabelTextMime(QMimeData):
     def getText(self):
         return self.text
 
+class DropTextLabel(QLabel):
+    """This creates a label that accepts LabelTextMime Drops.
+    """
+
+    def __init__(self, text, size_sample = "<<"):
+        super(DropTextLabel, self).__init__(text)
+
+        self.setAcceptDrops(True)
+        self.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        #self.setScaledContents(True)
+        #self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        
+        # FACTORME and make me optional
+        font_metric = QFontMetrics(QFont())
+        two_size = font_metric.size(Qt.TextSingleLine, size_sample)
+        max_size = max([two_size.width(), two_size.height()]) + 4
+        self.setMaximumHeight(max_size)
+        self.setMinimumHeight(max_size)
+        self.setMaximumWidth(max_size)
+        self.setMinimumWidth(max_size)
+
+    def dragEnterEvent(self, e):
+        if isinstance(e.mimeData(), LabelTextMime):
+            e.accept()
+        else:
+            super(DropTextLabel, self).dragEnterEvent(e)
+
+    def dropEvent(self, e):
+        if isinstance(e.mimeData(), LabelTextMime):
+            self.setText(e.mimeData().getText())
+        else:
+            super(DropTextLabel, self).dropEvent(e)
+
+
 
 class DropLineEdit(QLineEdit):
-    """This created a LineEdit (textfield) for datatree drop operations.
+    """This creates a LineEdit (textfield) for datatree drop operations.
     """
 
     def __init__(self, parent, datatree, default_text = "", completer = None):
@@ -1004,8 +1055,9 @@ class DropLineEdit(QLineEdit):
 
     def dropEvent(self, e):
         if isinstance(e.mimeData(), DataIndexMime):
-            index = e.mimeData().getDataIndices()
-            self.setText(self.datatree.getItem(index).name)
+            indices = e.mimeData().getDataIndices()
+            for index in indices:
+                self.setText(self.datatree.getItem(index).name)
         else:
             super(DropLineEdit, self).dropEvent(e)
 

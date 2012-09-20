@@ -60,10 +60,16 @@ class AbstractTreeItem(object):
             return self._parent._children.index(self)
 
     def buildAttributeList(self, attributes = set()):
-        for child in self.children:
+        for child in self._children:
             child.buildAttributeList(attributes)
 
         return attributes
+
+    def buildAttributeValues(self, attribute, values = set()):
+        for child in self._children:
+            child.buildAttributeValues(attribute, values)
+
+        return values
 
 
 class RunItem(AbstractTreeItem):
@@ -408,6 +414,17 @@ class TableItem(DataObjectItem):
             if child.name == attribute:
                 return True
         return False
+    
+    def buildAttributeValues(self, attribute, values = set()):
+        if self.hasAttribute(attribute):
+            attributes = [attribute]
+            attribute_list = self._table.attributes_by_identifiers(
+                self._table.identifiers(), attributes)
+            for value in attribute_list[0]:
+                values.add(str(value))
+
+        return values
+
 
     # Query evaluation - maybe this should be put back into the
     # QueryEngine class that was at some point jettisoned.
@@ -489,6 +506,7 @@ class AttributeItem(SubRunItem):
     def buildAttributeList(self, attributes = set()):
         attributes.add(self.name)
         return attributes
+
 
 class SubDomainItem(SubRunItem):
     """Item for containing individual attributes. Access to these
@@ -608,8 +626,10 @@ class DataTree(QAbstractItemModel):
         return self._rootItem
 
     def generateAttributeList(self):
-        return sorted(self._rootItem.buildAttributeList())
+        return sorted(self._rootItem.buildAttributeList(set()))
 
+    def getAttributeValues(self, attribute):
+        return sorted(self._rootItem.buildAttributeValues(attribute, set()))
 
     # Add a projection and its domains to the datatree.
     def insertProjection(self, name, projection, metadata, position=-1, \
