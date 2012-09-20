@@ -697,6 +697,12 @@ class ModuleView(QMainWindow):
             for dock in childDocks:
                 dock.widget().killRogueOverlays()
 
+    def propagateKillRogueOverlayMessage(self):
+        if isinstance(self.parent(), BFDockWidget):
+            self.parent_view.propagateKillRogueOverlayMessage()
+        else:
+            self.killRogueOverlays()
+
     def closeOverlay(self):
         if self.overlay_dialog is not None:
             self.overlay_dialog.close()
@@ -705,7 +711,7 @@ class ModuleView(QMainWindow):
 
     def overlayDroppedData(self, indexList, tag):
         self.closeOverlay()
-        self.killRogueOverlays()
+        self.propagateKillRogueOverlayMessage()
         self.droppedData(indexList, tag)
 
     def droppedData(self, indexList, tag = None):
@@ -766,10 +772,10 @@ class ModuleView(QMainWindow):
             and not self.dragOverlay:
             indexList = event.mimeData().getDataIndices()
             event.accept()
-            self.killRogueOverlays()
+            self.propagateKillRogueOverlayMessage()
             self.droppedData(indexList)
         else:
-            self.killRogueOverlays()
+            self.propagateKillRogueOverlayMessage()
             super(ModuleView, self).dropEvent(event)
 
     def buildTabDialog(self):
