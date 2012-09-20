@@ -334,6 +334,8 @@ class NodeLinkProjection(Projection):
                     self.link_dict[link_id] = [node_id]
                 elif node_id not in self.link_dict[link_id]:
                     self.link_dict[link_id].append(node_id)
+
+            self.node_dict[node_id] = link_list
   
   
     def make_projection_dict(self, subdomain, destination):
