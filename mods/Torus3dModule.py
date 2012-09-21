@@ -4,6 +4,7 @@ from Module import *
 import TorusIcons
 import sys
 import numpy as np
+import matplotlib.cm as cm
 
 class Torus3dAgent(ModuleAgent):
     nodeUpdateSignal = Signal(list, list)
@@ -84,16 +85,10 @@ class Torus3dAgent(ModuleAgent):
 
 class Torus3dView(ModuleView):
     """This is a base class for a rendering of a 3d torus.
-       Subclasses need to define the following methods:
+       Subclasses need to define this method:
            createView(self)
-               Should create a custom view of the nodes and
-               links of a 3d torus.
-           @Slot(list, list) updateNodeData(self, coords, vals)
-               Should update the nodes in the custom view with new
-               information.
-           @Slot(list, list) updateLinkData(self, coords, vals)
-               Should update the links in the custom view with new
-               information.
+               Should return an instance of some subclass of GLWidget
+               that will render the scene.
     """
 
     def __init__(self, parent, parent_view = None, title = None):
@@ -107,8 +102,79 @@ class Torus3dView(ModuleView):
             self.createDragOverlay(["nodes", "links"],
                 ["Color Nodes", "Color Links"],
                 [QPixmap(":/nodes.png"), QPixmap(":/links.png")])
-        
+
             self.view.transformChangeSignal.connect(self.transformChanged)
+
+    @Slot(list, list)
+    def updateNodeData(self, coords, vals):
+        if vals is None:
+            return
+        min_val = min(vals)
+        max_val = max(vals)
+        range = max_val - min_val
+        if range <= sys.float_info.epsilon:
+            range = 1.0
+
+        cmap = cm.get_cmap("jet")
+
+        if self.agent.shape != self.shape:
+            self.view.setShape(self.agent.shape)
+            self.shape = self.agent.shape
+        else:
+            self.view.clearNodes()
+
+        for coord, val in zip(coords, vals):
+            x, y, z = coord
+            self.view.node_colors[x, y, z] = cmap((val - min_val) / range)
+        self.view.updateGL()
+
+    @Slot(list, list)
+    def updateLinkData(self, coords, vals):
+        if vals is None:
+            return
+
+        cmap = cm.get_cmap("jet")
+
+        if self.agent.shape != self.shape:
+            self.view.setShape(self.agent.shape)
+            self.shape = self.agent.shape
+        else:
+            self.view.clearLinks()
+
+        # We don't draw both directions yet so we need to coalesce
+        # the link values.
+        link_values = np.empty(self.shape + [3], np.float)
+        for coord, val in zip (coords, vals):
+            sx, sy, sz, tx, ty, tz = coord
+            coord_difference = [s - t for s,t
+                in zip((sx, sy, sz), (tx, ty, tz))]
+
+            # plus direction link
+            if sum(coord_difference) == -1: # plus direction link
+                link_dir = coord_difference.index(-1)
+                link_values[sx, sy, sz, link_dir] += val
+            elif sum(coord_difference) == 1: # minus direction link
+                link_dir = coord_difference.index(1)
+                link_values[tx, ty, tz, link_dir] += val
+            elif sum(coord_difference) > 0: # plus torus seam link
+                link_dir = list(np.sign(coord_difference)).index(1)
+                link_values[sx, sy, sz, link_dir] += val
+            elif sum(coord_difference) < 0: # minus torus seam link
+                link_dir = list(np.sign(coord_difference)).index(-1)
+                link_values[tx, ty, tz, link_dir] += val
+
+        min_val = np.min(link_values)
+        max_val = np.max(link_values)
+        val_range = max_val - min_val
+        if val_range <= sys.float_info.epsilon:
+            val_range = 1.0
+
+        for x, y, z, i in itertools.product(range(self.shape[0]),
+            range(self.shape[1]), range(self.shape[2]), range(3)):
+            self.view.link_colors[x, y, z, i] \
+                = cmap((link_values[x, y, z, i] - min_val) / val_range)
+
+        self.view.updateGL()
 
     def transformChanged(self, rotation, translation):
         self.agent.module_scene.rotation = rotation
@@ -144,7 +210,7 @@ class GLModuleScene(ModuleScene):
 
     def copy(self):
         if self.rotation is not None and self.translation is not None:
-            return GLModuleScene(self.agent_type, self.module_name, 
+            return GLModuleScene(self.agent_type, self.module_name,
                 self.rotation.copy(), self.translation.copy())
         elif self.rotation is not None:
             return GLModuleScene(self.agent_type, self.module_name,

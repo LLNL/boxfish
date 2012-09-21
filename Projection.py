@@ -42,18 +42,18 @@ class Projection(object):
   def project(self, subdomain, destination):
     raise NotImplementedError("Cannot perform projection.")
 
-  def make_projection_dict(self, subdomain, destination):
-    """Makes a dict from each domain_id in the subdomain.
-       Override to make this less slow.
-    """
-
-    projection_dict = dict()
-    for domain_id in subdomain:
-      projection_dict[domain_id] = self.project(
-          SubDomain().instantiate(subdomain.subdomain(), [domain_id]),
-          destination)
-
-    return projection_dict
+#  def make_projection_dict(self, subdomain, destination):
+#    """Makes a dict from each domain_id in the subdomain.
+#       Override to make this less slow.
+#    """
+#
+#    projection_dict = dict()
+#    for domain_id in subdomain:
+#      projection_dict[domain_id] = self.project(
+#          SubDomain().instantiate(subdomain.subdomain(), [domain_id]),
+#          destination)
+#
+#    return projection_dict
 
   def source_ids(self):
       """Returns all of the ids associated with the source subdomain.
@@ -173,15 +173,15 @@ class TableProjection(Projection):
                 self._destination_dict[destination] = [source]
 
 
-  def make_projection_dict(self, subdomain, destination):
-      if destination == self.destination:
+  #def make_projection_dict(self, subdomain, destination):
+  #    if destination == self.destination:
           #return self._source_dict
-          return { key : val for key, val in self._source_dict.iteritems()
-              if key in subdomain }
-      else:
+  #        return { key : val for key, val in self._source_dict.iteritems()
+  #            if key in subdomain }
+  #    else:
           #return self._destination_dict
-          return { key : val for key, val in self._destination_dict.iteritems()
-              if key in subdomain }
+  #        return { key : val for key, val in self._destination_dict.iteritems()
+  #            if key in subdomain }
 
 
   def project(self, subdomain, destination):
@@ -338,13 +338,13 @@ class NodeLinkProjection(Projection):
             self.node_dict[node_id] = link_list
   
   
-    def make_projection_dict(self, subdomain, destination):
-        if destination == self.destination:
-            return { key : val for key, val in self.node_dict.iteritems()
-                if key in subdomain }
-        else:
-            return { key : val for key, val in self.link_dict.iteritems()
-                if key in subdomain }
+#    def make_projection_dict(self, subdomain, destination):
+#        if destination == self.destination:
+#            return { key : val for key, val in self.node_dict.iteritems()
+#                if key in subdomain }
+#        else:
+#            return { key : val for key, val in self.link_dict.iteritems()
+#                if key in subdomain }
 
 
     def project(self, subdomain, destination):
