@@ -1,0 +1,47 @@
+---
+key: BGPCOUNTER_ORIGINAL
+date: 2011-06-06
+author: pave
+hardware: {
+ type: bgp,
+ network: torus,
+ nodes: 512,
+ coords: [x, y, z],
+ coords_table: bgpc_nodes.yaml,
+ dim: {x: 8, y: 8, z: 8},
+ source_coords: {x: sx, y: sy, z: sz},
+ destination_coords: {x: tx, y: ty, z: tz},
+ link_coords_table: bgpc_links.yaml
+}
+---
+filetype: table
+filename: bgpc_nodes.yaml
+domain: HW
+type: NODE
+field: nodeid
+flags: 0
+---
+filetype: table
+filename: bgpc_links.yaml
+domain: HW
+type: LINK
+field: linkid
+flags: 0
+---
+filetype: projection
+type: file
+filename: bgpc_map.yaml
+subdomain:
+- { domain: HW, type: NODE, field: nodeid }
+- { domain: COMM, type: RANK, field: mpirank }
+flags: 0
+---
+filetype: projection
+type: node link
+node_policy: Source
+link_policy: Source
+subdomain:
+- { domain: HW, type: NODE, field: nodeid }
+- { domain: HW, type: LINK, field: linkid }
+flags: 0
+...

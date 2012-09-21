@@ -2,6 +2,8 @@
 # A subdomain is a list of identifiers (usually indices) defining a list of
 # points in some domain
 #
+
+
 class SubDomain(list):
 
     def __init__(self,copy = list()):
@@ -9,10 +11,10 @@ class SubDomain(list):
 
     def __getslice__(self,i,j):
         return self.__class__(list.__getslice__(self,i,j))
-            
+
     def subdomain(self):
         return self.domain() + "_" + self.typename()
-    
+
     def typename(self):
         raise NotImplementedError( "Should have implemented this" )
 
@@ -37,7 +39,7 @@ class SubDomain(list):
     def instantiate(self,subdomain,data=list()):
 
         if len(self.__class__.__subclasses__()) == 0:
-            if self.subdomain() == subdomain:
+            if self.subdomain().upper() == subdomain.upper():
                 return self.__class__(data)
             else:
                 return None
@@ -63,7 +65,7 @@ class Cores(HWSubDomain):
         HWSubDomain.__init__(self,elements)
 
     def typename(self):
-        return "Core"
+        return "core"
 
 
 class Nodes(HWSubDomain):
@@ -72,9 +74,17 @@ class Nodes(HWSubDomain):
         HWSubDomain.__init__(self,elements)
 
     def typename(self):
-        return "Node"
+        return "node"
 
-    
+class Links(HWSubDomain):
+
+    def __init__(self, elements = list()):
+        HWSubDomain.__init__(self, elements)
+
+    def typename(self):
+        return "link"
+
+
 class CommSubDomain(SubDomain):
 
     def __init__(self, elements = list()):
@@ -82,16 +92,16 @@ class CommSubDomain(SubDomain):
         SubDomain.__init__(self,elements)
 
     def domain(self):
-        return "Comm"
+        return "comm"
 
-    
+
 class Ranks(CommSubDomain):
 
     def __init__(self, elements = list()):
         CommSubDomain.__init__(self,elements)
 
     def typename(self):
-        return "Rank"
+        return "rank"
 
 class Communicators(CommSubDomain):
 
@@ -99,7 +109,7 @@ class Communicators(CommSubDomain):
         CommSubDomain.__init__(self,elements)
 
     def typename(self):
-        return "Communicator"
+        return "communicator"
 
 
 
@@ -109,4 +119,4 @@ if __name__ == '__main__':
     print "Alive"
 
     s = SubDomain()
-    print s.subclasses()
+    print s.findSubdomain('comm_rank')
