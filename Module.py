@@ -945,6 +945,9 @@ class SceneTab(QWidget):
         self.propagate = QCheckBox("Propagate module scene to other modules.")
         self.propagate.setChecked(self.agent.propagate_module_scenes)
         self.propagate.stateChanged.connect(self.propagateChanged)
+        # We only allow this change if the parent does not propagate
+        if self.agent.parent().propagate_module_scenes:
+            self.propagate.setDisabled(True)
 
         # self.apply_module_scenes
         self.applyScene = QCheckBox("Apply module scene from other modules.")
