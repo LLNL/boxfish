@@ -3,10 +3,12 @@ from Module import *
 
 import TorusIcons
 import sys
+import numpy as np
 
 class Torus3dAgent(ModuleAgent):
     nodeUpdateSignal = Signal(list, list)
     linkUpdateSignal = Signal(list, list)
+    transformUpdateSignal = Signal(np.ndarray, np.ndarray)
 
     def __init__(self, parent, datatree):
         super(Torus3dAgent, self).__init__(parent, datatree)
@@ -19,6 +21,7 @@ class Torus3dAgent(ModuleAgent):
         self.destination_coords = None
         self.link_coords_table = None
         self.shape = [0, 0, 0]
+        self.receiveModuleSceneSignal.connect(self.processModuleScene)
 
     def registerNodeAttributes(self, indices):
         # Determine Torus info from first index
@@ -70,6 +73,15 @@ class Torus3dAgent(ModuleAgent):
         if attribute_values is not None:
             self.linkUpdateSignal.emit(coordinates, attribute_values[0])
 
+
+    @Slot(ModuleScene)
+    def processModuleScene(self, module_scene):
+        if self.module_scene.module_name == module_scene.module_name:
+            self.module_scene = module_scene.copy()
+            self.transformUpdateSignal.emit(self.module_scene.rotation,
+                self.module_scene.translation)
+
+
 class Torus3dView(ModuleView):
     """This is a base class for a rendering of a 3d torus.
        Subclasses need to define the following methods:
@@ -90,16 +102,16 @@ class Torus3dView(ModuleView):
         if self.agent:
             self.agent.nodeUpdateSignal.connect(self.updateNodeData)
             self.agent.linkUpdateSignal.connect(self.updateLinkData)
+            self.agent.transformUpdateSignal.connect(self.updateTransform)
 
             self.createDragOverlay(["nodes", "links"],
                 ["Color Nodes", "Color Links"],
                 [QPixmap(":/nodes.png"), QPixmap(":/links.png")])
+        
+            self.view.transformChangeSignal.connect(self.transformChanged)
 
-    def rotationChanged(self, rotation):
+    def transformChanged(self, rotation, translation):
         self.agent.module_scene.rotation = rotation
-        self.agent.module_scene.announceChange()
-
-    def translationChanged(self, translation):
         self.agent.module_scene.translation = translation
         self.agent.module_scene.announceChange()
 
@@ -108,3 +120,37 @@ class Torus3dView(ModuleView):
             self.agent.registerNodeAttributes(index_list)
         elif tag == "links":
             self.agent.registerLinkAttributes(index_list)
+
+    @Slot(np.ndarray, np.ndarray)
+    def updateTransform(self, rotation, translation):
+        self.view.set_transform(rotation, translation)
+
+
+class GLModuleScene(ModuleScene):
+    """TODO: Docs"""
+
+    def __init__(self, agent_type, module_type, rotation = None,
+        translation = None):
+        super(GLModuleScene, self).__init__(agent_type, module_type)
+
+        self.rotation = rotation
+        self.translation = translation
+
+    def __equals__(self, other):
+        if self.rotation == other.rotation \
+                and self.translation == other.translation:
+            return True
+        return False
+
+    def copy(self):
+        if self.rotation is not None and self.translation is not None:
+            return GLModuleScene(self.agent_type, self.module_name, 
+                self.rotation.copy(), self.translation.copy())
+        elif self.rotation is not None:
+            return GLModuleScene(self.agent_type, self.module_name,
+                self.rotation.copy(), None)
+        elif self.translation is not None:
+            return GLModuleScene(self.agent_type, self.module_name,
+                None, self.translation.copy())
+        else:
+            return GLModuleScene(self.agent_type, self.module_name)

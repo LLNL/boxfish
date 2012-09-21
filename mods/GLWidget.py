@@ -25,8 +25,7 @@ class GLWidget(QGLWidget):
         and paintGL() to get their scene drawn.
     """
 
-    rotationChangeSignal = Signal(np.ndarray)
-    translationChangeSignal = Signal(np.ndarray)
+    transformChangeSignal = Signal(np.ndarray, np.ndarray)
 
     def __init__(self, parent=None, **keywords):
         """Sets up initial values for dragging variables, translation, and rotation matrices."""
@@ -173,7 +172,7 @@ class GLWidget(QGLWidget):
             glRotatef(0.5*tb_angle, tb_axis[0] , tb_axis[1], tb_axis[2])
             glMultMatrixd(self.rotation)
             self.rotation = glGetDouble(GL_MODELVIEW_MATRIX)
-            self.rotationChangeSignal.emit(self.rotation)
+            self.transformChangeSignal.emit(self.rotation, self.translation)
 
             self.updateGL()
 
@@ -192,7 +191,7 @@ class GLWidget(QGLWidget):
         elif event.orientation() == Qt.Orientation.Horizontal:
             self.translation[0] -= .01 * event.delta()
 
-        self.translationChangeSignal.emit(self.translation)
+        self.transformChangeSignal.emit(self.rotation, self.translation)
 
         self.updateGL()
 
@@ -212,14 +211,14 @@ class GLWidget(QGLWidget):
         glTranslatef(*self.translation)
         glMultMatrixd(self.rotation)
 
-    def set_rotation(self, rotation):
-        if self.enable_rotation:
+
+    def set_transform(self, rotation, translation):
+        if translation is not None:
+            self.translation = translation
+        if self.enable_rotation and rotation is not None:
             self.rotation = rotation
+        if translation is not None or rotation is not None:
             self.updateGL()
-    
-    def set_translation(self, translation):
-        self.translation = translation
-        self.updateGL()
 
 
 def set_perspective(fovY, aspect, zNear, zFar):

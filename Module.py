@@ -26,7 +26,7 @@ class ModuleAgent(QObject):
     # Signals that I send
     addCouplerSignal         = Signal(FilterCoupler, QObject)
     moduleSceneChangedSignal = Signal(ModuleScene, object) # my scene info changed
-    receiveModuleSceneSignal = Signal(ModuleScene, object) # we receive scene info
+    receiveModuleSceneSignal = Signal(ModuleScene) # we receive scene info
 
     # Name template for the highlight signal
     highlightSignal_base = "%s_highlight_signal"
@@ -66,8 +66,7 @@ class ModuleAgent(QObject):
 
         # Module Scene information
         self.module_scenes_dict = dict()
-        self.module_scene = ModuleScene()
-        self.apply_module_scenes = False
+        self.apply_module_scenes = True
         self._propagate_module_scenes = False
 
 
@@ -210,16 +209,23 @@ class ModuleAgent(QObject):
             for child in self.children:
                 child.propagate_module_scenes = policy
 
-    def moduleSceneChanged(self, module_scene):
-        #self.module_scenes_dict[type(self.module_scene)] \
-        #    = self.module_scene.copy()
+    @property
+    def module_scene(self):
+        return self._module_scene
 
+    @module_scene.setter
+    def module_scene(self, module_scene):
+        self._module_scene = module_scene
+        self._module_scene.causeChangeSignal.connect(self.moduleSceneChanged)
+
+    @Slot(ModuleScene)
+    def moduleSceneChanged(self, module_scene):
         self.moduleSceneChangedSignal.emit(self.module_scene.copy(), self)
 
     def receiveModuleSceneFromChild(self, module_scene, source_agent):
         if self.propagate_module_scenes: 
             # Continue to propagate up
-            self.moduleSceneChangedSignal.emti(module_scene, self)
+            self.moduleSceneChangedSignal.emit(module_scene, self)
         else: # Not propagating, just give back to child
             source_agent.receiveModuleSceneFromParent(module_scene)
 
@@ -229,8 +235,12 @@ class ModuleAgent(QObject):
         for child in self.children:
             child.receiveModuleSceneFromParent(module_scene)
 
+        # And we update our module scene dict
+        self.module_scenes_dict[module_scene.module_name] = module_scene
+
         # Then we determine how we should handle it
-        if isinstance(module_scene, self.module_scene):
+        if self.apply_module_scenes \
+            and isinstance(module_scene, type(self.module_scene)):
             self.receiveModuleSceneSignal.emit(module_scene)
 
 
@@ -581,7 +591,10 @@ class ModuleView(QMainWindow):
     # it to the parent and by placing the view elements in the overall
     # layout
     def realize(self):
-        self.agent = self.createAgent()
+        self.agent = self.agent_type(self.parent_view.agent,
+            self.parent_view.agent.datatree)
+        self.agent.module_scene = self.scene_type(self.agent_type,
+            self.display_name)
         self.parent_view.agent.registerChild(self.agent)
         self.agent.connectScenes()
         self.agent.module_scene.changeSignal.connect(
@@ -608,16 +621,7 @@ class ModuleView(QMainWindow):
         self.enable_tab_dialog = True
         self.dialog = list()
 
-
-
-
-    # Must be implemented by inheritors
-    def createAgent(self):
-        #raise NotImplementedError("Realize not implemented,"\
-        #    + " cannot create agent")
-        return self.agent_type(self.parent_view.agent,
-            self.parent_view.agent.datatree)
-
+    
     # Must be implemented by inheritors
     def createView(self):
         raise NotImplementedError("Realize not implemented,"\
@@ -698,6 +702,11 @@ class ModuleView(QMainWindow):
                 dock.widget().killRogueOverlays()
 
     def propagateKillRogueOverlayMessage(self):
+        """Propagate the message to kill rogue overlays to the
+           top of the Boxfish module hierarchy.
+        """
+        #TODO: Need to also do this when drag operation is aborted
+        # (back to the tree view). This is currently unknown
         if isinstance(self.parent(), BFDockWidget):
             self.parent_view.propagateKillRogueOverlayMessage()
         else:
@@ -883,6 +892,7 @@ class TabDialog(QDialog):
 
         self.setWindowTitle(title)
         self.tabs = QTabWidget(self)
+        self.setModal(True)
 
         # Need a layout to get resizing to work
         layout = QGridLayout()

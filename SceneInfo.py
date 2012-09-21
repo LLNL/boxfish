@@ -11,7 +11,7 @@ class Scene(QObject):
         super(Scene, self).__init__()
 
     def announceChange(self):
-        self.changeSignal.emit(self)
+        self.causeChangeSignal.emit(self)
 
     def acceptChanges(self):
         self.changeSignal.emit(self)
@@ -59,9 +59,12 @@ class ModuleScene(Scene):
        Example: May be used to hold ModelView matrix.
     """
 
-    def __init__(self):
+    def __init__(self, agent_type, module_name):
         super(ModuleScene, self).__init__()
 
+        self.agent_type = agent_type
+        self.module_name = module_name
+
     def copy(self):
-        return ModuleScene()
+        return ModuleScene(self.agent_type, self.module_name)
 

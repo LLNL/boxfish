@@ -11,9 +11,9 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLE import *
 
-from Torus3dModule import Torus3dView, Torus3dAgent
+from Torus3dModule import Torus3dView, Torus3dAgent, GLModuleScene
 
-@Module("3D Torus - 3D View", Torus3dAgent)
+@Module("3D Torus - 3D View", Torus3dAgent, GLModuleScene)
 class Torus3dView3d(Torus3dView):
     """This is a 3d rendering of a 3d torus.
     """
@@ -21,10 +21,7 @@ class Torus3dView3d(Torus3dView):
         super(Torus3dView3d, self).__init__(parent, parent_view, title)
 
     def createView(self):
-        self.view = GLTorus3dView(self)
-        self.view.rotationChangeSignal.connect(self.rotationChanged)
-        self.view.translationChangeSignal.connect(self.translationChanged)
-        return self.view
+        return GLTorus3dView(self)
 
     @Slot(list, list)
     def updateNodeData(self, coords, vals):
@@ -244,28 +241,3 @@ class GLTorus3dView(GLWidget):
 
         glViewport(0, 0, self.width(), self.height())
 
-
-class GL3DModuleScene(ModuleScene):
-    """TODO: Docs"""
-
-    def __init__(self, rotation = None, translation = None):
-        super(ModuleScene, self).__init__()
-
-        self.rotation = rotation
-        self.translation = translation
-
-    def __equals__(self, other):
-        if self.rotation == other.rotation \
-                and self.translation == other.translation:
-            return True
-        return False
-
-    def copy(self):
-        if self.rotation is not None and self.translation is not None:
-            return GLModuleScene(self.rotation.copy(), self.translation.copy())
-        elif self.rotation is not None:
-            return GLModuleScene(self.rotation.copy(), None)
-        elif self.translation is not None:
-            return GLModuleScene(None, self.translation.copy())
-        else:
-            return GLModuleScene()
