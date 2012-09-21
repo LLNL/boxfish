@@ -1,17 +1,13 @@
-import sys
-import itertools
-import matplotlib.cm as cm
 import numpy as np
 
-from Module import *
-
-from GLWidget import GLWidget
-from GLUtils import *
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLE import *
 
-from Torus3dModule import Torus3dView, Torus3dAgent, GLModuleScene
+from Module import *
+from GLWidget import GLWidget
+from GLUtils import *
+from Torus3dModule import *
 
 @Module("3D Torus - 3D View", Torus3dAgent, GLModuleScene)
 class Torus3dView3d(Torus3dView):
@@ -23,77 +19,6 @@ class Torus3dView3d(Torus3dView):
     def createView(self):
         return GLTorus3dView(self)
 
-    @Slot(list, list)
-    def updateNodeData(self, coords, vals):
-        if vals is None:
-            return
-        min_val = min(vals)
-        max_val = max(vals)
-        range = max_val - min_val
-        if range <= sys.float_info.epsilon:
-            range = 1.0
-
-        cmap = cm.get_cmap("jet")
-
-        if self.agent.shape != self.shape:
-            self.view.setShape(self.agent.shape)
-            self.shape = self.agent.shape
-        else:
-            self.view.clearNodes()
-
-        for coord, val in zip(coords, vals):
-            x, y, z = coord
-            self.view.node_colors[x, y, z] = cmap((val - min_val) / range)
-        self.view.updateGL()
-
-    @Slot(list, list)
-    def updateLinkData(self, coords, vals):
-        if vals is None:
-            return
-
-        cmap = cm.get_cmap("jet")
-
-        if self.agent.shape != self.shape:
-            self.view.setShape(self.agent.shape)
-            self.shape = self.agent.shape
-        else:
-            self.view.clearLinks()
-
-        # We don't draw both directions yet so we need to coalesce
-        # the link values.
-        link_values = np.empty(self.shape + [3], np.float)
-        for coord, val in zip (coords, vals):
-            sx, sy, sz, tx, ty, tz = coord
-            coord_difference = [s - t for s,t
-                in zip((sx, sy, sz), (tx, ty, tz))]
-
-            # plus direction link
-            if sum(coord_difference) == -1: # plus direction link
-                link_dir = coord_difference.index(-1)
-                link_values[sx, sy, sz, link_dir] += val
-            elif sum(coord_difference) == 1: # minus direction link
-                link_dir = coord_difference.index(1)
-                link_values[tx, ty, tz, link_dir] += val
-            elif sum(coord_difference) > 0: # plus torus seam link
-                link_dir = list(np.sign(coord_difference)).index(1)
-                link_values[sx, sy, sz, link_dir] += val
-            elif sum(coord_difference) < 0: # minus torus seam link
-                link_dir = list(np.sign(coord_difference)).index(-1)
-                link_values[tx, ty, tz, link_dir] += val
-
-        min_val = np.min(link_values)
-        max_val = np.max(link_values)
-        val_range = max_val - min_val
-        if val_range <= sys.float_info.epsilon:
-            val_range = 1.0
-
-        for x, y, z, i in itertools.product(range(self.shape[0]),
-            range(self.shape[1]), range(self.shape[2]), range(3)):
-            self.view.link_colors[x, y, z, i] \
-                = cmap((link_values[x, y, z, i] - min_val) / val_range)
-
-        self.view.updateGL()
-
 
 class GLTorus3dView(GLWidget):
     def __init__(self, parent):
@@ -104,13 +29,10 @@ class GLTorus3dView(GLWidget):
         self.default_color = [0.5, 0.5, 0.5, 0.5]
         self.default_link_color = [0.5, 0.5, 0.5, 1.0]
 
-        # Set shape and set up color matrix
-        self.shape = [0, 0, 0]
-        # Offsets representing seam of the torus
-        self.seam = [0, 0, 0]
 
-        # Size of one edge of each cube representing a node
-        self.box_size = 0.2
+        self.shape = [0, 0, 0] # Set shape
+        self.seam = [0, 0, 0]  # Offsets for seam of the torus
+        self.box_size = 0.2    # Length of edge of each node cube
 
         # Radius of link cylinders
         self.link_radius = self.box_size * .1
