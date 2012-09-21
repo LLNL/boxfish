@@ -112,6 +112,21 @@ class Communicators(CommSubDomain):
         return "communicator"
 
 
+class AppSubDomain(SubDomain):
+
+    def __init__(self, elements = list()):
+        SubDomain.__init__(self,elements)
+
+    def domain(self):
+        return "app"
+    
+class Patches(AppSubDomain):
+
+    def __init__(self, elements = list()):
+        AppSubDomain.__init__(self,elements)
+
+    def typename(self):
+        return "patch"
 
 
 if __name__ == '__main__':

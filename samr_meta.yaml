@@ -1,0 +1,17 @@
+---
+key: SAMRAI_ORIGINAL
+date: 2012-06-06
+author: pave
+application: {
+  center: patch-center,
+  size: patch-size,
+  patch_table: samr_data.yaml
+}
+---
+filetype: table
+filename: samr_data.yaml
+domain: APP
+type: PATCH
+field: patchid
+flags: 0
+...

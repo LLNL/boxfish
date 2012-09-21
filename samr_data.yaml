@@ -1,0 +1,15 @@
+
+---
+key: SAMRAI_ORIGINAL
+---
+- [patchid, int32]
+- [patch-center, 3float32]
+- [patch-size, 3float32]
+- [Avg Hops-Extents,float32]
+- [Max Hops-Extents,float32]
+- [Min Hops-Extents,float32]
+- [Owner-Extents,float32]
+...
+0  [ 62.375 30.375 14.500 ] [ 3.250 3.250 3.000 ] 6.444 13.000 0.000 0.000
+8  [ 59.125 30.375 14.500 ] [ 3.250 3.250 3.000 ] 8.000 14.000 0.000 1.000
+16  [ 43.125 30.375 14.500 ] [ 3.250 3.250 3.000 ] 7.300 13.000 0.000 2.000
