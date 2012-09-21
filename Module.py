@@ -23,10 +23,13 @@ class ModuleAgent(QObject):
     unsubscribeSignal        = Signal(object,str)
     highlightSignal          = Signal(SubDomain)
 
-    # Signals that I send
+    # Signals that I send 
     addCouplerSignal         = Signal(FilterCoupler, QObject)
+
+    # Scene Signals I send... really necessary with parent/child structure?
     moduleSceneChangedSignal = Signal(ModuleScene, object) # my scene info changed
     receiveModuleSceneSignal = Signal(ModuleScene) # we receive scene info
+    requestScenesSignal      = Signal(QObject)
 
     # Name template for the highlight signal
     highlightSignal_base = "%s_highlight_signal"
@@ -82,11 +85,6 @@ class ModuleAgent(QObject):
                     return result
             return None
 
-
-    def connectScenes(self):
-        self.module_scene.causeChangeSignal.connect(self.moduleSceneChanged)
-        self.module_scenes_dict[type(self.module_scene)] \
-            = self.module_scene.copy()
 
     def addRequirement(self, name, subdomain = None):
         coupler = FilterCoupler(name, self, None)
@@ -158,6 +156,10 @@ class ModuleAgent(QObject):
         child.highlightSignal.connect(self.highlight)
         child.addCouplerSignal.connect(self.addChildCoupler)
         child.moduleSceneChangedSignal.connect(self.receiveModuleSceneFromChild)
+        child.requestScenesSignal.connect(self.sendAllScenes)
+
+        if self.propagate_module_scenes:
+            child.propagate_module_scenes = True
 
         # "Adopt" child's requests
         for coupler in child.getCouplerRequests():
@@ -176,6 +178,7 @@ class ModuleAgent(QObject):
         child.addCouplerSignal.disconnect(self.addChildCoupler)
         child.moduleSceneChangedSignal.disconnect(
             self.receiveModuleSceneFromChild)
+        child.requestScenesSignal.disconnect(self.sendAllScenes)
 
         # Abandon child's requests
         for coupler in self.child_requirements:
@@ -195,6 +198,23 @@ class ModuleAgent(QObject):
             child.delete()
         self.parent().unregisterChild(self)
 
+    # Slot(ModuleAgent) decorator after class definition
+    def sendAllScenes(self, child):
+        """Goes through stored scenes and sends all of them to requesting
+           child as someone in the child's tree may be listening for them.
+        """
+        if self.propagate_module_scenes:
+            for key, scene in self.module_scenes_dict.iteritems():
+                child.receiveModuleSceneFromParent(scene)
+
+    def refreshSceneInformation(self):
+        """This function is called to poll the parent agent for any 
+           SceneInformation it has of interest to this agent and its
+           children. It may be used onCreation of a Module or when a
+           subtree is moved in the hierarchy.
+        """
+        self.requestScenesSignal.emit(self)
+
     @property
     def propagate_module_scenes(self):
         return self._propagate_module_scenes
@@ -203,7 +223,7 @@ class ModuleAgent(QObject):
     def propagate_module_scenes(self, policy):
         # You can only turn off (policy is False) if your parent is
         # also False. 
-        if policy or self.parent.propagate_module_scenes == policy:
+        if policy or self.parent().propagate_module_scenes == policy:
             self._propagate_module_scenes = policy
         if policy: # Push policy on to all children
             for child in self.children:
@@ -222,6 +242,7 @@ class ModuleAgent(QObject):
     def moduleSceneChanged(self, module_scene):
         self.moduleSceneChangedSignal.emit(self.module_scene.copy(), self)
 
+    # Slot(ModuleScene, ModuleAgent) decorator after class definition
     def receiveModuleSceneFromChild(self, module_scene, source_agent):
         if self.propagate_module_scenes: 
             # Continue to propagate up
@@ -325,6 +346,8 @@ class ModuleAgent(QObject):
 ModuleAgent.subscribe = Slot(ModuleAgent, str)(ModuleAgent.subscribe)
 ModuleAgent.unsubscribe = Slot(ModuleAgent, str)(ModuleAgent.unsubscribe)
 ModuleAgent.addChildCoupler = Slot(FilterCoupler, ModuleAgent)(ModuleAgent.addChildCoupler)
+ModuleAgent.receiveModuleSceneFromChild = Slot(ModuleScene, ModuleAgent)(ModuleAgent.receiveModuleSceneFromChild)
+ModuleAgent.sendAllScenes = Slot(ModuleAgent)(ModuleAgent.sendAllScenes)
 
 class ModuleRequest(QObject):
     """Holds all of the requested information including the
@@ -596,9 +619,6 @@ class ModuleView(QMainWindow):
         self.agent.module_scene = self.scene_type(self.agent_type,
             self.display_name)
         self.parent_view.agent.registerChild(self.agent)
-        self.agent.connectScenes()
-        self.agent.module_scene.changeSignal.connect(
-            self.moduleSceneChanged)
 
         self.view = self.createView()
         self.centralWidget = QWidget()
@@ -764,6 +784,7 @@ class ModuleView(QMainWindow):
                 event.mimeData().getDockWindow().widget().agent.changeParent(self.agent)
                 event.mimeData().getDockWindow().widget().parent_view = self
                 event.mimeData().getDockWindow().changeParent(self)
+                event.mimeData().getDockWindow().widget().agent.refreshSceneInformation()
                 event.setDropAction(Qt.MoveAction)
                 event.accept()
             else:
@@ -774,6 +795,7 @@ class ModuleView(QMainWindow):
             dock = BFDockWidget(mod_name, self)
             # TODO: figure out how to make instantiate a class method
             new_mod = ModuleView().instantiate(mod_name, dock, self, mod_name)
+            new_mod.agent.refreshSceneInformation()
             dock.setWidget(new_mod)
             self.addDockWidget(Qt.BottomDockWidgetArea, dock)
         # Dropped Attribute Data
@@ -798,8 +820,6 @@ class ModuleView(QMainWindow):
             self.buildTabDialog()
             self.tab_dialog.show()
 
-    def moduleSceneChanged(self, module_scene):
-        pass
 
 class BFDockWidget(QDockWidget):
     """We can move windows using the QDockWidget. This class sets all of
