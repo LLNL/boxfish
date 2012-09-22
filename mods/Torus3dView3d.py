@@ -19,6 +19,15 @@ class Torus3dView3d(Torus3dView):
     def createView(self):
         return GLTorus3dView(self)
 
+    def update(self):
+        self.view.cubeList.update()
+        self.view.linkList.update()
+
+    def onNodeUpdate(self):
+        self.update()
+
+    def onLinkUpdate(self):
+        self.update()
 
 class GLTorus3dView(GLWidget):
     def __init__(self, parent):
@@ -29,13 +38,17 @@ class GLTorus3dView(GLWidget):
         self.default_color = [0.5, 0.5, 0.5, 0.5]
         self.default_link_color = [0.5, 0.5, 0.5, 1.0]
 
-
         self.shape = [0, 0, 0] # Set shape
         self.seam = [0, 0, 0]  # Offsets for seam of the torus
         self.box_size = 0.2    # Length of edge of each node cube
 
         # Radius of link cylinders
         self.link_radius = self.box_size * .1
+
+        # Display lists for nodes and links
+        self.cubeList = DisplayList(self.drawCubes)
+        self.linkList = DisplayList(self.drawLinks)
+        self.axisList = DisplayList(self.drawAxis)
 
     def getBoxSize(self):
         return self.box_size
@@ -62,9 +75,10 @@ class GLTorus3dView(GLWidget):
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.orient_scene()
-        self.drawCubes()
-        self.drawLinks()
+        self.cubeList()
+        self.linkList()
         self.drawAxis()
+        #self.axisList()
 
         super(GLTorus3dView, self).paintGL()
 
@@ -139,6 +153,9 @@ class GLTorus3dView(GLWidget):
         len = 0.3
         glLoadIdentity()
         glTranslatef(0,0, -len)
+
+        # TODO: This breaks display lists b/c it references self.rotation
+        # TODO: Need to just draw the axis in a fixed coord system.
         glMultMatrixd(self.rotation)
         glDisable(GL_DEPTH_TEST)
 

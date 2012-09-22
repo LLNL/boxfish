@@ -126,7 +126,16 @@ class Torus3dView(ModuleView):
         for coord, val in zip(coords, vals):
             x, y, z = coord
             self.view.node_colors[x, y, z] = cmap((val - min_val) / range)
+
+        # TODO: figure out whether we really need another level of updates here and w/links
+        # TODO: Should this class call updateGL()?  Shouldn't the subclass be notified and then update itself?
+        # TODO: interface between this class and the view should be much cleaner than it is now, and we might
+        # TODO: want to do that through the scene once it is finished.
+        self.onNodeUpdate()
         self.view.updateGL()
+
+    def onNodeUpdate(self):
+        pass
 
     @Slot(list, list)
     def updateLinkData(self, coords, vals):
@@ -174,7 +183,11 @@ class Torus3dView(ModuleView):
             self.view.link_colors[x, y, z, i] \
                 = cmap((link_values[x, y, z, i] - min_val) / val_range)
 
+        self.onLinkUpdate()
         self.view.updateGL()
+
+    def onLinkUpdate(self):
+        pass
 
     def transformChanged(self, rotation, translation):
         self.agent.module_scene.rotation = rotation
