@@ -145,6 +145,7 @@ class GLTorus3dView(GLWidget):
 
     def drawAxis(self):
         """This function does the actual drawing of the lines in the axis."""
+        glLineWidth(2.0)
         with glSection(GL_LINES):
             glColor4f(1.0, 0.0, 0.0, 1.0)
             glVertex3f(0, 0, 0)
@@ -164,11 +165,8 @@ class GLTorus3dView(GLWidget):
 
         glPushMatrix()
         with attributes(GL_CURRENT_BIT, GL_LINE_BIT):
-            glLineWidth(2.0)
-
             glLoadIdentity()
             glTranslatef(0,0, -self.axisLength)
-
             glMultMatrixd(self.rotation)
             with disabled(GL_DEPTH_TEST):
                 self.axisList()
