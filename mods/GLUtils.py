@@ -12,6 +12,29 @@ def glSection(type):
     yield
     glEnd()
 
+@contextmanager
+def attributes(*glBits):
+    for bit in glBits:
+        glPushAttrib(bit)
+    yield
+    for bit in glBits:
+        glPopAttrib()
+
+@contextmanager
+def enabled(*glBits):
+    for bit in glBits:
+        glEnable(bit)
+    yield
+    for bit in glBits:
+        glDisable(bit)
+
+@contextmanager
+def disabled(*glBits):
+    for bit in glBits:
+        glDisable(bit)
+    yield
+    for bit in glBits:
+        glEnable(bit)
 
 class DisplayList(object):
     """Use this to turn some rendering function of yours into a DisplayList,

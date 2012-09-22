@@ -48,6 +48,9 @@ class GLTorus3dView(GLWidget):
         # Display lists for nodes and links
         self.cubeList = DisplayList(self.drawCubes)
         self.linkList = DisplayList(self.drawLinks)
+
+        # Display list and settings for the axis
+        self.axisLength = 0.3
         self.axisList = DisplayList(self.drawAxis)
 
     def getBoxSize(self):
@@ -77,8 +80,7 @@ class GLTorus3dView(GLWidget):
         self.orient_scene()
         self.cubeList()
         self.linkList()
-        self.drawAxis()
-        #self.axisList()
+        self.doAxis()
 
         super(GLTorus3dView, self).paintGL()
 
@@ -141,42 +143,36 @@ class GLTorus3dView(GLWidget):
             glPopMatrix()
         glPopMatrix()
 
-
     def drawAxis(self):
-        glViewport(0,0,80,80)
-
-        glPushMatrix()
-        glPushAttrib(GL_CURRENT_BIT)
-        glPushAttrib(GL_LINE_BIT)
-        glLineWidth(2.0)
-
-        len = 0.3
-        glLoadIdentity()
-        glTranslatef(0,0, -len)
-
-        # TODO: This breaks display lists b/c it references self.rotation
-        # TODO: Need to just draw the axis in a fixed coord system.
-        glMultMatrixd(self.rotation)
-        glDisable(GL_DEPTH_TEST)
-
+        """This function does the actual drawing of the lines in the axis."""
         with glSection(GL_LINES):
             glColor4f(1.0, 0.0, 0.0, 1.0)
             glVertex3f(0, 0, 0)
-            glVertex3f(len, 0, 0)
+            glVertex3f(self.axisLength, 0, 0)
 
             glColor4f(0.0, 1.0, 0.0, 1.0)
             glVertex3f(0, 0, 0)
-            glVertex3f(0, -len, 0)
+            glVertex3f(0, -self.axisLength, 0)
 
             glColor4f(0.0, 0.0, 1.0, 1.0)
             glVertex3f(0, 0, 0)
-            glVertex3f(0, 0, -len)
+            glVertex3f(0, 0, -self.axisLength)
 
-        glEnable(GL_DEPTH_TEST)
+    def doAxis(self):
+        """This function does the actual drawing of the lines in the axis."""
+        glViewport(0,0,80,80)
 
-        glPopAttrib()
-        glPopAttrib()
+        glPushMatrix()
+        with attributes(GL_CURRENT_BIT, GL_LINE_BIT):
+            glLineWidth(2.0)
+
+            glLoadIdentity()
+            glTranslatef(0,0, -self.axisLength)
+
+            glMultMatrixd(self.rotation)
+            with disabled(GL_DEPTH_TEST):
+                self.axisList()
+
         glPopMatrix()
-
         glViewport(0, 0, self.width(), self.height())
 
