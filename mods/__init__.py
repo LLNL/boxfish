@@ -2,3 +2,4 @@
 import PlotModule
 import Torus3dView3d
 import TableModule
+import PatchModule
