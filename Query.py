@@ -48,7 +48,9 @@ class Clause(object):
                     + self.relation + " " + str(clause) + " "
                 prev_clause = clause
             my_str = my_str + ")"
-       
+        elif len(self.clauses) == 1:
+            my_str = str(self.clauses[0])
+
         return my_str
 
 
@@ -61,7 +63,7 @@ class Clause(object):
             if isinstance(c, TableAttribute):
                 my_attributes.add(c)
             elif isinstance(c, Clause):
-                my_attributes = my_attributes.union(c.getAttributes)
+                my_attributes = my_attributes.union(c.getAttributes())
 
         return my_attributes
 

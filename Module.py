@@ -244,7 +244,7 @@ class ModuleAgent(QObject):
 
     # Slot(ModuleScene, ModuleAgent) decorator after class definition
     def receiveModuleSceneFromChild(self, module_scene, source_agent):
-        if self.propagate_module_scenes: 
+        if self.propagate_module_scenes:
             # Continue to propagate up
             self.moduleSceneChangedSignal.emit(module_scene, self)
         else: # Not propagating, just give back to child
@@ -641,7 +641,7 @@ class ModuleView(QMainWindow):
         self.enable_tab_dialog = True
         self.dialog = list()
 
-    
+
     # Must be implemented by inheritors
     def createView(self):
         raise NotImplementedError("Realize not implemented,"\
@@ -1088,7 +1088,7 @@ class DropTextLabel(QLabel):
         self.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         #self.setScaledContents(True)
         #self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
-        
+
         # FACTORME and make me optional
         font_metric = QFontMetrics(QFont())
         two_size = font_metric.size(Qt.TextSingleLine, size_sample)
