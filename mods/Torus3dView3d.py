@@ -17,33 +17,18 @@ class Torus3dView3d(Torus3dView):
         super(Torus3dView3d, self).__init__(parent, parent_view, title)
 
     def createView(self):
-        return GLTorus3dView(self)
+        return GLTorus3dView(self, self.colorModel)
 
-    def update(self):
-        self.view.cubeList.update()
-        self.view.linkList.update()
-
-    def onNodeUpdate(self):
-        self.update()
-
-    def onLinkUpdate(self):
-        self.update()
 
 class GLTorus3dView(GLWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, colorModel):
         super(GLTorus3dView, self).__init__(parent)
         self.parent = parent
+        self.colorModel = None
 
-        # color for when we have no data
-        self.default_color = [0.5, 0.5, 0.5, 0.5]
-        self.default_link_color = [0.5, 0.5, 0.5, 1.0]
-
-        self.shape = [0, 0, 0] # Set shape
         self.seam = [0, 0, 0]  # Offsets for seam of the torus
         self.box_size = 0.2    # Length of edge of each node cube
-
-        # Radius of link cylinders
-        self.link_radius = self.box_size * .1
+        self.link_radius = self.box_size * .1   # Radius of link cylinders
 
         # Display lists for nodes and links
         self.cubeList = DisplayList(self.drawCubes)
@@ -53,27 +38,23 @@ class GLTorus3dView(GLWidget):
         self.axisLength = 0.3
         self.axisList = DisplayList(self.drawAxis)
 
-    def getBoxSize(self):
-        return self.box_size
+        # Now go ahead and update things.
+        self.setColorModel(colorModel)
 
-    def setBoxSize(self, box_size):
-        self.box_size = box_size
+    def setColorModel(self, colorModel):
+        # unregister with any old model
+        if self.colorModel:
+            self.colorMode.unregisterListener(self.update)
+
+        # register with the new model
+        self.colorModel = colorModel
+        self.colorModel.registerListener(self.update)
+        self.update()
+
+    def update(self):
+        self.cubeList.update()
+        self.linkList.update()
         self.updateGL()
-
-    def getShape(self):
-        return self.shape
-
-    def setShape(self, shape):
-        self.shape = self.parent.agent.shape
-        self.clearNodes()
-        self.clearLinks()
-
-    def clearNodes(self):
-        self.node_colors = np.tile(self.default_color, self.shape + [1])
-
-    def clearLinks(self):
-        self.link_colors = np.tile(self.default_link_color,
-            self.shape + [3, 1])
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -90,18 +71,18 @@ class GLTorus3dView(GLWidget):
             (1,0,0),... etc. but they will appear centered around the global
             origin.
         """
-        x_span, y_span, z_span = self.shape
+        x_span, y_span, z_span = self.colorModel.shape
         glTranslatef(-(x_span-1)/2.0,(y_span-1)/2.0,(z_span-1)/2.)
 
     def drawCubes(self):
         glPushMatrix()
         self.centerView()
 
-        x_span, y_span, z_span = self.shape
-        for x, y, z in np.ndindex(*self.shape):
+        x_span, y_span, z_span = self.colorModel.shape
+        for x, y, z in np.ndindex(*self.colorModel.shape):
             glPushMatrix()
 
-            glColor4f(*self.node_colors[x,y,z])
+            glColor4f(*self.colorModel.node_colors[x,y,z])
             glTranslatef((x + self.seam[0]) % x_span,
                          -((y + self.seam[1]) % y_span),
                          -((z + self.seam[2]) % z_span))
@@ -115,29 +96,36 @@ class GLTorus3dView(GLWidget):
 
 
     def drawLinks(self):
-        glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,[1.0,1.0,1.0,1.0])
+        glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,[1.0, 1.0, 1.0, 1.0])
 
         glPushMatrix()
         self.centerView()
 
-        x_span, y_span, z_span = self.shape
-        for x, y, z in np.ndindex(*self.shape):
+        x_span, y_span, z_span = self.colorModel.shape
+        for x, y, z in np.ndindex(*self.colorModel.shape):
             glPushMatrix()
 
             glTranslatef((x + self.seam[0]) % x_span,
                          -((y + self.seam[1]) % y_span),
                          -((z + self.seam[2]) % z_span))
 
+            # average positive and negative color values
+            # TODO: should color model just store the normalized values?
+            # TODO: Averaging colors doesn't really make sense if the color map isn't linear.
+            pos = self.colorModel.pos_link_colors[x, y, z]
+            neg = self.colorModel.neg_link_colors[x, y, z]
+            colors = (pos + neg) / 2
+
             # x+
-            glColor4f(*self.link_colors[x,y,z,0])
+            glColor4f(*colors[0])
             glePolyCylinder([(-1, 0, 0), (0, 0, 0), (1, 0, 0), (2, 0, 0)],
                             None, self.link_radius)
             # y+
-            glColor4f(*self.link_colors[x,y,z,1])
+            glColor4f(*colors[1])
             glePolyCylinder([(0, -2, 0), (0, -1, 0), (0, 0, 0), (0, 1, 0)],
                             None, self.link_radius)
             # z+
-            glColor4f(*self.link_colors[x,y,z,2])
+            glColor4f(*colors[2])
             glePolyCylinder([(0, 0, -2), (0, 0, -1), (0, 0, 0), (0, 0, 1)],
                             None, self.link_radius)
             glPopMatrix()
