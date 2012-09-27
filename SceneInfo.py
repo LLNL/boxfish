@@ -17,19 +17,35 @@ class Scene(QObject):
         self.changeSignal.emit(self)
 
 
-class SubdomainScene(Scene):
-    """This holds subdomain specific scene information that we might want to
-       propogate among views.
+class HighlightScene(Scene):
+    """This holds highlight scene information for propagating amongst
+       views.
     """
 
-    def __init__(self, subdomain, highlight_set = None, run = None):
+    def __init__(self, highlight_sets = list()):
+        """Parmeters:
+           highlight_sets: a list of HighlightSet objects.
+        """
         super(SubdomainScene, self).__init__()
 
-        self.subdomain = subdomain
-        self.highlight_set = highlight_set # Subdomain
+        self.highlight_sets = highlight_sets
+
+
+class HighlightSet(object):
+    """This class holds information regarding a single SubDomain of
+       highlights.
+    """
+
+    def __init__(self, highlights, run):
+        """Parameters:
+
+           highlights - a SubDomain containing the highlighted ids
+           run - The DataTree index of the run under which these
+                 highlights fall.
+        """
+        super(HighlightSet, self).__init__()
+        self.highlights = highlights # Subdomain
         self.run = run # QModelIndex
-
-
 
 
 class AttributeScene(Scene):
@@ -37,7 +53,7 @@ class AttributeScene(Scene):
        want to propogate among views.
 
        Color map ranges only make sense with respect to a specific
-       combination of attributes. 
+       combination of attributes.
     """
 
     def __init__(self, attributes,

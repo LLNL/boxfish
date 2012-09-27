@@ -68,7 +68,6 @@ class FilterBoxView(ModuleView):
         self.addToolBar(self.toolbar)
 
     def droppedData(self, indexList):
-        self.filter_tab.setAttribute(self.agent.datatree.getItem(indexList[0]).name)
         self.tab_dialog.show()
 
     # Demonstration of changing Drag & Drop behavior for window unique data
