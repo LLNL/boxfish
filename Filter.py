@@ -32,5 +32,4 @@ class SimpleWhereFilter(Filter):
         self.conditions = conditions
 
     def process(self, table, identifiers):
-
         return table.evaluate(self.conditions, identifiers)

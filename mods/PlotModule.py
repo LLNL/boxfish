@@ -1,4 +1,5 @@
-from Module import *
+from ModuleAgent import *
+from ModuleView import *
 
 import sys
 import matplotlib

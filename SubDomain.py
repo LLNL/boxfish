@@ -1,27 +1,28 @@
-#
-# A subdomain is a list of identifiers (usually indices) defining a list of
-# points in some domain
-#
-
-
 class SubDomain(list):
+    """A SubDomain is a list of identifiers of representatives of some
+       domain.
+    """
 
     def __init__(self,copy = list()):
-       list.__init__(self,copy)
+       super(SubDomain, self).__init__(copy)
 
     def __getslice__(self,i,j):
         return self.__class__(list.__getslice__(self,i,j))
 
-    def subdomain(self):
-        return self.domain() + "_" + self.typename()
+    @classmethod
+    def subdomain(cls):
+        return cls.domain() + "_" + cls.typename()
 
-    def typename(self):
+    @classmethod
+    def typename(cls):
         raise NotImplementedError( "Should have implemented this" )
 
-    def domain(self):
+    @classmethod
+    def domain(cls):
         raise NotImplementedError( "Should have implemented this" )
 
-    def subclasses(self,sub = list()):
+    @classmethod
+    def subclasses(cls,sub = list()):
 
         ret = list()
 
@@ -30,22 +31,23 @@ class SubDomain(list):
 
         for s in sub:
             if len(s.__subclasses__()) == 0:
-                ret.append(s().subdomain())
+                ret.append(s.subdomain())
             else:
-                ret += self.subclasses(s.__subclasses__())
+                ret += cls.subclasses(s.__subclasses__())
 
         return ret
 
-    def instantiate(self,subdomain,data=list()):
+    @classmethod
+    def instantiate(cls,subdomain,data=list()):
 
-        if len(self.__class__.__subclasses__()) == 0:
-            if self.subdomain().upper() == subdomain.upper():
-                return self.__class__(data)
+        if len(cls.__subclasses__()) == 0:
+            if cls.subdomain().upper() == subdomain.upper():
+                return cls(data)
             else:
                 return None
         else:
-            for s in self.__class__.__subclasses__():
-                result = s().instantiate(subdomain,data)
+            for s in cls.__subclasses__():
+                result = s.instantiate(subdomain,data)
                 if result != None:
                     return result
             return None
@@ -53,79 +55,86 @@ class SubDomain(list):
 class HWSubDomain(SubDomain):
 
     def __init__(self, elements = list()):
+        super(HWSubDomain, self).__init__(elements)
 
-        SubDomain.__init__(self,elements)
-
-    def domain(self):
+    @classmethod
+    def domain(cls):
         return "HW"
 
 class Cores(HWSubDomain):
 
     def __init__(self, elements = list()):
-        HWSubDomain.__init__(self,elements)
+        super(Cores, self).__init__(elements)
 
-    def typename(self):
+    @classmethod
+    def typename(cls):
         return "core"
 
 
 class Nodes(HWSubDomain):
 
     def __init__(self, elements = list()):
-        HWSubDomain.__init__(self,elements)
+        super(Nodes, self).__init__(elements)
 
-    def typename(self):
+    @classmethod
+    def typename(cls):
         return "node"
 
 class Links(HWSubDomain):
 
     def __init__(self, elements = list()):
-        HWSubDomain.__init__(self, elements)
+        super(Links, self).__init__(elements)
 
-    def typename(self):
+    @classmethod
+    def typename(cls):
         return "link"
 
 
 class CommSubDomain(SubDomain):
 
     def __init__(self, elements = list()):
+        super(CommSubDomain, self).__init__(elements)
 
-        SubDomain.__init__(self,elements)
-
-    def domain(self):
+    @classmethod
+    def domain(cls):
         return "comm"
 
 
 class Ranks(CommSubDomain):
 
     def __init__(self, elements = list()):
-        CommSubDomain.__init__(self,elements)
+        super(Ranks, self).__init__(elements)
 
-    def typename(self):
+    @classmethod
+    def typename(cls):
         return "rank"
 
 class Communicators(CommSubDomain):
 
     def __init__(self, elements = list()):
-        CommSubDomain.__init__(self,elements)
+        super(Communicators, self).__init__(elements)
 
-    def typename(self):
+    @classmethod
+    def typename(cls):
         return "communicator"
 
 
 class AppSubDomain(SubDomain):
 
     def __init__(self, elements = list()):
-        SubDomain.__init__(self,elements)
+        super(AppSubDomain, self).__init__(elements)
 
-    def domain(self):
+    @classmethod
+    def domain(cls):
         return "app"
-    
+
 class Patches(AppSubDomain):
 
     def __init__(self, elements = list()):
-        AppSubDomain.__init__(self,elements)
+        super(Patches, self).__init__(elements)
 
-    def typename(self):
+    @classmethod
+    def typename(cls):
         return "patch"
 
 

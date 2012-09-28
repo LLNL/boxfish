@@ -35,7 +35,7 @@ class Table(object):
 
   def __init__(self):
 
-    object.__init__(self)
+    super(Table, self).__init__()
 
 
   def fromYAML(self,domain_type,primary_key, filename):
@@ -198,7 +198,7 @@ class Table(object):
 
     return result, True
 
-  def group_attributes_by_attributes(self, identifiers, given_attrs, 
+  def group_attributes_by_attributes(self, identifiers, given_attrs,
     desired_attrs, aggregator):
     """Determine list of desired attributed aggregated by set of given
        attributes. This does an attribute look up/group by type operation.
@@ -249,7 +249,7 @@ class Table(object):
 
     return attr_list
 
-  
+
   def attributes_by_conditions(self, identifiers, desired_attrs, conditions,
     unique = True):
     """Get all rows of the desired attributes where the conditions
@@ -307,7 +307,7 @@ class Table(object):
     where_clause = self.build_where_clause(conditions, identifiers)
     if where_clause is None:
         return identifiers
-    
+
     indices = np.where(where_clause)
     return [identifiers[x] for x in indices[0]]
 
@@ -339,12 +339,12 @@ class Table(object):
             else:
                 c2 = Clause(relation, value, TableAttribute(attributes[0]))
             conditions.append(Clause('and', c1, c2))
-        
+
         where_clause = self.build_where_clause(Clause('or', *conditions))
         if where_clause is None:
             return identifiers
 
-        indices = np.where(where_clause) 
+        indices = np.where(where_clause)
         return [identifiers[x] for x in indices[0]]
     else:
         aggregation_operator = self.operator[aggregator]
@@ -363,9 +363,9 @@ class Table(object):
             attribute_value = aggregation_operator(np.array(attribute_list))
             for table_id, value in outside_list:
                 if table_id == row[self._key] \
-                    and ((table_first 
+                    and ((table_first
                     and relation_operator(attribute_value, value))
-                    or (not table_first 
+                    or (not table_first
                     and relation_operator(value, attribute_value))):
                     indices.add(i)
 
@@ -407,7 +407,7 @@ class Table(object):
 
         np_type = self._data[attribute.name].dtype
         value = self.numpy_cast(value, np_type, attribute.name)
-            
+
         if isinstance(condition.clauses[0], TableAttribute):
             return operator(self._data[attribute.name][identifiers], value)
         else:
@@ -433,8 +433,8 @@ class Table(object):
       except:
           raise ValueError("Incompatible value: %s for attribute %s",
               value, name)
-        
-        
+
+
 
 if __name__ == '__main__':
   from YamlLoader import *

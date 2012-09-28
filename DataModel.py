@@ -475,7 +475,7 @@ class TableItem(DataObjectItem):
 
             identifiers_lists.append(self._table.subset_by_key(
                 self._table.identifiers(),
-                SubDomain().instantiate(self._table.subdomain(),
+                SubDomain.instantiate(self._table.subdomain(),
                     projected_keys)))
 
         # Question: Does not applying the original tables identifiers
@@ -707,7 +707,7 @@ class DataTree(QAbstractItemModel):
         for filedict in filelist:
             if filedict['filetype'].upper() == "TABLE":
                 type_string = filedict['domain'] + "_" + filedict['type']
-                data_type = SubDomain().instantiate(type_string)
+                data_type = SubDomain.instantiate(type_string)
                 if data_type is None:
                     print "No matching type found for", filedict['type'], \
                         "! Skipping table..."
@@ -728,7 +728,7 @@ class DataTree(QAbstractItemModel):
                 for subdomaindict in domainlist:
                     type_string = subdomaindict['domain'] + "_" \
                         + subdomaindict['type']
-                    data_type = SubDomain().instantiate(type_string)
+                    data_type = SubDomain.instantiate(type_string)
                     if data_type is None:
                         print "No matching type found for", \
                             subdomaindict['type'], "! Skipping projection..."
@@ -757,8 +757,7 @@ class DataTree(QAbstractItemModel):
                         + mydomains[1].typename(), aprojection, combined_meta,
                         parent = self.createIndex(position, 0, projectionsItem))
                 else:
-                    aprojection = Projection(mydomains[0],
-                        mydomains[1]).instantiate(filedict['type'],
+                    aprojection = Projection.instantiate(filedict['type'],
                         mydomains[0], mydomains[1], run = runItem, **filedict)
                     self.insertProjection(mydomains[0].typename() + "<->"
                         + mydomains[1].typename(), aprojection, filedict,
@@ -782,7 +781,7 @@ class DataTree(QAbstractItemModel):
                     projection_list.append(projection._projection)
 
             # Create a Table Meta Information
-            greater_subdomain = SubDomain().instantiate(subdomain)
+            greater_subdomain = SubDomain.instantiate(subdomain)
             table_meta = dict()
             table_meta['filetype'] = 'table'
             table_meta['domain'] = greater_subdomain.domain()

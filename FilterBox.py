@@ -1,7 +1,11 @@
-from PySide.QtCore import *
-from PySide.QtGui import *
-from SubDomain import *
-from Module import *
+from PySide.QtCore import Qt, Signal, Slot, QMimeData
+from PySide.QtGui import QWidget, QGridLayout, QLabel, QToolBar, QAction,\
+    QIcon, QStringListModel, QVBoxLayout, QTreeView, QSplitter,\
+    QHBoxLayout, QPushButton, QSpacerItem, QGroupBox, QLineEdit, QListView,\
+    QCompleter
+from ModuleView import *
+from ModuleAgent import *
+from GUIUtils import *
 from Query import *
 from Table import Table
 from DataModel import *
@@ -14,11 +18,17 @@ class FilterBox(ModuleAgent):
 
     def createSimpleFilter(self, conditions):
         self.filters = list()
-        self.filters.append(SimpleWhereFilter(conditions))
-        for coupler in self.requirements:
-            coupler.modifier = self.filters[0]
-        for coupler in self.child_requirements:
-            coupler.modifier = self.filters[0]
+        if conditions is None:
+            for coupler in self.requirements:
+                coupler.modifier = None
+            for coupler in self.child_requirements:
+                coupler.modifier = None
+        else:
+            self.filters.append(SimpleWhereFilter(conditions))
+            for coupler in self.requirements:
+                coupler.modifier = self.filters[0]
+            for coupler in self.child_requirements:
+                coupler.modifier = self.filters[0]
 
 @Module("Filter Box", FilterBox)
 class FilterBoxView(ModuleView):
@@ -62,9 +72,7 @@ class FilterBoxView(ModuleView):
         self.addToolBar(self.toolbar)
 
     def droppedData(self, indexList):
-        self.filter_tab.setAttribute(self.agent.datatree.getItem(indexList[0]).name)
         self.tab_dialog.show()
-
 
     # Demonstration of changing Drag & Drop behavior for window unique data
     # May not be necessary for other modules.
@@ -77,20 +85,17 @@ class FilterBoxView(ModuleView):
         else:
             super(FilterBoxView, self).dropEvent(event)
 
-    # Goes with FakeDialog
-    def fakeNewVals(self, title, filtertext):
-        self.agent.createSimpleFilter(Clause("=", TableAttribute(title),
-            filtertext))
-        self.fake_label.setText("Filter: " + title + " = " + filtertext)
-        #self.setTitle(title)
-        #self.parent().setWindowTitle(title)
+    @Slot(Clause)
+    def editFilter(self, clause):
+        self.agent.createSimpleFilter(clause)
+        self.fake_label.setText("Filter: " + str(clause))
 
     def buildTabDialog(self):
         super(FilterBoxView, self).buildTabDialog()
-        self.filter_tab = SimpleFilterTab(self.tab_dialog, self, self.windowTitle(), "")
+        self.filter_tab = FilterTab(self.tab_dialog, self,
+            self.agent.filters)
+        self.filter_tab.applySignal.connect(self.editFilter)
         self.tab_dialog.addTab(self.filter_tab, "Filters")
-        self.new_filter_tab = FilterTab(self.tab_dialog, self)
-        self.tab_dialog.addTab(self.new_filter_tab, "Advanced Filters")
 
 
 class FilterMime(QMimeData):
@@ -105,56 +110,32 @@ class FilterMime(QMimeData):
     def getFilter(self):
         return self.myfilter
 
-# Convenient way for me to rename the window and added text for
-# Boxfish poster. May want to change this into something permanent
-# involving actual filtering.
-class SimpleFilterTab(QWidget):
-
-    def __init__(self, parent, view, title, filtertext = ""):
-        super(SimpleFilterTab, self).__init__(parent)
-
-        self.view = view
-        self.parent = parent
-
-        nameLabel = QLabel("Attribute: ")
-        filterLabel = QLabel("Value: ")
-
-        self.nameEdit = QLineEdit(title)
-        self.filterEdit = QLineEdit(filtertext)
-
-        changeButton = QPushButton("Set")
-        changeButton.clicked.connect(self.sendBack)
-
-        mainLayout = QGridLayout()
-        mainLayout.addWidget(nameLabel, 0, 0)
-        mainLayout.addWidget(self.nameEdit, 0, 1)
-        mainLayout.addWidget(filterLabel, 1, 0)
-        mainLayout.addWidget(self.filterEdit, 1, 1)
-        mainLayout.addWidget(changeButton, 2, 0)
-
-        self.setLayout(mainLayout)
-
-    def sendBack(self):
-        self.view.fakeNewVals(self.nameEdit.text(), self.filterEdit.text())
-        self.parent.close()
-
-    def setAttribute(self, attribute):
-        self.nameEdit.setText(attribute)
 
 class FilterTab(QWidget):
+    """This class is the GUI for creating filters for the FilterBox
+       module. This GUI will be added as a tab to the ModuleView
+       tab dialog.
+    """
 
     applySignal = Signal(Clause)
 
-    def __init__(self, parent, view):
+    def __init__(self, parent, view, existing_filters):
         super(FilterTab, self).__init__(parent)
 
         self.view = view
         self.parent = parent
         self.attributes = self.view.agent.datatree.generateAttributeList()
+
         self.clause_list = list()
         self.clause_dict = dict()
+        if existing_filters is not None and len(existing_filters) > 0:
+            for clause in existing_filters[0].conditions.clauses:
+                self.clause_list.append(str(clause))
+                self.clause_dict[str(clause)] = clause
 
-        layout = QHBoxLayout(self)
+        self.clause_model = QStringListModel(self.clause_list)
+
+        layout = QVBoxLayout(self)
         self.sidesplitter = QSplitter(Qt.Horizontal)
 
         # You can only select one at a time
@@ -164,17 +145,43 @@ class FilterTab(QWidget):
         self.data_view.setDropIndicatorShown(True)
         self.data_view.expandAll()
         self.sidesplitter.addWidget(self.data_view)
-        self.sidesplitter.setStretchFactor(0,1)
+        self.sidesplitter.setStretchFactor(1,1)
 
         self.filter_widget = self.buildFilterWidget()
         self.sidesplitter.addWidget(self.filter_widget)
         self.sidesplitter.setStretchFactor(1,0)
 
         layout.addWidget(self.sidesplitter)
+
+        buttonWidget = QWidget()
+        buttonLayout = QHBoxLayout(buttonWidget)
+        self.applyButton = QPushButton("Apply")
+        self.applyButton.clicked.connect(self.applyFilter)
+        self.closeButton = QPushButton("Apply & Close")
+        self.closeButton.clicked.connect(self.applyCloseFilter)
+        buttonLayout.addWidget(self.applyButton)
+        buttonLayout.addWidget(self.closeButton)
+        buttonWidget.setLayout(buttonLayout)
+
+        layout.addWidget(buttonWidget)
         self.setLayout(layout)
 
+    def applyFilter(self):
+        num_clauses = len(self.clause_list)
+        if num_clauses == 0:
+            self.applySignal.emit(None)
+        else:
+            self.applySignal.emit(Clause("and", *self.clause_dict.values()))
+
+    def applyCloseFilter(self):
+        self.applyFilter()
+        self.parent.close()
 
     def buildFilterWidget(self):
+        """Creates the filter portion of the widget by laying out
+           the subwidgets for relations, workspace and existing 
+           clauses.
+        """
         filter_widget = QWidget()
         filter_layout = QVBoxLayout(filter_widget)
 
@@ -182,10 +189,26 @@ class FilterTab(QWidget):
         filter_layout.addItem(QSpacerItem(5,5))
         filter_layout.addWidget(self.buildWorkFrame())
         filter_layout.addItem(QSpacerItem(5,5))
-        self.list_view = QListView
+        filter_layout.addWidget(self.buildFilterListView())
 
         filter_widget.setLayout(filter_layout)
         return filter_widget
+
+    def buildFilterListView(self):
+        groupBox = QGroupBox("Clauses")
+        layout = QVBoxLayout(groupBox)
+
+        self.list_view = QListView(groupBox)
+        self.list_view.setModel(self.clause_model)
+        layout.addWidget(self.list_view)
+
+        layout.addItem(QSpacerItem(5,5))
+        self.delButton = QPushButton("Remove Selected Clause")
+        self.delButton.clicked.connect(self.deleteClause)
+        layout.addWidget(self.delButton)
+
+        groupBox.setLayout(layout)
+        return groupBox
 
     def buildWorkFrame(self):
         groupBox = QGroupBox("Clause Workspace")
@@ -196,11 +219,22 @@ class FilterTab(QWidget):
         self.dropRelation = DropTextLabel("__")
         self.dropValue = FilterValueLineEdit(groupBox,
             self.view.agent.datatree, self.dropAttribute)
+
+        # Clear dropValue when dropAttribute changes
+        self.dropAttribute.textChanged.connect(self.dropValue.clear)
+
+        # Enter in dropValue works like addButton
+        self.dropValue.returnPressed.connect(self.addClause)
+
+        self.addButton = QPushButton("Add", groupBox)
+        self.addButton.clicked.connect(self.addClause)
         layout.addWidget(self.dropAttribute)
         layout.addItem(QSpacerItem(5,5))
         layout.addWidget(self.dropRelation)
         layout.addItem(QSpacerItem(5,5))
         layout.addWidget(self.dropValue)
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(self.addButton)
 
         groupBox.setLayout(layout)
         return groupBox
@@ -215,10 +249,33 @@ class FilterTab(QWidget):
         relations_widget.setLayout(layout)
         return relations_widget
 
+    def addClause(self):
+        if self.dropRelation.text() in Table.relations \
+            and len(self.dropValue.text()) > 0 \
+            and len(self.dropAttribute.text()) > 0:
+
+            clause = Clause(self.dropRelation.text(),
+                TableAttribute(self.dropAttribute.text()),
+                self.dropValue.text())
+
+            # Guard double add
+            if str(clause) not in self.clause_dict:
+                self.clause_list.append(str(clause))
+                self.clause_dict[str(clause)] = clause
+                self.clause_model.setStringList(self.clause_list)
+
+    def deleteClause(self):
+        clause = self.clause_model.data(
+            self.list_view.selectedIndexes()[0], Qt.DisplayRole)
+        if clause is not None and clause in self.clause_list:
+            self.clause_list.remove(clause)
+            del self.clause_dict[clause]
+            self.clause_model.setStringList(self.clause_list)
+
 
 
 class FilterValueLineEdit(QLineEdit):
-    
+
     def __init__(self, parent, datatree, watchLineEdit):
         super(FilterValueLineEdit, self).__init__("", parent)
 
