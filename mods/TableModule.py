@@ -1,4 +1,5 @@
-from Module import *
+from ModuleAgent import *
+from ModuleView import *
 
 import sys
 from PySide.QtCore import *
@@ -12,7 +13,7 @@ class TableAgent(ModuleAgent):
     tableUpdateSignal = Signal(list, list, list, list)
 
     def __init__(self, parent, datatree):
-        """Like all agent subclasses, the init should only require:
+        """Like all agent subclasses, the init requires:
 
            parent
                The parent agent in the Boxfish agent tree.
@@ -58,6 +59,7 @@ class TableAgent(ModuleAgent):
             = self.requestGetRows("table columns")
         self.tableUpdateSignal.emit(tables, ids, headers, data_lists)
 
+
 # For a Module to appear in Boxfish's GUI, as ModuleView must be decorated
 # with @Module and given the display name ("Table") and the corresponding
 # agent class the View uses (TableAgent).
@@ -93,48 +95,84 @@ class TableView(ModuleView):
             self.agent.tableUpdateSignal.connect(self.updateTables)
 
     def createView(self):
+        """This required function creates the main view container for 
+           this module, in this case a QTabWidget to hold all the table
+           views. The rest of the GUI is handled by the superclass.
+        """
         self.tabs = QTabWidget()
-        self.tabs.addTab(self.createTable(100,2), "No Data")
+        self.tabs.addTab(self.createTable(100,2,["-","-"]), "No Data")
         return self.tabs
 
     # We may want to add a QScrollArea around this and so forth
-    def createTable(self, rows, cols):
-        return QTableWidget(rows, cols)
+    def createTable(self, rows, cols, headers):
+        """Creates and returns a QTableWidget of given rows and columns
+           with all of the features we want for all such widgets in this
+           module.
+        """
+        table = QTableWidget(rows, cols)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        table.setHorizontalHeaderLabels(headers)
+        return table
 
     def droppedData(self, indexList):
+        """Overrides the superclass method to send the agent the dropped
+           data indices.
+        """
         self.agent.addDataIndices(indexList)
 
     @Slot(list, list, list, list)
     def updateTables(self, tables, ids, headers, values):
-        self.tables = tables
+        """Creates table views.
+
+           tables
+               A list of tables for which we have data.
+
+           ids
+               A list of lists of the corresponding SubDomain ids for 
+               each row of each table's returned values.
+
+           headers
+               A list of lists of the column names that go with the 
+               given values for each table.
+
+           values
+              A list of list of lists, one for each column of each table.
+        """
+
+        # We need to save tables, id_lists for selection later
+        self.tables = tables 
         self.id_lists = ids
+        
         if tables is None:
             return
-        rows = 100
-        self.tabs.clear()
+        
+        rows = 100 # TODO: Make this configurable
+        
+        self.tabs.clear() # Get rid of old data
+
+        # For each table, create a table view and populate it with the
+        # given values for that table
         for table, header_list, value_lists in zip(tables, headers, values):
-            if len(value_lists[0]) < 100:
+            if len(value_lists[0]) < rows:
                 rows = len(value_lists[0])
-            self.tableWidget = self.createTable(rows, len(header_list))
-            self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)
-            self.tableWidget.setSelectionMode(
-                QAbstractItemView.ExtendedSelection)
-            self.tableWidget.setHorizontalHeaderLabels(header_list)
+            tableWidget = self.createTable(rows, len(header_list),
+                header_list)
             for index, value_list in enumerate(value_lists):
                 for i in range(rows):
                     tableWidget.setItem(i, index,
                         QTableWidgetItem(str(value_list[i])))
             self.tabs.addTab(tableWidget, table)
 
-    def selectRows(self, rows):
-        if not self.tableWidget or len(rows) == 0:
+    def selectRows(self, rows, table):
+        if not table or len(rows) == 0:
             return
 
-        selectionModel = self.tableWidget.selectionModel()
-        self.tableWidget.selectRow(rows[0])
+        selectionModel = table.selectionModel()
+        table.selectRow(rows[0])
         selection = selectionModel.selection()
         for row in rows[1:]:
-            self.tableWidget.selectRow(row)
+            table.selectRow(row)
             selection.merge(selectionModel.selection(),
                 QItemSelectionModel.Select)
 

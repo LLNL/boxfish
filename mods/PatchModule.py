@@ -1,8 +1,9 @@
 from PySide.QtCore import *
 from OpenGL.GLUT import *
 from GLWidget import GLWidget
-from Torus3dModule import *
-from Module import *
+from GLModuleScene import GLModuleScene
+from ModuleAgent import *
+from ModuleView import *
 
 import sys
 import numpy as np

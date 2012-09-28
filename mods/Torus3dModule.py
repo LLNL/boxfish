@@ -1,5 +1,6 @@
 from PySide.QtCore import *
-from Module import *
+from ModuleAgent import *
+from ModuleView import *
 
 import TorusIcons
 import sys
@@ -239,32 +240,3 @@ class Torus3dView(ModuleView):
     def updateTransform(self, rotation, translation):
         self.view.set_transform(rotation, translation)
 
-
-class GLModuleScene(ModuleScene):
-    """TODO: Docs"""
-
-    def __init__(self, agent_type, module_type, rotation = None,
-        translation = None):
-        super(GLModuleScene, self).__init__(agent_type, module_type)
-
-        self.rotation = rotation
-        self.translation = translation
-
-    def __equals__(self, other):
-        if self.rotation == other.rotation \
-                and self.translation == other.translation:
-            return True
-        return False
-
-    def copy(self):
-        if self.rotation is not None and self.translation is not None:
-            return GLModuleScene(self.agent_type, self.module_name,
-                self.rotation.copy(), self.translation.copy())
-        elif self.rotation is not None:
-            return GLModuleScene(self.agent_type, self.module_name,
-                self.rotation.copy(), None)
-        elif self.translation is not None:
-            return GLModuleScene(self.agent_type, self.module_name,
-                None, self.translation.copy())
-        else:
-            return GLModuleScene(self.agent_type, self.module_name)

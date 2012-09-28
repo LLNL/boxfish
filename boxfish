@@ -6,6 +6,7 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 from FilterBox import *
 from DataModel import *
+from ModuleAgent import *
 from OpenGL.GLUT import glutInit
 
 class MainWindow(QMainWindow):
@@ -93,7 +94,7 @@ class MainWindow(QMainWindow):
         __import__("mods") # import!
         sys.path = saved_syspath # Revert true sys.path
 
-        modules = ModuleView().subclassList()
+        modules = ModuleView.subclassList()
         return modules
 
 class TopModule(ModuleAgent):
