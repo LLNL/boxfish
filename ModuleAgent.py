@@ -10,49 +10,21 @@ from SceneInfo import *
 
 class ModuleAgent(QObject):
 
-    # Timo - probably getting rid of these. While it makes sense for Subdomain
-    # based Scene info, there are way too many attribute-based scene infos
-    # and I don't want to needlessly create signals for all of them
-    # Because we probably won't have too many children at any level, we
-    # might as well just go through all of them and determine who needs
-    # to be notified.
-    subscribeSignal          = Signal(object,str)
-    unsubscribeSignal        = Signal(object,str)
-    highlightSignal          = Signal(SubDomain)
-
     # Signals that I send 
     addCouplerSignal         = Signal(FilterCoupler, QObject)
 
     # Scene Signals I send... really necessary with parent/child structure?
-    moduleSceneChangedSignal = Signal(ModuleScene, object) # my scene info changed
+    sceneChangedSignal = Signal(Scene, object) # my scene info changed
     receiveModuleSceneSignal = Signal(ModuleScene) # we receive scene info
+    receiveHighlightSignal   = Signal(HighlightScene)
     requestScenesSignal      = Signal(QObject)
-
-    # Name template for the highlight signal
-    highlightSignal_base = "%s_highlight_signal"
-
-    # The list of registered signals for highlights and yes the exec stuff is
-    # necessary since PySide seems to mangle the signal otherwise. It is not
-    # allowed to create the signals in the __init__ function nor can we create
-    # a list of signale or a dict(). Either code runs but the resulting signals
-    # are castrated (they have no connect function for example). Thus we use
-    # this hack to create a bunch of named static variables
-    for name in SubDomain().subclasses():
-        exec highlightSignal_base % name + ' = Signal(SubDomain)'
 
     # INIT IS DOWN HERE
     def __init__(self, parent, datatree = None):
         super(ModuleAgent,self).__init__(parent)
 
         self.datatree = datatree
-        self.listenerCount = dict()
-        self.highlights = dict() # domain based information
-        self.domain_scenes = dict()
         self.attribute_scenes = dict()
-        for name in SubDomain().subclasses():
-            self.listenerCount[name] = 0
-            exec 'self.highlights[\"%s\"] = self.' % name \
-                + self.highlightSignal_base % name
 
         self.children = list()
 
@@ -64,10 +36,22 @@ class ModuleAgent(QObject):
 
         self.filters = list()
 
-        # Module Scene information
-        self.module_scenes_dict = dict()
+        # Module Scene information - we keep track of several as different
+        # modules may have different scenes that are all valid
+        self.module_scenes_dict = dict() 
         self.apply_module_scenes = True
         self._propagate_module_scenes = False
+
+        # Highlight Scene information - we keep track of one only as it would
+        # be too confusing if there were highlights per domain in a subtree.
+        # It wouldn't be clear what highlights belonged to what set, especially
+        # with projections.
+        self.apply_highlights = True
+        self._propagate_highlights = False
+        self._highlights = HighlightScene() # Local highlights
+        
+        # Reference highlights for subtree
+        self._highlights_ref = HighlightScene()
 
 
     # factory method for subclasses
@@ -149,11 +133,8 @@ class ModuleAgent(QObject):
 
     def registerChild(self, child):
         self.children.append(child)
-        child.subscribeSignal.connect(self.subscribe)
-        child.unsubscribeSignal.connect(self.unsubscribe)
-        child.highlightSignal.connect(self.highlight)
         child.addCouplerSignal.connect(self.addChildCoupler)
-        child.moduleSceneChangedSignal.connect(self.receiveModuleSceneFromChild)
+        child.sceneChangedSignal.connect(self.receiveSceneFromChild)
         child.requestScenesSignal.connect(self.sendAllScenes)
 
         if self.propagate_module_scenes:
@@ -170,12 +151,8 @@ class ModuleAgent(QObject):
 
     def unregisterChild(self, child):
         self.children.remove(child)
-        child.subscribeSignal.disconnect(self.subscribe)
-        child.unsubscribeSignal.disconnect(self.unsubscribe)
-        child.highlightSignal.disconnect(self.highlight)
         child.addCouplerSignal.disconnect(self.addChildCoupler)
-        child.moduleSceneChangedSignal.disconnect(
-            self.receiveModuleSceneFromChild)
+        child.sceneChangedSignal.disconnect(self.receiveSceneFromChild)
         child.requestScenesSignal.disconnect(self.sendAllScenes)
 
         # Abandon child's requests
@@ -203,7 +180,9 @@ class ModuleAgent(QObject):
         """
         if self.propagate_module_scenes:
             for key, scene in self.module_scenes_dict.iteritems():
-                child.receiveModuleSceneFromParent(scene)
+                child.receiveSceneFromParent(scene)
+        if self.propagate_highlights:
+            child.receiveSceneFromParent(self._highlights_ref)
 
     def refreshSceneInformation(self):
         """This function is called to poll the parent agent for any 
@@ -212,6 +191,33 @@ class ModuleAgent(QObject):
            subtree is moved in the hierarchy.
         """
         self.requestScenesSignal.emit(self)
+
+    @property
+    def highlights(self):
+        return self._highlights
+
+    @highlights.setter
+    def highlights(self, highlight):
+        self._highlights = highlight
+        self._highlights.causeChangeSignal.connect(self.sceneChanged)
+
+    @property
+    def propagate_highlights(self):
+        return self._propagate_highlights
+
+    @propagate_highlights.setter
+    def propagate_highlights(self, policy):
+        # You can only turn off (policy is False) if your parent is
+        # also False. 
+        if policy or self.parent().propagate_highlights == policy:
+            self._propagate_highlights = policy
+        if policy: # Push policy on to all children
+            for child in self.children:
+                child.propagate_highlights = policy
+
+    @Slot(HighlightScene)
+    def highlightsChanged(self, highlight):
+        self.highlightSceneChangedSignal.emit(self.highlights.copy(), self)
 
     @property
     def propagate_module_scenes(self):
@@ -234,118 +240,59 @@ class ModuleAgent(QObject):
     @module_scene.setter
     def module_scene(self, module_scene):
         self._module_scene = module_scene
-        self._module_scene.causeChangeSignal.connect(self.moduleSceneChanged)
+        self._module_scene.causeChangeSignal.connect(self.sceneChanged)
 
-    @Slot(ModuleScene)
-    def moduleSceneChanged(self, module_scene):
-        self.moduleSceneChangedSignal.emit(self.module_scene.copy(), self)
+    @Slot(Scene)
+    def sceneChanged(self, scene):
+        self.sceneChangedSignal.emit(scene.copy(), self)
 
-    # Slot(ModuleScene, ModuleAgent) decorator after class definition
-    def receiveModuleSceneFromChild(self, module_scene, source_agent):
-        if self.propagate_module_scenes:
-            # Continue to propagate up
-            self.moduleSceneChangedSignal.emit(module_scene, self)
-        else: # Not propagating, just give back to child
-            source_agent.receiveModuleSceneFromParent(module_scene)
+    # Slot(Scene, ModuleAgent) decorator after class definition
+    def receiveSceneFromChild(self, scene, source_agent):
+        if isinstance(scene, HighlightScene):
+            if self.propagate_highlights:
+                # Continue to propagate up
+                self.sceneChangedSignal.emit(scene, self)
+            else: # Not propagating, just give back to child
+                source_agent.receiveSceneFromParent(scene)
+        elif isinstance(scene, ModuleScene):
+            if self.propagate_module_scenes:
+                # Continue to propagate up
+                self.sceneChangedSignal.emit(scene, self)
+            else: # Not propagating, just give back to child
+                source_agent.receiveSceneFromParent(scene)
 
-    def receiveModuleSceneFromParent(self, module_scene):
+    def receiveSceneFromParent(self, scene):
         # If this function is being called, we know we propagate things
         # so we send to all our children
         for child in self.children:
-            child.receiveModuleSceneFromParent(module_scene)
+            child.receiveSceneFromParent(scene)
 
-        # And we update our module scene dict
-        self.module_scenes_dict[module_scene.module_name] = module_scene
+        if isinstance(scene, HighlightScene):
+            self._highlights_ref = scene
 
-        # Then we determine how we should handle it
-        if self.apply_module_scenes \
-            and isinstance(module_scene, type(self.module_scene)):
-            self.receiveModuleSceneSignal.emit(module_scene)
+            if self.apply_highlights:
+                self.receiveHighlightSceneSignal.emit(scene)
+        elif isinstance(scene, ModuleScene):
+            # And we update our module scene dict
+            self.module_scenes_dict[scene.module_name] = scene
 
-
-
-    # EVERYTHING UNDER HERE (in this class) NOT CURRENTLY IN USE, LEFTOVER FROM
-    # ORIGINAL QT BOXFISH, TO BE CONVERTED WHEN WE ADD HIGHLIGHTS
-
-    # REWRITEME to apply child policy and use projections through the
-    # data datatree as well as handle other Scenegraph changes
-    @Slot(SubDomain)
-    def highlight(self,subdomain):
-        """This slot is called whenever a child agent changes
-           subdomain-dependent scene information. The agent cycles through
-           all subscribed listeners. Those of the same subdomain will
-           get all of the scene info. For those of different domains, we
-           check the highlight set to see if we can project.
-        """
-
-        # For all possible listeners
-        for key in self.listenerCount:
-
-            # If somebody issubscribed to this somain
-            if self.listenerCount[key] > 0:
-
-                # If this somebody is listening for exactly this signal
-                if key == subdomain.subdomain():
-                    # We pass the message on
-                    self.highlights[key].emit(subdomain)
-
-                # Otherwise, if our context can project the highlight into the
-                # correct subdomain
-                #elif self.context.relates(subdomain,key):
-                #    self.highlights[key].emit(self.context.project(subdomain,key))
+            # Then we determine how we should handle it
+            if self.apply_module_scenes \
+                and isinstance(scene, type(self.module_scene)):
+                self.receiveModuleSceneSignal.emit(scene)
 
 
-    # Slot must be added after class definition
-    #@Slot(ModuleAgent,str)
-    def subscribe(self,agent,name):
 
-        # If we are the first one subscribing to this subdomain
-        if name not in self.listenerCount:
-            raise ValueError("Could not find subdomain %s." \
-                + "Must be a subclass of SubDomain" % name)
-
-        self.listenerCount[name] = self.listenerCount[name] + 1
-
-        self.connectSubscription(agent,name)
-
-
-    # Slot must be added after class definition
-    #@Slot(ModuleAgent,str)
-    def unsubscribe(self,agent,name):
-
-        # If we are the first one subscribing to this subdomain
-        if name not in self.listenerCount:
-            raise ValueError("Could not find subdomain %s." \
-                + "Must be a subclass of SubDomain" % name)
-
-        if self.listenerCount[name] == 0:
-            raise ValueError("No listener left to unsubscribe")
-
-        self.listenerCount[name] = self.listenerCount[name] - 1
-
-        self.disconnectSubscription(agent,name)
-
-    def connectSubscription(self,agent,name):
-
-        self.highlights[name].connect(agent.highlightChanged)
-
-
-    def disconnectSubscription(self,agent,name):
-
-        self.highlights[name].disconnect(agent.highlightChanged)
-
-    @Slot(SubDomain)
-    def highlightChanged(self,subdomain):
-        print "Highlight", subdomain.subdomain()
 
 
 # The slots need to be added down here because ModuleAgent is not defined
 # at the time that the functions are defined
-ModuleAgent.subscribe = Slot(ModuleAgent, str)(ModuleAgent.subscribe)
-ModuleAgent.unsubscribe = Slot(ModuleAgent, str)(ModuleAgent.unsubscribe)
 ModuleAgent.addChildCoupler = Slot(FilterCoupler, ModuleAgent)(ModuleAgent.addChildCoupler)
-ModuleAgent.receiveModuleSceneFromChild = Slot(ModuleScene, ModuleAgent)(ModuleAgent.receiveModuleSceneFromChild)
+ModuleAgent.receiveSceneFromChild = Slot(Scene, ModuleAgent)(ModuleAgent.receiveSceneFromChild)
 ModuleAgent.sendAllScenes = Slot(ModuleAgent)(ModuleAgent.sendAllScenes)
+
+
+
 
 class ModuleRequest(QObject):
     """Holds all of the requested information including the

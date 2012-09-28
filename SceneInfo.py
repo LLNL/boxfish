@@ -11,6 +11,11 @@ class Scene(QObject):
         super(Scene, self).__init__()
 
     def announceChange(self):
+        """This should be called whenever a Scene object is changed due
+           to a user action.
+
+           Example: When a user selects highlights.
+        """
         self.causeChangeSignal.emit(self)
 
     def acceptChanges(self):
@@ -23,12 +28,21 @@ class HighlightScene(Scene):
     """
 
     def __init__(self, highlight_sets = list()):
-        """Parmeters:
-           highlight_sets: a list of HighlightSet objects.
+        """Constructs a HighlightScene
+
+           highlight_sets
+              A list of HighlightSet objects which together describe all
+              of the highlighted objects.
         """
-        super(SubdomainScene, self).__init__()
+        super(HighlightScene, self).__init__()
 
         self.highlight_sets = highlight_sets
+
+    def copy(self):
+        highlights = list()
+        for highlight_set in self.highlight_sets:
+            highlights.appen(highlight_set.copy())
+        return HighlightScene(highlights)
 
 
 class HighlightSet(object):
@@ -37,15 +51,22 @@ class HighlightSet(object):
     """
 
     def __init__(self, highlights, run):
-        """Parameters:
+        """Construct a highlight set.
 
-           highlights - a SubDomain containing the highlighted ids
-           run - The DataTree index of the run under which these
+           highlights
+               A SubDomain containing the highlighted ids.
+
+           run
+               The DataTree index of the run under which these
                  highlights fall.
         """
         super(HighlightSet, self).__init__()
         self.highlights = highlights # Subdomain
         self.run = run # QModelIndex
+
+    def copy(self):
+        return HighlightSet(self.highlights[:], self.run)
+        
 
 
 class AttributeScene(Scene):
@@ -76,6 +97,14 @@ class ModuleScene(Scene):
     """
 
     def __init__(self, agent_type, module_name):
+        """Construct a ModuleScene object.
+
+           agent_type
+               The type of the ModuleAgent used by this module
+
+           module_name
+               The display_name of the module using this class.
+        """
         super(ModuleScene, self).__init__()
 
         self.agent_type = agent_type

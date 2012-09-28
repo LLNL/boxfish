@@ -2,7 +2,7 @@ from PySide.QtCore import Slot,Signal,QObject,QMimeData,Qt,QSize
 from PySide.QtGui import QWidget,QMainWindow,QDockWidget,\
     QLabel,QDrag,QPixmap,QDialog,QFrame,QGridLayout,QSizePolicy,\
     QVBoxLayout,QPalette,QPainter,QTabWidget,QCheckBox,QScrollArea,\
-    QBrush,QSpacerItem,QPainterPath
+    QBrush,QSpacerItem,QPainterPath,QGroupBox
 from SceneInfo import *
 from GUIUtils import *
 from DataModel import DataIndexMime
@@ -435,30 +435,80 @@ class SceneTab(QWidget):
         self.layout = QVBoxLayout()
         self.layout.setAlignment(Qt.AlignCenter)
 
-        # self.propagate_module_scenes
-        self.propagate = QCheckBox("Propagate module scene to other modules.")
-        self.propagate.setChecked(self.agent.propagate_module_scenes)
-        self.propagate.stateChanged.connect(self.propagateChanged)
-        # We only allow this change if the parent does not propagate
-        if self.agent.parent().propagate_module_scenes:
-            self.propagate.setDisabled(True)
-
-        # self.apply_module_scenes
-        self.applyScene = QCheckBox("Apply module scene from other modules.")
-        self.applyScene.setChecked(self.agent.apply_module_scenes)
-        self.applyScene.stateChanged.connect(self.applyChanged)
-
-        self.layout.addWidget(self.applyScene)
+        self.layout.addWidget(self.buildHighlightGroupBox())
         self.layout.addItem(QSpacerItem(5,5))
-        self.layout.addWidget(self.propagate)
+        self.layout.addWidget(self.buildModuleGroupBox())
 
         self.setLayout(self.layout)
+    
+    
+    def buildHighlightGroupBox(self):
+        groupBox = QGroupBox("Highlight Policy")
+        layout = QVBoxLayout()
 
-    def propagateChanged(self):
-        self.agent.propagate_module_scenes = self.propagate.isChecked()
+        # agent.propagate_highlights
+        self.highlights_propagate = QCheckBox("Propagate highlights to "
+            + "other modules.")
+        self.highlights_propagate.setChecked(self.agent.propagate_highlights)
+        self.highlights_propagate.stateChanged.connect(
+            self.highlightsPropagateChanged)
+        # We only allow this change if the parent does not propagate
+        if self.agent.parent().propagate_highlights:
+            self.highlights_propagate.setDisabled(True)
 
-    def applyChanged(self):
-        self.agent.apply_module_scenes = self.applyScene.isChecked()
+        # agent.apply_highlights
+        self.applyHighlights = QCheckBox("Apply highlights from "
+            + "other modules.")
+        self.applyHighlights.setChecked(self.agent.apply_highlights)
+        self.applyHighlights.stateChanged.connect(self.applyHighlightsChanged)
+
+        layout.addWidget(self.applyHighlights)
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(self.highlights_propagate)
+        groupBox.setLayout(layout)
+        return groupBox
+
+
+    def highlightsPropagateChanged(self):
+        self.agent.propagate_highlights = self.highlights_propagate.isChecked()
+
+
+    def applyHighlightsChanged(self):
+        self.agent.apply_highlights = self.applyHighlights.isChecked()
+
+
+    def buildModuleGroupBox(self):
+        groupBox = QGroupBox("Module Policy")
+        layout = QVBoxLayout()
+
+        # agent.propagate_module_scenes
+        self.module_propagate = QCheckBox("Propagate module scene information "
+            + "to other modules.")
+        self.module_propagate.setChecked(self.agent.propagate_module_scenes)
+        self.module_propagate.stateChanged.connect(self.modulePropagateChanged)
+        # We only allow this change if the parent does not propagate
+        if self.agent.parent().propagate_module_scenes:
+            self.module_propagate.setDisabled(True)
+
+        # agent.apply_module_scenes
+        self.module_applyScene = QCheckBox("Apply module scene information "
+            + "from other modules.")
+        self.module_applyScene.setChecked(self.agent.apply_module_scenes)
+        self.module_applyScene.stateChanged.connect(self.moduleApplyChanged)
+
+        layout.addWidget(self.module_applyScene)
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(self.module_propagate)
+        groupBox.setLayout(layout)
+        return groupBox
+
+
+    def modulePropagateChanged(self):
+        self.agent.propagate_module_scenes = self.module_propagate.isChecked()
+
+
+    def moduleApplyChanged(self):
+        self.agent.apply_module_scenes = self.module_applyScene.isChecked()
 
 
 class OverlayDialog(QDialog):

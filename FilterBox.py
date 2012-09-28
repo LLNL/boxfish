@@ -1,5 +1,8 @@
-from PySide.QtCore import *
-from PySide.QtGui import *
+from PySide.QtCore import Qt, Signal, Slot, QMimeData
+from PySide.QtGui import QWidget, QGridLayout, QLabel, QToolBar, QAction,\
+    QIcon, QStringListModel, QVBoxLayout, QTreeView, QSplitter,\
+    QHBoxLayout, QPushButton, QSpacerItem, QGroupBox, QLineEdit, QListView,\
+    QCompleter
 from ModuleView import *
 from ModuleAgent import *
 from GUIUtils import *
@@ -82,6 +85,7 @@ class FilterBoxView(ModuleView):
         else:
             super(FilterBoxView, self).dropEvent(event)
 
+    @Slot(Clause)
     def editFilter(self, clause):
         self.agent.createSimpleFilter(clause)
         self.fake_label.setText("Filter: " + str(clause))
@@ -108,6 +112,10 @@ class FilterMime(QMimeData):
 
 
 class FilterTab(QWidget):
+    """This class is the GUI for creating filters for the FilterBox
+       module. This GUI will be added as a tab to the ModuleView
+       tab dialog.
+    """
 
     applySignal = Signal(Clause)
 
@@ -170,6 +178,10 @@ class FilterTab(QWidget):
         self.parent.close()
 
     def buildFilterWidget(self):
+        """Creates the filter portion of the widget by laying out
+           the subwidgets for relations, workspace and existing 
+           clauses.
+        """
         filter_widget = QWidget()
         filter_layout = QVBoxLayout(filter_widget)
 

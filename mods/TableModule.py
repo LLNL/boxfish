@@ -2,8 +2,10 @@ from ModuleAgent import *
 from ModuleView import *
 
 import sys
-from PySide.QtCore import *
-from PySide.QtGui import *
+from PySide.QtCore import Signal, Slot
+from PySide.QtGui import QTabWidget, QTableWidget, QAbstractItemView, \
+    QItemSelectionModel
+
 
 class TableAgent(ModuleAgent):
     """This is the agent for the Table Module. It is relatively
@@ -85,7 +87,6 @@ class TableView(ModuleView):
         super(TableView, self).__init__(parent, parent_view, title)
 
         self.selected = []
-        self.tableWidget = None
 
         # self.agent may not be accessible of parent_view is None,
         # so any actions in the constructor involving agent should 
@@ -94,33 +95,23 @@ class TableView(ModuleView):
         if self.agent is not None:
             self.agent.tableUpdateSignal.connect(self.updateTables)
 
+
     def createView(self):
         """This required function creates the main view container for 
            this module, in this case a QTabWidget to hold all the table
            views. The rest of the GUI is handled by the superclass.
         """
         self.tabs = QTabWidget()
-        self.tabs.addTab(self.createTable(100,2,["-","-"]), "No Data")
         return self.tabs
 
-    # We may want to add a QScrollArea around this and so forth
-    def createTable(self, rows, cols, headers):
-        """Creates and returns a QTableWidget of given rows and columns
-           with all of the features we want for all such widgets in this
-           module.
-        """
-        table = QTableWidget(rows, cols)
-        table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        table.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        table.setHorizontalHeaderLabels(headers)
-        return table
-
+    
     def droppedData(self, indexList):
         """Overrides the superclass method to send the agent the dropped
            data indices.
         """
         self.agent.addDataIndices(indexList)
 
+    
     @Slot(list, list, list, list)
     def updateTables(self, tables, ids, headers, values):
         """Creates table views.
@@ -147,34 +138,86 @@ class TableView(ModuleView):
         if tables is None:
             return
         
-        rows = 100 # TODO: Make this configurable
-        
         self.tabs.clear() # Get rid of old data
 
         # For each table, create a table view and populate it with the
         # given values for that table
-        for table, header_list, value_lists in zip(tables, headers, values):
-            if len(value_lists[0]) < rows:
-                rows = len(value_lists[0])
-            tableWidget = self.createTable(rows, len(header_list),
-                header_list)
-            for index, value_list in enumerate(value_lists):
-                for i in range(rows):
-                    tableWidget.setItem(i, index,
-                        QTableWidgetItem(str(value_list[i])))
+        for table, ids_list, header_list, value_lists \
+            in zip(tables, ids, headers, values):
+            tableWidget = TableTab(table, ids_list, header_list, value_lists)
+            tableWidget.idsChanged.connect(self.selectionChanged)
             self.tabs.addTab(tableWidget, table)
 
-    def selectRows(self, rows, table):
-        if not table or len(rows) == 0:
+    @Slot(str, set)
+    def selectionChanged(self, table, ids):
+        print table
+        print ids
+
+
+class TableTab(QTableWidget):
+
+    idsChanged = Signal(str, set)
+
+    def __init__(self, table, ids, headers, values):
+        """Represent the given sub-table using a TableWidget.
+
+           table
+               The table name from which this data is fetched.
+
+           ids
+               The identifier that goes with each row
+
+           headers
+               The column names.
+
+           value
+               List of lists of values for each column
+        """
+        super(TableTab, self).__init__(min(100, len(values[0])), len(headers))
+        # TODO: Change the number of rows/make configurable
+
+        self.user_selection = True
+        self.table = table
+        self.ids = ids
+
+        # Set behavior
+        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.setHorizontalHeaderLabels(headers)
+        self.itemSelectionChanged.connect(self.handleSelection)
+            
+        # Populate table
+        for index, value_list in enumerate(values):
+            for i in range(self.rowCount()):
+                self.setItem(i, index, QTableWidgetItem(str(value_list[i])))
+
+    def handleSelection(self):
+        if not self.user_selection: # only handle if user did this
             return
 
-        selectionModel = table.selectionModel()
-        table.selectRow(rows[0])
+        id_set = set()
+        selected_items = self.selectedItems()
+        for item in selected_items:
+            id_set.add(self.ids[item.row()])
+        
+        self.idsChanged.emit(self.table, id_set)
+
+
+    def selectRows(self, rows):
+        if self.rowCount() <= 0:
+            return
+        self.user_selection = False # We don't want to cause this to emit anything
+        
+        selectionModel = self.selectionModel()
+        self.selectRow(rows[0])
         selection = selectionModel.selection()
         for row in rows[1:]:
-            table.selectRow(row)
+            self.selectRow(row)
             selection.merge(selectionModel.selection(),
                 QItemSelectionModel.Select)
 
         selectionModel.clearSelection()
         selectionModel.select(selection, QItemSelectionModel.Select)
+
+
+        self.user_selection = True
