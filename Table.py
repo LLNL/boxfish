@@ -35,7 +35,7 @@ class Table(object):
 
   def __init__(self):
 
-    object.__init__(self)
+    super(Table, self).__init__()
 
 
   def fromYAML(self,domain_type,primary_key, filename):

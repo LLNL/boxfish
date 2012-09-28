@@ -29,7 +29,7 @@ class GLWidget(QGLWidget):
 
     def __init__(self, parent=None, **keywords):
         """Sets up initial values for dragging variables, translation, and rotation matrices."""
-        QGLWidget.__init__(self, parent)
+        super(GLWidget, self).__init__(parent)
 
         # Initialize last position and dragging flag to support mouse interaction
         self.last_pos = [0,0,0]

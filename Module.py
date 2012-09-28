@@ -74,13 +74,14 @@ class ModuleAgent(QObject):
 
 
     # factory method for subclasses
-    def instantiate(self, module_name, parent):
+    @classmethod
+    def instantiate(cls, module_name, parent):
 
-        if self.__class__.__name__ == module_name:
-            return self.__class__(parent)
+        if cls.__name__ == module_name:
+            return cls(parent)
         else:
-            for s in self.__class__.__subclasses__():
-                result = s().instantiate(module_name, parent)
+            for s in cls.__subclasses__():
+                result = s.instantiate(module_name, parent)
                 if result is not None:
                     return result
             return None
@@ -485,7 +486,7 @@ class ModuleRequest(QObject):
                 projection_memo = dict() # store projections
                 for table_id in set(attribute_values[0]): # unique ids
                     domain_ids = projection.project(
-                        SubDomain().instantiate(table._table.subdomain(),
+                        SubDomain.instantiate(table._table.subdomain(),
                             [table_id]),
                         group_by_table._table.subdomain())
                     projection_memo[table_id] = domain_ids
@@ -598,7 +599,7 @@ class ModuleRequest(QObject):
                 projection_memo = dict() # store projections
                 for table_id in set(attribute_values[0]): # unique ids
                     domain_ids = projection.project(
-                        SubDomain().instantiate(table._table.subdomain(),
+                        SubDomain.instantiate(table._table.subdomain(),
                             [table_id]),
                         domain_table._table.subdomain())
                     projection_memo[table_id] = domain_ids
@@ -783,14 +784,14 @@ class ModuleView(QMainWindow):
             + " cannot create view")
 
     # factory method for creating subclasses based on their display_name
-    def instantiate(self, module_name, parent, parent_view, title = None):
+    @classmethod
+    def instantiate(cls, module_name, parent, parent_view, title = None):
 
-        if self.__class__.display_name == module_name:
-            return self.__class__(parent, parent_view, title)
+        if hasattr(cls, 'display_name') and cls.display_name == module_name:
+            return cls(parent, parent_view, title)
         else:
-            for s in self.__class__.__subclasses__():
-                result = s(None).instantiate(module_name, parent, parent_view,\
-                    title)
+            for s in cls.__subclasses__():
+                result = s.instantiate(module_name, parent, parent_view, title)
                 if result is not None:
                     return result
             return None
@@ -929,7 +930,7 @@ class ModuleView(QMainWindow):
             mod_name = event.mimeData().getName()
             dock = BFDockWidget(mod_name, self)
             # TODO: figure out how to make instantiate a class method
-            new_mod = ModuleView().instantiate(mod_name, dock, self, mod_name)
+            new_mod = ModuleView.instantiate(mod_name, dock, self, mod_name)
             new_mod.agent.refreshSceneInformation()
             dock.setWidget(new_mod)
             self.addDockWidget(Qt.BottomDockWidgetArea, dock)

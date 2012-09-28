@@ -16,7 +16,7 @@ def InputFileKey(input_file_key, enabled = True):
 class Projection(object):
 
   def __init__(self,source = "undefined", destination = "undefined", **kwargs):
-    object.__init__(self)
+    super(Projection, self).__init__()
 
     if isinstance(source,str):
       self.source = source
@@ -50,7 +50,7 @@ class Projection(object):
 #    projection_dict = dict()
 #    for domain_id in subdomain:
 #      projection_dict[domain_id] = self.project(
-#          SubDomain().instantiate(subdomain.subdomain(), [domain_id]),
+#          SubDomain.instantiate(subdomain.subdomain(), [domain_id]),
 #          destination)
 #
 #    return projection_dict
@@ -71,13 +71,14 @@ class Projection(object):
       """
       return None
 
-  def instantiate(self, key, source, destination, **kwargs):
+  @classmethod
+  def instantiate(cls, key, source, destination, **kwargs):
 
-      if self.__class__.input_file_key == key:
-          return self.__class__(source, destination, **kwargs)
+      if hasattr(cls, 'input_file_key') and cls.input_file_key == key:
+          return cls(source, destination, **kwargs)
       else:
-          for s in self.__class__.__subclasses__():
-              result = s().instantiate(key, source, destination, **kwargs)
+          for s in cls.__subclasses__():
+              result = s.instantiate(key, source, destination, **kwargs)
               if result is not None:
                   return result
           return None
@@ -93,7 +94,7 @@ class IdentityProjection(Projection):
 
   def project(self,subdomain,destination):
 
-    result = SubDomain().instantiate(destination,subdomain)
+    result = SubDomain.instantiate(destination,subdomain)
     return result
 
 
@@ -194,7 +195,7 @@ class TableProjection(Projection):
           for domain_id in subdomain:
               keys.extend(self._destination_dict[domain_id])
 
-      return SubDomain().instantiate(destination, list(set(keys)))
+      return SubDomain.instantiate(destination, list(set(keys)))
 
   def source_ids(self):
       return [x for x in self._source_dict]
@@ -356,7 +357,7 @@ class NodeLinkProjection(Projection):
             for link_id in subdomain:
                 keys.extend(self.link_dict[link_id])
             
-        return SubDomain().instantiate(destination, list(set(keys)))
+        return SubDomain.instantiate(destination, list(set(keys)))
 
 
     def update_policies(self, node_policy, link_policy):
