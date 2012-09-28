@@ -16,7 +16,7 @@ class PatchAgent(ModuleAgent):
     def __init__(self, parent, datatree):
         super(PatchAgent, self).__init__(parent, datatree)
 
-        self.addRequirement("patches")
+        self.addRequest("patches")
 
         self.centers = None
         self.sizes = None

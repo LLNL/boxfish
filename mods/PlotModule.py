@@ -23,8 +23,8 @@ class PlotterAgent(ModuleAgent):
 
         self.x_columns = list()
         self.y_columns = list()
-        self.addRequirement("x")
-        self.addRequirement("y")
+        self.addRequest("x")
+        self.addRequest("y")
 
     def setXData(self, indexList):
         self.requestAddIndices("x", indexList)

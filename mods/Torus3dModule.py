@@ -15,8 +15,8 @@ class Torus3dAgent(ModuleAgent):
     def __init__(self, parent, datatree):
         super(Torus3dAgent, self).__init__(parent, datatree)
 
-        self.addRequirement("nodes")
-        self.addRequirement("links")
+        self.addRequest("nodes")
+        self.addRequest("links")
         self.coords = None
         self.coords_table = None
         self.source_coords = None

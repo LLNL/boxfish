@@ -29,10 +29,10 @@ class ModuleAgent(QObject):
         self.children = list()
 
         # List of filter streams (couplers) the agent wants
-        self.requirements = dict()
+        self.requests = dict()
 
         # List of filter streams (couplers) the children want
-        self.child_requirements = list()
+        self.child_requests = list()
 
         self.filters = list()
 
@@ -68,9 +68,9 @@ class ModuleAgent(QObject):
             return None
 
 
-    def addRequirement(self, name, subdomain = None):
+    def addRequest(self, name, subdomain = None):
         coupler = FilterCoupler(name, self, None)
-        self.requirements[name] = ModuleRequest(self.datatree, name, coupler,
+        self.requests[name] = ModuleRequest(self.datatree, name, coupler,
             subdomain)
         coupler.changeSignal.connect(self.requiredCouplerChanged)
         #Now send this new one to the parent
@@ -81,28 +81,28 @@ class ModuleAgent(QObject):
 
     @Slot(FilterCoupler)
     def requiredCouplerChanged(self, coupler):
-        request = self.requirements[coupler.name]
+        request = self.requests[coupler.name]
         self.requestUpdated(coupler.name)
 
     # TODO: Maybe instead of having next few functions we should
     # move the functionality out of ModuleRequest and over here,
     # leaving the request to just hold the coupler and the indices
     def requestAddIndices(self, name, indices):
-        if name not in self.requirements:
-            raise ValueError("No requirement named " + name)
-        self.requirements[name].indices = indices
+        if name not in self.requests:
+            raise ValueError("No request named " + name)
+        self.requests[name].indices = indices
 
     def requestGroupBy(self, name, group_by_attributes, group_by_table,
         row_aggregator, attribute_aggregator):
-        if name not in self.requirements:
-            raise ValueError("No requirement named " + name)
-        return self.requirements[name].groupby(group_by_attributes,
+        if name not in self.requests:
+            raise ValueError("No request named " + name)
+        return self.requests[name].groupby(group_by_attributes,
             group_by_table, row_aggregator, attribute_aggregator)
 
     def requestGetRows(self, name):
-        if name not in self.requirements:
-            raise ValueError("No requirement named " + name)
-        return self.requirements[name].getRows()
+        if name not in self.requests:
+            raise ValueError("No request named " + name)
+        return self.requests[name].getRows()
 
     # Signal decorator attached after the class.
     # @Slot(FilterCoupler, ModuleAgent)
@@ -111,25 +111,25 @@ class ModuleAgent(QObject):
         if self.filters:
             my_filter = self.filters[0]
         new_coupler = coupler.createUpstream(child, my_filter)
-        self.child_requirements.append(new_coupler)
+        self.child_requests.append(new_coupler)
         self.addCouplerSignal.emit(new_coupler, self)
 
     def getCouplerRequests(self):
         reqs = list()
-        for request in self.requirements.itervalues():
+        for request in self.requests.itervalues():
             reqs.append(request.coupler)
-        reqs.extend(self.child_requirements)
+        reqs.extend(self.child_requests)
         return reqs
 
     # Remove coupler that has sent a delete signal
     @Slot(FilterCoupler)
     def deleteCoupler(self, coupler):
-        if coupler in self.child_requirements:
-            self.child_requirements.remove(coupler)
+        if coupler in self.child_requests:
+            self.child_requests.remove(coupler)
         else:
-            for key, request in self.requirements.iteritems():
+            for key, request in self.requests.iteritems():
                 if coupler == request.coupler:
-                    del self.requirements[key]
+                    del self.requests[key]
 
     def registerChild(self, child):
         self.children.append(child)
@@ -146,7 +146,7 @@ class ModuleAgent(QObject):
             if self.filters:
                 my_filter = self.filters[0]
             new_coupler = coupler.createUpstream(child, my_filter)
-            self.child_requirements.append(new_coupler)
+            self.child_requests.append(new_coupler)
             self.addCouplerSignal.emit(new_coupler, self)
 
     def unregisterChild(self, child):
@@ -156,7 +156,7 @@ class ModuleAgent(QObject):
         child.requestScenesSignal.disconnect(self.sendAllScenes)
 
         # Abandon child's requests
-        for coupler in self.child_requirements:
+        for coupler in self.child_requests:
             if coupler.parent == child:
                 coupler.delete()
 
@@ -607,8 +607,10 @@ class ModuleRequest(QObject):
         headers = list()
         table_list = list()
         id_list = list()
+        run_list = list()
         for table, attribute_group in self.attribute_groups:
             table_list.append(table.name)
+            run_list.append(table.getRun().name)
             attributes = [self.datatree.getItem(x).name
                 for x in attribute_group]
             headers.append(attributes[:])
@@ -621,4 +623,4 @@ class ModuleRequest(QObject):
             data_list.append(attribute_list[1:])
             id_list.append(attribute_list[0])
 
-        return table_list, id_list, headers, data_list
+        return table_list, run_list, id_list, headers, data_list

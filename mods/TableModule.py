@@ -9,10 +9,11 @@ from PySide.QtGui import QTabWidget, QTableWidget, QAbstractItemView, \
 
 class TableAgent(ModuleAgent):
     """This is the agent for the Table Module. It is relatively
-       simple with a single requirement.
+       simple with a single request.
     """
 
-    tableUpdateSignal = Signal(list, list, list, list)
+    tableUpdateSignal = Signal(list, list, list, list, list)
+    highlightUpdateSignal = Signal(list)
 
     def __init__(self, parent, datatree):
         """Like all agent subclasses, the init requires:
@@ -30,7 +31,11 @@ class TableAgent(ModuleAgent):
         # means that all data it acquires will always pass through
         # the same filters. Potentially we could make a Request per
         # table based on the indicies, but we have something simple for now
-        self.addRequirement("table columns")
+        self.addRequest("table columns")
+        self.tables = None
+        self.runs = None
+
+        self.receiveHighlightSignal.connect(self.processHighlights)
 
     def addDataIndices(self, indexList):
         """This function handles an added list of DataTree indices by
@@ -57,9 +62,26 @@ class TableAgent(ModuleAgent):
            Therefore it simply gains the rows associated with the Request
            and broadcasts them.
         """
-        tables, ids, headers, data_lists \
+        tables, runs, ids, headers, data_lists \
             = self.requestGetRows("table columns")
-        self.tableUpdateSignal.emit(tables, ids, headers, data_lists)
+        self.tables = tables
+        self.runs = runs
+        self.tableUpdateSignal.emit(tables, runs, ids, headers, data_lists)
+
+
+    @Slot(HighlightScene)
+    def processHighlights(self, highlights):
+        table_highlights = list()
+        # Note, for now this is assuming all runs are the same, we'll
+        # have to update requests or something to get appropriate run
+        # information
+        for table in self.tables:
+            ids = list()
+
+            table_highlights.append(id)
+
+        self.highlightUpdateSignal.emit(table_highlights)
+
 
 
 # For a Module to appear in Boxfish's GUI, as ModuleView must be decorated
@@ -112,7 +134,7 @@ class TableView(ModuleView):
         self.agent.addDataIndices(indexList)
 
     
-    @Slot(list, list, list, list)
+    @Slot(list, list, list, list, list)
     def updateTables(self, tables, ids, headers, values):
         """Creates table views.
 
@@ -142,27 +164,30 @@ class TableView(ModuleView):
 
         # For each table, create a table view and populate it with the
         # given values for that table
-        for table, ids_list, header_list, value_lists \
-            in zip(tables, ids, headers, values):
-            tableWidget = TableTab(table, ids_list, header_list, value_lists)
+        for table, run, ids_list, header_list, value_lists \
+            in zip(tables, runs, ids, headers, values):
+            tableWidget = TableTab(table, run, ids_list, header_list, value_lists)
             tableWidget.idsChanged.connect(self.selectionChanged)
             self.tabs.addTab(tableWidget, table)
 
-    @Slot(str, set)
-    def selectionChanged(self, table, ids):
+    @Slot(str, str, set)
+    def selectionChanged(self, table, run, ids):
         print table
         print ids
 
 
 class TableTab(QTableWidget):
 
-    idsChanged = Signal(str, set)
+    idsChanged = Signal(str, str, set)
 
-    def __init__(self, table, ids, headers, values):
+    def __init__(self, table, run, ids, headers, values):
         """Represent the given sub-table using a TableWidget.
 
            table
                The table name from which this data is fetched.
+
+           run
+               The run from which the data is fetched
 
            ids
                The identifier that goes with each row
@@ -178,6 +203,7 @@ class TableTab(QTableWidget):
 
         self.user_selection = True
         self.table = table
+        self.run = run
         self.ids = ids
 
         # Set behavior
@@ -192,6 +218,10 @@ class TableTab(QTableWidget):
                 self.setItem(i, index, QTableWidgetItem(str(value_list[i])))
 
     def handleSelection(self):
+        """Called when the selected rows change. If the selection was made
+           by the user, it gets the IDs associated with the rows and signals
+           those listening.
+        """
         if not self.user_selection: # only handle if user did this
             return
 
@@ -200,21 +230,28 @@ class TableTab(QTableWidget):
         for item in selected_items:
             id_set.add(self.ids[item.row()])
         
-        self.idsChanged.emit(self.table, id_set)
+        self.idsChanged.emit(self.table, self.run, id_set)
 
 
-    def selectRows(self, rows):
+    def selectRows(self, ids):
+        """Given a set of ids, selects all the rows that are associated
+           with those ids.
+        """
         if self.rowCount() <= 0:
             return
         self.user_selection = False # We don't want to cause this to emit anything
         
         selectionModel = self.selectionModel()
-        self.selectRow(rows[0])
+        selectionModel.clearSelection()
         selection = selectionModel.selection()
-        for row in rows[1:]:
-            self.selectRow(row)
-            selection.merge(selectionModel.selection(),
-                QItemSelectionModel.Select)
+
+        # Check if each row is in the id set and if so add it to the
+        # selection
+        for row in range(self.rowCount()):
+            if self.ids[row] in ids:
+                self.selectRow(row)
+                selection.merge(selectionModel.selection(),
+                    QItemSelectionModel.Select)
 
         selectionModel.clearSelection()
         selectionModel.select(selection, QItemSelectionModel.Select)

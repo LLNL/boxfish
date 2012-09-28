@@ -116,7 +116,7 @@ class TopModule(ModuleAgent):
     def addChildCoupler(self, coupler, child):
         super(TopModule, self).addChildCoupler(coupler, child)
         # emit on new child column to start the chain
-        self.child_requirements[-1].changeSignal.emit(self.child_requirements[-1])
+        self.child_requests[-1].changeSignal.emit(self.child_requests[-1])
 
 
 class ModuleListModel(QStringListModel):
