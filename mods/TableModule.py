@@ -35,7 +35,7 @@ class TableAgent(ModuleAgent):
         self.tables = None
         self.runs = None
 
-        self.receiveHighlightSignal.connect(self.processHighlights)
+        self.highlightSceneChangeSignal.connect(self.processHighlights)
 
     def addDataIndices(self, indexList):
         """This function handles an added list of DataTree indices by
@@ -69,15 +69,17 @@ class TableAgent(ModuleAgent):
         self.tableUpdateSignal.emit(tables, runs, ids, headers, data_lists)
 
 
-    @Slot(HighlightScene)
-    def processHighlights(self, highlights):
+    @Slot()
+    def processHighlights(self):
+        """When highlights have been received from another module,
+           determine what currently in this module could be highlighted
+           and alert any listening views.
+        """
         table_highlights = list()
-        # Note, for now this is assuming all runs are the same, we'll
-        # have to update requests or something to get appropriate run
-        # information
-        for table in self.tables:
-            ids = list()
-
+        # Note, right now, via ModuleAgent, this is assuming that all
+        # runs project to each other via Identity
+        for table, run in zip(self.tables, self.runs):
+            ids = self.getHighlightIDs(table, run)
             table_highlights.append(id)
 
         self.highlightUpdateSignal.emit(table_highlights)
@@ -135,7 +137,7 @@ class TableView(ModuleView):
 
     
     @Slot(list, list, list, list, list)
-    def updateTables(self, tables, ids, headers, values):
+    def updateTables(self, tables, runs, ids, headers, values):
         """Creates table views.
 
            tables

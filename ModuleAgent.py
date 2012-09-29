@@ -9,18 +9,30 @@ from FilterCoupler import *
 from SceneInfo import *
 
 class ModuleAgent(QObject):
+    """ModuleAgent is the base class for all nodes that form the Boxfish
+       data flow tree. This class handles wiring of parent and child agents
+       to form the tree, scene information propagation, and data requests
+       for itself and its children.
+    """
 
     # Signals that I send 
-    addCouplerSignal         = Signal(FilterCoupler, QObject)
+    addCouplerSignal           = Signal(FilterCoupler, QObject)
 
     # Scene Signals I send... really necessary with parent/child structure?
-    sceneChangedSignal = Signal(Scene, object) # my scene info changed
-    receiveModuleSceneSignal = Signal(ModuleScene) # we receive scene info
-    receiveHighlightSignal   = Signal(HighlightScene)
-    requestScenesSignal      = Signal(QObject)
+    sceneChangedSignal         = Signal(Scene, object) # my scene info changed
+    receiveModuleSceneSignal   = Signal(ModuleScene) # we receive scene info
+    highlightSceneChangeSignal = Signal()
+    requestScenesSignal        = Signal(QObject)
 
-    # INIT IS DOWN HERE
     def __init__(self, parent, datatree = None):
+        """Constructor for ModuleAgent.
+
+           parent
+               The parent ModuleAgent in the Boxfish tree.
+
+           datatree
+               Reference to the model holding the data.
+        """
         super(ModuleAgent,self).__init__(parent)
 
         self.datatree = datatree
@@ -104,9 +116,13 @@ class ModuleAgent(QObject):
             raise ValueError("No request named " + name)
         return self.requests[name].getRows()
 
+
     # Signal decorator attached after the class.
     # @Slot(FilterCoupler, ModuleAgent)
     def addChildCoupler(self, coupler, child):
+        """Creates and adds a coupler to the set of those this module handles.
+           Usually signaled into action by a child agent's request.
+        """
         my_filter = None
         if self.filters:
             my_filter = self.filters[0]
@@ -115,15 +131,18 @@ class ModuleAgent(QObject):
         self.addCouplerSignal.emit(new_coupler, self)
 
     def getCouplerRequests(self):
+        """Creates and returns a list of couplers that this module handles."""
         reqs = list()
         for request in self.requests.itervalues():
             reqs.append(request.coupler)
         reqs.extend(self.child_requests)
         return reqs
 
-    # Remove coupler that has sent a delete signal
     @Slot(FilterCoupler)
     def deleteCoupler(self, coupler):
+        """When signalled by a coupler, removes it from the set of those
+           this agent handles.
+        """
         if coupler in self.child_requests:
             self.child_requests.remove(coupler)
         else:
@@ -219,6 +238,56 @@ class ModuleAgent(QObject):
     def highlightsChanged(self, highlight):
         self.highlightSceneChangedSignal.emit(self.highlights.copy(), self)
 
+    def getHighlightIDs(self, table, run):
+        """Applies the module's HighlightScene to the given table's domain
+           to determine the domain IDs that need to be highligted. 
+           
+           If the table's domain is in the set of highlights, only those
+           highlights will be considered. If the table's domain is not in
+           the set of highlights, then EVERY domain in the set of highlights
+           will be projected onto the table to find the set of IDs.
+
+           Example: Suppose the module's highlights include both NODE and
+           LINK domain IDs. If the given table is in the NODE domain, then
+           only the NODE highlights will be applied. If the table is in
+           the RANK domain, then both the NODE and LINK domain highlights
+           will be projected to determine the list of highlighted RANK IDs.
+
+           If multiple highlight lists in the HighlightScene have the same
+           domain as the table, all will be applied.
+           
+           table
+               String name of a table in the DataTree.
+
+           run
+               String name of the corresponding run in the DataTree
+
+
+           Note, at this time, assumes identity projections between
+           runs. This may change.
+        """
+        runItem = self.datatree.getRun(run)
+        if runItem is None:
+            return
+        tableItem = runItem.getTable(table)
+        if tableItem is None:
+            return
+
+        tableDomain = tableItem._table.subdomain()
+        highlights = SubDomain.instantiate(tableDomain)
+        for highlight_set in self._highlights.highlight_sets:
+            if highlight_set.highlights.subdomain() == tableDomain:
+                highlights.extend(highlight_set.highlights)
+
+        if len(highlights) > 0: # We found a SubDomain match
+            return highlights
+
+        # Since there was no direct way, we need to find and apply projections
+        # TODO
+        return highlights
+
+
+
     @property
     def propagate_module_scenes(self):
         return self._propagate_module_scenes
@@ -271,7 +340,8 @@ class ModuleAgent(QObject):
             self._highlights_ref = scene
 
             if self.apply_highlights:
-                self.receiveHighlightSceneSignal.emit(scene)
+                self._highlights.highlight_set = scene.highlight_set
+                self.highlightSceneChangeSignal.emit()
         elif isinstance(scene, ModuleScene):
             # And we update our module scene dict
             self.module_scenes_dict[scene.module_name] = scene
@@ -463,28 +533,33 @@ class ModuleRequest(QObject):
         """Gets results of the request, aggregated by the domain of
            the domain table.
 
-           Parameters:
-           domain_table - domain table on which to process a request.
-                          Requested indices will be projected onto this domain.
+           domain_table
+               Domain table on which to process a request. Requested indices
+               will be projected onto this domain.
 
-           row_aggregator - aggregation operator for combining rows on an ID
+           row_aggregator
+               Aggregation operator for combining rows on an ID
 
-           attribute_aggregator - aggregation operator for combining
-                                  attributes (columns) for each row
+           attribute_aggregator
+               Aggregation operator for combining attributes (columns) for
+               each row if multiple indices have been added to this Request.
 
-           domain_attributes - optional list of attributes from the
-                               domain_table to fetch along with non-filtered
-                               domain ID rows.
+           domain_attributes
+               Optional list of attributes from the domain_table to fetch
+               along with non-filtered domain ID rows.
 
-           domain_aggregator - aggregation operator for combining
-                               rows with the same ID but potentially different
-                               domain_attriute values.
+           domain_aggregator
+               Aggregation operator for combining rows with the same ID but
+               potentially different domain_attriute values.
 
            Returns:
-           ids - list of ids from the domain_table
-           values - list of lists that go with the ids. The first list is the
-                    aggregated request. All additional lists are the
-                    the requested domain_attributes
+               ids
+                  List of ids from the domain_table.
+
+               values
+                   List of lists that go with the ids. The first list is the
+                   aggregated request. All additional lists are the
+                   requested domain_attributes
         """
         if not self.preprocess():
             return None, None
@@ -600,7 +675,7 @@ class ModuleRequest(QObject):
            attribute values.
         """
         if not self.preprocess():
-            return None, None, None, None
+            return None, None, None, None, None
 
         self.attribute_groups = self.sortIndicesByTable(self._indices)
         data_list = list()

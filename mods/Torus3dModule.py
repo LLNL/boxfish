@@ -78,7 +78,8 @@ class Torus3dAgent(ModuleAgent):
     @Slot(ModuleScene)
     def processModuleScene(self, module_scene):
         if self.module_scene.module_name == module_scene.module_name:
-            self.module_scene = module_scene.copy()
+            self.module_scene.rotation = module_scene.rotation
+            self.module_scene.translation = module_scene.translation
             self.transformUpdateSignal.emit(self.module_scene.rotation,
                 self.module_scene.translation)
 

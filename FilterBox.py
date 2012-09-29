@@ -19,15 +19,15 @@ class FilterBox(ModuleAgent):
     def createSimpleFilter(self, conditions):
         self.filters = list()
         if conditions is None:
-            for coupler in self.requirements:
+            for coupler in self.requests:
                 coupler.modifier = None
-            for coupler in self.child_requirements:
+            for coupler in self.child_requests:
                 coupler.modifier = None
         else:
             self.filters.append(SimpleWhereFilter(conditions))
-            for coupler in self.requirements:
+            for coupler in self.requests:
                 coupler.modifier = self.filters[0]
-            for coupler in self.child_requirements:
+            for coupler in self.child_requests:
                 coupler.modifier = self.filters[0]
 
 @Module("Filter Box", FilterBox)

@@ -73,9 +73,8 @@ class AbstractTreeItem(object):
 
 
 class RunItem(AbstractTreeItem):
-    """Item representing an entire run. Holds the run
-       metadata. Its children are divided into tables
-       and projections.
+    """Item representing an entire run. Holds the run metadata. Its 
+       children are divided into tables and projections.
     """
 
     def __init__(self, name, metadata, parent=None):
@@ -165,8 +164,6 @@ class RunItem(AbstractTreeItem):
             self.subdomain_matrix[j][i] = projection
 
 
-
-
     def getTable(self, table_name):
         """Look up a table by name."""
         for child in self._children:
@@ -178,6 +175,7 @@ class RunItem(AbstractTreeItem):
                 return table
 
         return None
+
 
     def findAttribute(self, attribute, table):
         """Find a table with the given attribute. Preference is given
@@ -508,19 +506,6 @@ class AttributeItem(SubRunItem):
         return attributes
 
 
-class SubDomainItem(SubRunItem):
-    """Item for containing individual attributes. Access to these
-       will be done through parent items.
-    """
-
-    def __init__(self, name, parent=None):
-        super(SubDomainItem, self).__init__(name, parent)
-
-    def typeInfo(self):
-        return "SUBDOMAIN"
-
-
-
 class DataTree(QAbstractItemModel):
     """Data is accessed through this datatree. It is organized as a tree
        with Runs as level 1, Groups as level 2, Tables/Projections at
@@ -625,15 +610,32 @@ class DataTree(QAbstractItemModel):
 
         return self._rootItem
 
+    def getRun(self, run):
+        """Returns a RunItem with the given name."""
+        for child in self._rootItem._children:
+            if child.name == run:
+                return child
+        return None
+
     def generateAttributeList(self):
+        """Returns a sorted list of all attribute names in the 
+           entire DataTree.
+        """
         return sorted(self._rootItem.buildAttributeList(set()))
 
     def getAttributeValues(self, attribute):
+        """Returns a sorted list of all known values of the given
+           attribute across all runs and tables in which it appears.
+        """
         return sorted(self._rootItem.buildAttributeValues(attribute, set()))
 
-    # Add a projection and its domains to the datatree.
+    
     def insertProjection(self, name, projection, metadata, position=-1, \
         rows=1, parent=QModelIndex()):
+        """Adds a ProjectionItem to the DataTree with the given name,
+           metadata, and Projection object. The ProjectionItem is added
+           under the given ParentItem.
+        """
         parentItem = self.getItem(parent)
         if position == -1:
             position = parentItem.childCount()
@@ -644,19 +646,16 @@ class DataTree(QAbstractItemModel):
             parentItem)
         self.endInsertRows()
 
-        #Create attributes
-        #self.beginInsertRows(self.createIndex(position, 0, projectionItem), \
-        #    0, 2)
-        #attItem = SubDomainItem(projection.source, projectionItem)
-        #attItem = SubDomainItem(projection.destination, projectionItem)
-        #self.endInsertRows()
-
         return True
 
 
     # Add a table and its attributes to the datatree.
     def insertTable(self, name, table, metadata, position=-1, rows=1, \
         parent=QModelIndex()):
+        """Adds a TableItem to the DataTree with the given name, metadata,
+           and Table object. Also creates the AttributeItems under the
+           TableItem. The TableItem is added under the given ParentItem.
+        """
         parentItem = self.getItem(parent)
         if position == -1:
             position = parentItem.childCount()
@@ -769,6 +768,12 @@ class DataTree(QAbstractItemModel):
         return True
 
     def createSubDomainTables(self, run, projections, tables):
+        """If there are SubDomains represented by the projections in the
+           run but not in any tables in that run, this function will create
+           a table containing just the IDs for each SubDomain. This is
+           calculated by performing all possible projections into that
+           unrepresented Subdomain and taking the union of the results.
+        """
         # Determine which subdomains are not covered by tables
         uncovered_subdomains = set(run._projection_subdomains) \
             - set(run._table_subdomains)

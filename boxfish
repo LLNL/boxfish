@@ -105,9 +105,9 @@ class TopModule(ModuleAgent):
         super(TopModule, self).__init__(parent, datatree)
 
 
-    # You can't add requirements to this agent
+    # You can't add requests to this agent
     def addRequirement(self, coupler):
-        raise UserWarning("Top agent should not have own requirements.")
+        raise UserWarning("Top agent should not have own requests.")
 
     # Since this is the top agent which doesn't have any
     # filters or interface or anything, any column we receive
