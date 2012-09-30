@@ -125,7 +125,7 @@ class GLTorus3dView(GLWidget):
 
             # Draw links for each dim as poly cylinders
             for dim in range(3):
-                glColor4f(*colors[0])
+                glColor4f(*colors[dim])
                 glePolyCylinder(poly_cylinders[dim], None, self.link_radius)
 
             glPopMatrix()
