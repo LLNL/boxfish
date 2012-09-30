@@ -72,7 +72,7 @@ class GLTorus2dView(GLWidget):
         self.cubeList = DisplayList(self.drawCubes)
         self.linkList = DisplayList(self.drawLinks)
 
-        self.axis = 0           # Which axis the display should look down
+        self.axis = 2           # Which axis the display should look down (default Z)
         self.gap = 1            # Spacing between successive cylinders
         self.pack_factor = 1.5  # How close to pack boxes (1.5 is .5 box space)
 
