@@ -50,7 +50,7 @@ class ModuleAgent(QObject):
 
         # Module Scene information - we keep track of several as different
         # modules may have different scenes that are all valid
-        self.module_scenes_dict = dict() 
+        self.module_scenes_dict = dict()
         self.apply_module_scenes = True
         self._propagate_module_scenes = False
 
@@ -61,7 +61,7 @@ class ModuleAgent(QObject):
         self.apply_highlights = True
         self._propagate_highlights = False
         self._highlights = HighlightScene() # Local highlights
-        
+
         # Reference highlights for subtree
         self._highlights_ref = HighlightScene()
 
@@ -69,7 +69,9 @@ class ModuleAgent(QObject):
     # factory method for subclasses
     @classmethod
     def instantiate(cls, module_name, parent):
-
+        """Create a ModuleAgent object of type module_name with the
+           given parent.
+        """
         if cls.__name__ == module_name:
             return cls(parent)
         else:
@@ -81,18 +83,26 @@ class ModuleAgent(QObject):
 
 
     def addRequest(self, name, subdomain = None):
+        """Add a request stream to be handled by this ModuleAgent."""
         coupler = FilterCoupler(name, self, None)
         self.requests[name] = ModuleRequest(self.datatree, name, coupler,
             subdomain)
-        coupler.changeSignal.connect(self.requiredCouplerChanged)
+        coupler.changeSignal.connect(self.requestedCouplerChanged)
         #Now send this new one to the parent
         self.addCouplerSignal.emit(coupler, self)
 
     def requestUpdated(self, name):
+        """Called when the request with the given name is considered
+           updated. Subclasses should override this to handle the update.
+        """
         pass
 
     @Slot(FilterCoupler)
-    def requiredCouplerChanged(self, coupler):
+    def requestedCouplerChanged(self, coupler):
+        """Called whenever a FilterCoupler associated with a request
+           signals an update. Finds the associated request and calls
+           the requestUpdated function.
+        """
         request = self.requests[coupler.name]
         self.requestUpdated(coupler.name)
 
@@ -100,18 +110,46 @@ class ModuleAgent(QObject):
     # move the functionality out of ModuleRequest and over here,
     # leaving the request to just hold the coupler and the indices
     def requestAddIndices(self, name, indices):
+        """Associates the given DataTree indices with the named request."""
         if name not in self.requests:
             raise ValueError("No request named " + name)
         self.requests[name].indices = indices
 
+    # This is likely to change to something that forces domain IDs
     def requestGroupBy(self, name, group_by_attributes, group_by_table,
         row_aggregator, attribute_aggregator):
+        """Performs a group by operation on the request of the given name,
+           returning the values of the attributes associated with the
+           request's indices. If the request has no indices associated with
+           it, this returns None,None. Otherwise returns a list of groups
+           and a list of values associated with that group.
+
+           group_by_attributes
+               List of attribute names that will be used to form groups
+
+           group_by_table
+               Name of table where group_by_attributes are found
+
+           row_aggregator
+               Aggregator name for how rows should be combined for each group
+
+           attribute_aggregator
+               Aggregator name for how columns should be combined per row
+        """
         if name not in self.requests:
             raise ValueError("No request named " + name)
         return self.requests[name].groupby(group_by_attributes,
             group_by_table, row_aggregator, attribute_aggregator)
 
     def requestGetRows(self, name):
+        """Gets all rows of all tables for the attributes associated with
+           the indices of the named request. Returns the list of tables,
+           runs, list of identifier lists for the rows returned for each
+           table, list of header lists for each table, and a list of lists
+           of values for each attribute requested for each table.
+
+           If the request has no indices yet, all return values will be None.
+        """
         if name not in self.requests:
             raise ValueError("No request named " + name)
         return self.requests[name].getRows()
@@ -151,6 +189,7 @@ class ModuleAgent(QObject):
                     del self.requests[key]
 
     def registerChild(self, child):
+        """Registers the given Agent as a chlid of this Agent."""
         self.children.append(child)
         child.addCouplerSignal.connect(self.addChildCoupler)
         child.sceneChangedSignal.connect(self.receiveSceneFromChild)
@@ -169,6 +208,7 @@ class ModuleAgent(QObject):
             self.addCouplerSignal.emit(new_coupler, self)
 
     def unregisterChild(self, child):
+        """Unregisters the given Agent as a child of this Agent."""
         self.children.remove(child)
         child.addCouplerSignal.disconnect(self.addChildCoupler)
         child.sceneChangedSignal.disconnect(self.receiveSceneFromChild)
@@ -181,6 +221,7 @@ class ModuleAgent(QObject):
 
     # Change the parent of the agent.
     def changeParent(self, new_parent):
+        """Changes the parent of this Agent to a new Agent."""
         self.parent().unregisterChild(self)
         self.setParent(new_parent)
         if self.parent() is not None and \
@@ -188,6 +229,7 @@ class ModuleAgent(QObject):
             self.parent().registerChild(self)
 
     def delete(self):
+        """Deletes this Agent and all its children."""
         for child in self.children:
             child.delete()
         self.parent().unregisterChild(self)
@@ -204,7 +246,7 @@ class ModuleAgent(QObject):
             child.receiveSceneFromParent(self._highlights_ref)
 
     def refreshSceneInformation(self):
-        """This function is called to poll the parent agent for any 
+        """This function is called to poll the parent agent for any
            SceneInformation it has of interest to this agent and its
            children. It may be used onCreation of a Module or when a
            subtree is moved in the hierarchy.
@@ -213,6 +255,9 @@ class ModuleAgent(QObject):
 
     @property
     def highlights(self):
+        """The HighlightScene representing what is highlighted/selected
+           in this Agent.
+        """
         return self._highlights
 
     @highlights.setter
@@ -222,6 +267,9 @@ class ModuleAgent(QObject):
 
     @property
     def propagate_highlights(self):
+        """True if this Agent propagates highlights/selections to its
+           children.
+        """
         return self._propagate_highlights
 
     @propagate_highlights.setter
@@ -236,12 +284,13 @@ class ModuleAgent(QObject):
 
     @Slot(HighlightScene)
     def highlightsChanged(self, highlight):
+        """Signals that highlights have changed from this Boxfish subtree."""
         self.highlightSceneChangedSignal.emit(self.highlights.copy(), self)
 
     def getHighlightIDs(self, table, run):
         """Applies the module's HighlightScene to the given table's domain
-           to determine the domain IDs that need to be highligted. 
-           
+           to determine the domain IDs that need to be highligted.
+
            If the table's domain is in the set of highlights, only those
            highlights will be considered. If the table's domain is not in
            the set of highlights, then EVERY domain in the set of highlights
@@ -255,7 +304,7 @@ class ModuleAgent(QObject):
 
            If multiple highlight lists in the HighlightScene have the same
            domain as the table, all will be applied.
-           
+
            table
                String name of a table in the DataTree.
 
@@ -290,6 +339,9 @@ class ModuleAgent(QObject):
 
     @property
     def propagate_module_scenes(self):
+        """True if this Agent propagates all ModuleScene data to its
+           children.
+        """
         return self._propagate_module_scenes
 
     @propagate_module_scenes.setter
@@ -304,6 +356,7 @@ class ModuleAgent(QObject):
 
     @property
     def module_scene(self):
+        """The ModuleScene associated with this Agent."""
         return self._module_scene
 
     @module_scene.setter
@@ -313,10 +366,20 @@ class ModuleAgent(QObject):
 
     @Slot(Scene)
     def sceneChanged(self, scene):
+        """Signals as ModuleScene in this subtree has changed."""
         self.sceneChangedSignal.emit(scene.copy(), self)
 
     # Slot(Scene, ModuleAgent) decorator after class definition
     def receiveSceneFromChild(self, scene, source_agent):
+        """Called when a child alerts that Scene information has changed.
+           Based on the Scene type and propagation values for this Agent,
+           either passes the change up or down.
+
+           If the Agent propagates this type of Scene information, it sends
+           the Scene to its parent. If not, the Agent will send the Scene
+           back to the originating child which will start the process of
+           applying the Scene downstream.
+        """
         if isinstance(scene, HighlightScene):
             if self.propagate_highlights:
                 # Continue to propagate up
@@ -331,6 +394,11 @@ class ModuleAgent(QObject):
                 source_agent.receiveSceneFromParent(scene)
 
     def receiveSceneFromParent(self, scene):
+        """When a Scene is received from the parent, the Agent propagates
+           the Scene to all of its children and then, based on the Scene
+           type and Agent policy, may signal itself to process the
+           given Scene information as well.
+        """
         # If this function is being called, we know we propagate things
         # so we send to all our children
         for child in self.children:
@@ -353,8 +421,6 @@ class ModuleAgent(QObject):
 
 
 
-
-
 # The slots need to be added down here because ModuleAgent is not defined
 # at the time that the functions are defined
 ModuleAgent.addChildCoupler = Slot(FilterCoupler, ModuleAgent)(ModuleAgent.addChildCoupler)
@@ -365,10 +431,10 @@ ModuleAgent.sendAllScenes = Slot(ModuleAgent)(ModuleAgent.sendAllScenes)
 
 
 class ModuleRequest(QObject):
-    """Holds all of the requested information including the
-       desired attributes and the operation to perform on them.
-       This is identified by the name member of the class.
-       Please keep names unique within a single module.
+    """Holds all of the requested information including the desired
+       attributes and the operation to perform on them. This is identified
+       by the name member of the class. Please keep names unique within a
+       single module as they are used to differentiate requests.
     """
     operator = {
         'sum' : sum,
@@ -379,6 +445,10 @@ class ModuleRequest(QObject):
 
     def __init__(self, datatree, name, coupler, subdomain = None,
         indices = list()):
+        """Construct a ModuleRequest object with the given name, coupler,
+           optional associated subdomain and DataTree indices. The
+           ModuleRequest requires a reference to the DataTree.
+        """
         super(ModuleRequest, self).__init__()
 
         self.datatree = datatree
@@ -400,6 +470,7 @@ class ModuleRequest(QObject):
 
     @property
     def indices(self):
+        """The DataTree indices associated with this ModuleRequest."""
         return self._indices
 
     @indices.setter
@@ -411,14 +482,17 @@ class ModuleRequest(QObject):
             self.attribute_scene.attributes = self.attributeNameSet()
 
     def attributeNameSet(self):
+        """Returns a set of all attribute names represented by this
+           object's list of DataTree indices.
+        """
         attribute_set = set()
         for index in self._indices:
             attribute_set.add(self.datatree.getItem(index).name)
         return attribute_set
 
     def sortIndicesByTable(self, indexList):
-        """Creates an iterator of passed indices grouped by
-        the tableItem that they come from.
+        """Creates an iterator of passed indices grouped by the tableItems
+           that they come from.
         """
         get_parent = lambda x: self.datatree.getItem(x).parent()
         sorted_indices = sorted(indexList, key = get_parent)
@@ -669,13 +743,31 @@ class ModuleRequest(QObject):
            this returns the raw rows which may have rows with duplicate
            IDs if IDs is one of the attributes
 
-           This returns a list of tables and two lists of lists.
-           The first is a list of lists of attribute names for each table.
-           The second is a list of list of lists of the corresponding
-           attribute values.
+           This returns five lists:
+
+           table_list
+               A list of names of all tables represented by the indicies
+               associated with this ModuleRequest
+
+           run_list
+               A list of the names of the runs associated with the tables
+
+           id_list
+               A list of lists, one per table, of the identifiers associated
+               with each returned row.
+
+           headers
+               A list of lists, one per table, of the headers (attribute
+               names) of all the columns requested from the table.
+
+           data_list
+               A list of lists, one per table. Each table's list contains
+               a list for each attribute in headers that contains the
+               values (rows data) for those attributes.
+
         """
         if not self.preprocess():
-            return None, None, None, None, None
+            return None, None, None, None, None # Ewww, FIXME
 
         self.attribute_groups = self.sortIndicesByTable(self._indices)
         data_list = list()

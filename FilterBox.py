@@ -11,12 +11,21 @@ from Table import Table
 from DataModel import *
 from Filter import *
 
-class FilterBox(ModuleAgent):
+class FilterBoxAgent(ModuleAgent):
+    """Agent for all FilterBox modules, associates filters with modules.
+    """
 
     def __init__(self, parent, datatree):
-        super(FilterBox, self).__init__(parent, datatree)
+        """Constructor for FilterBoxAgent."""
+        super(FilterBoxAgent, self).__init__(parent, datatree)
 
     def createSimpleFilter(self, conditions):
+        """Creates a SimpleFilter from the given conditions (a Clause
+           object) and associates the new filter with all data requests
+           passing through this module. If conditions is None, will
+           effectively remove the filter from this Agent and all data
+           requests passing through it.
+        """
         self.filters = list()
         if conditions is None:
             for coupler in self.requests:
@@ -30,26 +39,30 @@ class FilterBox(ModuleAgent):
             for coupler in self.child_requests:
                 coupler.modifier = self.filters[0]
 
-@Module("Filter Box", FilterBox)
+@Module("Filter Box", FilterBoxAgent)
 class FilterBoxView(ModuleView):
-    """Window for handling filtering operations.
+    """ModuleView for handling filtering operations.
     """
 
     def __init__(self, parent, parent_view = None, title = None):
+        """Constructor for FilterBoxView."""
         super(FilterBoxView, self).__init__(parent, parent_view, title)
 
         self.allowDocks(True)
 
+
     def createView(self):
+        """Creates the module-specific view for the FilterBox module."""
         view = QWidget()
 
         layout = QGridLayout()
-        self.fake_label = QLabel("")
-        layout.addWidget(self.fake_label, 0, 0, 1, 1)
+        self.filter_label = QLabel("")
+        layout.addWidget(self.filter_label, 0, 0, 1, 1)
         view.setLayout(layout)
         view.resize(200, 100)
         return view
 
+    # Not currently in use
     # Toolbars are too big. Someday this may be done with a prettier label.
     def createToolBar(self):
         if isinstance(self.parent(), BFDockWidget):
@@ -71,9 +84,8 @@ class FilterBoxView(ModuleView):
 
         self.addToolBar(self.toolbar)
 
-    def droppedData(self, indexList):
-        self.tab_dialog.show()
 
+    # No functionality currently
     # Demonstration of changing Drag & Drop behavior for window unique data
     # May not be necessary for other modules.
     def dropEvent(self, event):
@@ -85,12 +97,20 @@ class FilterBoxView(ModuleView):
         else:
             super(FilterBoxView, self).dropEvent(event)
 
+
     @Slot(Clause)
     def editFilter(self, clause):
+        """Given a Clause object, passes it to the Agent to associate
+           a fiter based on that Clause with this module. Updates the
+           ModuleView to show the filter.
+        """
         self.agent.createSimpleFilter(clause)
-        self.fake_label.setText("Filter: " + str(clause))
+        self.filter_label.setText("Filter: " + str(clause))
 
     def buildTabDialog(self):
+        """Appends the FilterBox specific filter-building GUI to the
+           tab dialog for this module.
+        """
         super(FilterBoxView, self).buildTabDialog()
         self.filter_tab = FilterTab(self.tab_dialog, self,
             self.agent.filters)
@@ -98,16 +118,19 @@ class FilterBoxView(ModuleView):
         self.tab_dialog.addTab(self.filter_tab, "Filters")
 
 
+# Not currently in use.
 class FilterMime(QMimeData):
     """This is for passing Filter information between filter windows.
     """
 
     def __init__(self, myfilter):
+        """Construct a FilterMime."""
         super(FilterMime, self).__init__()
 
         self.myfilter = myfilter
 
     def getFilter(self):
+        """Returns the filter contained in this FilterMime."""
         return self.myfilter
 
 
@@ -120,6 +143,10 @@ class FilterTab(QWidget):
     applySignal = Signal(Clause)
 
     def __init__(self, parent, view, existing_filters):
+        """Create a FilterTab with the given parent TabDialog, logical
+           parent ModuleView view, and existing_filters list of Clause
+           objects.
+        """
         super(FilterTab, self).__init__(parent)
 
         self.view = view
@@ -128,6 +155,8 @@ class FilterTab(QWidget):
 
         self.clause_list = list()
         self.clause_dict = dict()
+        # Right now we only look at the first passed in filter.
+        # TODO: At GUI to switch between existing filters
         if existing_filters is not None and len(existing_filters) > 0:
             for clause in existing_filters[0].conditions.clauses:
                 self.clause_list.append(str(clause))
@@ -138,7 +167,8 @@ class FilterTab(QWidget):
         layout = QVBoxLayout(self)
         self.sidesplitter = QSplitter(Qt.Horizontal)
 
-        # You can only select one at a time
+        # You can only select one attribute at a time to build the 
+        # filter clauses
         self.data_view = QTreeView(self)
         self.data_view.setModel(self.view.agent.datatree)
         self.data_view.setDragEnabled(True)
@@ -153,6 +183,7 @@ class FilterTab(QWidget):
 
         layout.addWidget(self.sidesplitter)
 
+        # Apply buttons
         buttonWidget = QWidget()
         buttonLayout = QHBoxLayout(buttonWidget)
         self.applyButton = QPushButton("Apply")
@@ -167,6 +198,9 @@ class FilterTab(QWidget):
         self.setLayout(layout)
 
     def applyFilter(self):
+        """Emits the applySignal with the Clause object currently
+           represented by this FilterTab.
+        """
         num_clauses = len(self.clause_list)
         if num_clauses == 0:
             self.applySignal.emit(None)
@@ -174,6 +208,7 @@ class FilterTab(QWidget):
             self.applySignal.emit(Clause("and", *self.clause_dict.values()))
 
     def applyCloseFilter(self):
+        """Calls applyFilter and then closes the containing TabDialog."""
         self.applyFilter()
         self.parent.close()
 
@@ -195,6 +230,9 @@ class FilterTab(QWidget):
         return filter_widget
 
     def buildFilterListView(self):
+        """Creates the QListView that contains all of the basic Clause
+           objects.
+        """
         groupBox = QGroupBox("Clauses")
         layout = QVBoxLayout(groupBox)
 
@@ -211,6 +249,9 @@ class FilterTab(QWidget):
         return groupBox
 
     def buildWorkFrame(self):
+        """Creates the grouped set of widgets that allow users to build
+           basic Clause objects.
+        """
         groupBox = QGroupBox("Clause Workspace")
         layout = QHBoxLayout(groupBox)
 
@@ -240,6 +281,9 @@ class FilterTab(QWidget):
         return groupBox
 
     def buildRelationsWidget(self):
+        """Creates the set of draggable relations. These relations are
+           whatever is available in the relations dict of Table.
+        """
         relations_widget = QWidget()
         layout = QHBoxLayout(relations_widget)
 
@@ -250,6 +294,7 @@ class FilterTab(QWidget):
         return relations_widget
 
     def addClause(self):
+        """Adds a basic Clause to the current filter."""
         if self.dropRelation.text() in Table.relations \
             and len(self.dropValue.text()) > 0 \
             and len(self.dropAttribute.text()) > 0:
@@ -265,6 +310,9 @@ class FilterTab(QWidget):
                 self.clause_model.setStringList(self.clause_list)
 
     def deleteClause(self):
+        """Removes the selected basic Clause objects from the current
+           filter.
+        """
         clause = self.clause_model.data(
             self.list_view.selectedIndexes()[0], Qt.DisplayRole)
         if clause is not None and clause in self.clause_list:
@@ -275,16 +323,32 @@ class FilterTab(QWidget):
 
 
 class FilterValueLineEdit(QLineEdit):
+    """This QLineEdit dynamically updates its QCompleter on focus
+       to give value hints for whatever attribute is currently
+       represented in a different QLineEdit.
+    """
 
     def __init__(self, parent, datatree, watchLineEdit):
+        """Construct the FilterValueLineEdit. The watchLineEdit is
+           another QLineEdit which will determine what QCompleter values
+           this LineEdit has at any time. The parent is the Qt GUI parent
+           and the datatree is the full Boxfish datatree.
+        """
         super(FilterValueLineEdit, self).__init__("", parent)
 
         self.datatree = datatree
         self.watchLineEdit = watchLineEdit
+        self.oldText = ""
 
     def focusInEvent(self, e):
+        """On focus, this completer for this LineEdit will update its
+           values based on the attribute named in the watchLineEdit.
+        """
         super(FilterValueLineEdit, self).focusInEvent(e)
-        values = self.datatree.getAttributeValues(self.watchLineEdit.text())
-        self.setCompleter(None)
-        self.setCompleter(QCompleter(values))
+        if self.oldText != self.watchLineEdit.text():
+            self.oldText = self.watchLineEdit.text()
+            values = self.datatree.getAttributeValues(
+                self.watchLineEdit.text())
+            self.setCompleter(None)
+            self.setCompleter(QCompleter(values))
 
