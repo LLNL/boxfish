@@ -23,7 +23,7 @@ class Torus3dAgent(ModuleAgent):
         self.destination_coords = None
         self.link_coords_table = None
         self.shape = [0, 0, 0]
-        self.receiveModuleSceneSignal.connect(self.processModuleScene)
+        #self.receiveModuleSceneSignal.connect(self.processModuleScene)
 
     def registerNodeAttributes(self, indices):
         # Determine Torus info from first index
@@ -120,28 +120,31 @@ class Torus3dViewColorModel(object):
         def kwarg(name, default_value):
             setattr(self, name, keywords.get(name, default_value))
 
-        kwarg("default_node_color", (0.5, 0.5, 0.5, 0.5))
+        kwarg("default_node_color", (0.5, 0.5, 0.5, 0.2))
         kwarg("node_cmap", cm.get_cmap("jet"))
 
-        kwarg("default_link_color", (0.5, 0.5, 0.5, 0.5))
+        kwarg("default_link_color", (0.5, 0.5, 0.5, 0.2))
         kwarg("link_cmap", cm.get_cmap("jet"))
 
+        self._shape = None
         self.shape = [0, 0, 0]
-        self.setShape([0, 0, 0])
         self.listeners = set()
 
     def clearNodes(self):
-        self.node_colors = np.tile(self.default_node_color, self.shape + [1])
+        self.node_colors = np.tile(self.default_node_color, self._shape + [1])
 
     def clearLinks(self):
-        self.pos_link_colors = np.tile(self.default_link_color, self.shape + [3, 1])
-        self.neg_link_colors = np.tile(self.default_link_color, self.shape + [3, 1])
+        self.pos_link_colors = np.tile(self.default_link_color, self._shape + [3, 1])
+        self.neg_link_colors = np.tile(self.default_link_color, self._shape + [3, 1])
 
     def setShape(self, shape):
-        if shape != self.shape:
-            self.shape = shape
+        if self._shape != shape:
+            self._shape = shape
             self.clearNodes()
             self.clearLinks()
+
+    # enforce that shape always looks like a tuple externally
+    shape = property(lambda self: tuple(self._shape), setShape)
 
     def _notifyListeners(self):
         for listener in self.listeners:
@@ -157,8 +160,7 @@ class Torus3dViewColorModel(object):
     def updateNodeData(self, shape, coords, vals):
         if not vals:
             return
-
-        self.setShape(shape)
+        self.shape = shape
 
         cval = cmap_range(vals)
         for coord, val in zip(coords, vals):
@@ -171,8 +173,7 @@ class Torus3dViewColorModel(object):
     def updateLinkData(self, shape, coords, vals):
         if not vals:
             return
-
-        self.setShape(shape)
+        self.shape = shape
 
         # Make sure we have no more values than links
         assert len(vals) <= (np.product(self.shape) * 6)
@@ -203,8 +204,7 @@ class Torus3dView(ModuleView):
     """This is a base class for a rendering of a 3d torus.
        Subclasses need to define this method:
            createView(self)
-               Should return an instance of some subclass of GLWidget
-               that will render the scene.
+               Should return the widget that will display the scene in the view.
 
        Subclasses should receive updates by registering for change updates
        with the color model.
