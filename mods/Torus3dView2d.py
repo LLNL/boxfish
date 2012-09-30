@@ -5,7 +5,7 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLE import *
 
-from Module import *
+from ModuleView import *
 from GLModuleScene import *
 from Torus3dModule import *
 from gl.GLWidget import GLWidget
