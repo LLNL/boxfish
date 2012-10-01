@@ -70,11 +70,11 @@ class GLTorus2dView(GLWidget):
 
         # Display lists for nodes and links
         self.cubeList = DisplayList(self.drawCubes)
-        self.linkList = DisplayList(self.drawLinks)
+        self.linkList = DisplayList(self.drawLinksAsLines)
 
         self.axis = 2           # Which axis the display should look down (default Z)
-        self.gap = 1            # Spacing between successive cylinders
-        self.pack_factor = 1.5  # How close to pack boxes (1.5 is .5 box space)
+        self.gap = 2            # Spacing between successive cylinders
+        self.pack_factor = 3.5  # How close to pack boxes (1.5 is .5 box space)
 
         # Directions in which coords are laid out on the axes
         self.axis_directions = np.array([1, -1, -1])
@@ -155,6 +155,7 @@ class GLTorus2dView(GLWidget):
 
 
     def paintGL(self):
+        glClearColor(1,1,1,1)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.orient_scene()
         self.cubeList()
@@ -217,6 +218,7 @@ class GLTorus2dView(GLWidget):
         self.centerView()
 
         shape, axis = self.shape, self.axis
+
         for start_node in np.ndindex(*shape):
             colors = self.colorModel.avg_link_colors[start_node]
 
@@ -245,15 +247,58 @@ class GLTorus2dView(GLWidget):
                         if end_cyl == right_cyl and end_cyl == left_cyl:
                             continue
 
-                    # calculate a vector in direction start -> end
                     end = np.array(self.map2d(end_node))
+                    # calculate a vector in direction start -> end
                     v = end - start
-
+                    
                     # interpolate cylinder points
                     cyl_points = [tuple(p) for p in [start - v, start, end, end + v]]
-
+                    
                     # Draw links
                     glColor4f(*colors[dim])
                     glePolyCylinder(cyl_points, None, self.link_radius)
+        glPopMatrix()
 
+
+    def drawLinksAsLines(self):
+        glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,[1.0, 1.0, 1.0, 1.0])
+        glPushMatrix()
+        self.centerView()
+
+        shape, axis = self.shape, self.axis
+
+        glBegin(GL_LINES)
+        for start_node in np.ndindex(*shape):
+            colors = self.colorModel.avg_link_colors[start_node]
+
+            start_cyl = cylinder(start_node, shape, axis)
+            start = np.array(self.map2d(start_node))
+
+            # iterate over dimensions.
+            for dim in range(3):
+                end_node = shift(start_node, dim, 1)
+
+                # Skip torus wraparound links
+                if end_node[dim] >= shape[dim]:
+                    continue
+
+                # Only render lines that connect points within the same cylinder
+                end_cyl = cylinder(end_node, shape, axis)
+                if start_cyl == end_cyl:
+                    # Prevents occluding links on the innermost cylinder by not
+                    # rendering links that would make T-junctions
+                    if start_cyl == 0:
+                        # find transverse dimension
+                        for t in range(3):
+                            if t != axis and t != dim: break
+                        left_cyl = cylinder(shift(start_node, t, -1), shape, axis)
+                        right_cyl = cylinder(shift(start_node, t, 1), shape, axis)
+                        if end_cyl == right_cyl and end_cyl == left_cyl:
+                            continue
+
+                    end = np.array(self.map2d(end_node))
+                    glColor4f(*colors[dim])
+                    glVertex3fv(start)
+                    glVertex3fv(end)
+        glEnd()
         glPopMatrix()
