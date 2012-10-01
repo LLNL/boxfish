@@ -1,13 +1,15 @@
-from PySide.QtCore import *
-from OpenGL.GLUT import *
-from GLWidget import GLWidget
-from GLModuleScene import GLModuleScene
-from ModuleAgent import *
-from ModuleView import *
-
 import sys
 import numpy as np
 import matplotlib.cm as cm
+
+from PySide.QtCore import *
+from OpenGL.GLUT import *
+
+from ModuleAgent import *
+from ModuleView import *
+from GLModuleScene import *
+from gl.GLWidget import GLWidget
+from Torus3dModule import *
 
 class PatchAgent(ModuleAgent):
     patchUpdateSignal = Signal(list,list)
@@ -16,7 +18,7 @@ class PatchAgent(ModuleAgent):
     def __init__(self, parent, datatree):
         super(PatchAgent, self).__init__(parent, datatree)
 
-        self.addRequirement("patches")
+        self.addRequest("patches")
 
         self.centers = None
         self.sizes = None
@@ -35,7 +37,7 @@ class PatchAgent(ModuleAgent):
         self.sizes = application["size"]
         self.centers = application["center"]
         self.table = application["patch_table"]
-        
+
     def requestUpdated(self, name):
         if name == "patches":
             self.updatePatchValues()
@@ -43,22 +45,23 @@ class PatchAgent(ModuleAgent):
     def updatePatchValues(self):
         if not self.table:
             return
-        
-        table_item = self.datatree.getTable(self.table)        
+
+        table_item = self.datatree.getTable(self.table)
         patch_info, attribute_values = self.requestGroupBy("patches",
             [table_item["field"],self.centers,self.sizes], table_item,
             "mean", "mean")
-        
+
         if attribute_values is not None:
             self.patchUpdateSignal.emit(patch_info, attribute_values[0])
 
     @Slot(ModuleScene)
     def processModuleScene(self, module_scene):
         if self.module_scene.module_name == module_scene.module_name:
-            self.module_scene = module_scene.copy()
+            self.module_scene.rotation = module_scene.rotation
+            self.module_scene.translation = module_scene.translation
             self.transformUpdateSignal.emit(self.module_scene.rotation,
                 self.module_scene.translation)
-    
+
 @Module("3D Patch View", PatchAgent, GLModuleScene)
 class PatchView3d(ModuleView):
 
@@ -73,7 +76,7 @@ class PatchView3d(ModuleView):
 
         self.view.patch_info = patch_info
         self.view.vals = vals
-            
+
 
 
 class GLPatchView3d(GLWidget):
@@ -99,7 +102,7 @@ class GLPatchView3d(GLWidget):
         self.centerView()
 
         glColor4f(*self.default_color)
-        
+
         for patch in self.patch_info:
             glPushMatrix()
 
@@ -113,4 +116,4 @@ class GLPatchView3d(GLWidget):
         # Get rid of the grid_span translation
         glPopMatrix()
 
-        
+

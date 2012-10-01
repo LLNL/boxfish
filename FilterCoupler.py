@@ -18,6 +18,17 @@ class FilterCoupler(QObject):
     deleteSignal = Signal(QObject)
 
     def __init__(self, name, parent = None, modifier = None):
+        """Construct a FilterCoupler.
+
+           parent
+               The ModuleAgent making this request down the chain.
+
+           modifier
+               The filter associated with this coupler.
+
+           name
+               A tag for use with any user interface.
+        """
         super(FilterCoupler, self).__init__()
         self.name = name
         self.parent = parent
@@ -32,6 +43,7 @@ class FilterCoupler(QObject):
 
     @property
     def modifier(self):
+        """The filter associated with this particular coupler."""
         return self._modifier
 
     @modifier.setter
@@ -41,6 +53,7 @@ class FilterCoupler(QObject):
 
     @property
     def modifier_chain(self):
+        """The chain of modifiers to this point down the coupler chain."""
         return self._modifier_chain
 
     @modifier_chain.setter
@@ -66,6 +79,10 @@ class FilterCoupler(QObject):
     # modifier and then emit the change downward.
     @Slot(QObject)
     def upstreamChanged(self, upstream):
+        """When signalled about a change upstream, reconstructs the
+           potentially changed modifier chain and propagates the change
+           downward.
+        """
         # Get modifier chain from upstream
         self.upstream_chain = upstream.modifier_chain[:]
         self.modifier_chain = self.upstream_chain[:]
@@ -78,6 +95,10 @@ class FilterCoupler(QObject):
         self.changeSignal.emit(self)
 
     def modifierChanged(self):
+        """When the modifier associated with this coupler is changed,
+           the modifier_chain must be reconstructed and propagated
+           downward.
+        """
         self.modifier_chain = self.upstream_chain[:]
         if self.modifier is not None:
             self.modifier_chain.append(self.modifier)
@@ -87,6 +108,7 @@ class FilterCoupler(QObject):
     # Disconnect an upstream FilterCoupler marked for deletion
     @Slot(QObject)
     def upstreamDeleted(self, upstream):
+        """Handles the clean up when the upstream coupler is deleted."""
         upstream.deleteSignal.disconnect(self.upstreamDeleted)
         upstream.changeSignal.disconnect(self.upstreamChanged)
 

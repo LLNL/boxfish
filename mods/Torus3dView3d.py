@@ -5,9 +5,10 @@ from OpenGL.GLUT import *
 from OpenGL.GLE import *
 
 from ModuleView import *
-from GLWidget import GLWidget
-from GLModuleScene import GLModuleScene
-from GLUtils import *
+from GLModuleScene import *
+from gl.GLWidget import GLWidget
+from gl.glutils import *
+
 from Torus3dModule import *
 
 @Module("3D Torus - 3D View", Torus3dAgent, GLModuleScene)
@@ -38,6 +39,9 @@ class GLTorus3dView(GLWidget):
         # Display list and settings for the axis
         self.axisLength = 0.3
         self.axisList = DisplayList(self.drawAxis)
+
+        # Directions in which coords are laid out on the axes
+        self.axis_directions = np.array([1, -1, -1])
 
         # Now go ahead and update things.
         self.setColorModel(colorModel)
@@ -72,23 +76,25 @@ class GLTorus3dView(GLWidget):
             (1,0,0),... etc. but they will appear centered around the global
             origin.
         """
-        x_span, y_span, z_span = self.colorModel.shape
-        glTranslatef(-(x_span-1)/2.0,(y_span-1)/2.0,(z_span-1)/2.)
+        spans = np.array(self.colorModel.shape, float)
+        half_spans = (spans - 1) / -2 * self.axis_directions
+        glTranslatef(*half_spans)
+
+    def centerNode(self, node):
+        """Translate view to coords where we want to render the node (x,y,z)"""
+        node = (np.array(node, int) + self.seam) % self.colorModel.shape
+        node *= self.axis_directions
+        glTranslatef(*node)
 
     def drawCubes(self):
         glPushMatrix()
         self.centerView()
 
-        x_span, y_span, z_span = self.colorModel.shape
-        for x, y, z in np.ndindex(*self.colorModel.shape):
+        for node in np.ndindex(*self.colorModel.shape):
+            # draw a colored cube with its center at (0,0,0)
             glPushMatrix()
-
-            glColor4f(*self.colorModel.node_colors[x,y,z])
-            glTranslatef((x + self.seam[0]) % x_span,
-                         -((y + self.seam[1]) % y_span),
-                         -((z + self.seam[2]) % z_span))
-
-            # glut will draw a cube with its center at (0,0,0)
+            self.centerNode(node)
+            glColor4f(*self.colorModel.node_colors[node])
             glutSolidCube(self.box_size)
             glPopMatrix()
 
@@ -98,37 +104,24 @@ class GLTorus3dView(GLWidget):
 
     def drawLinks(self):
         glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,[1.0, 1.0, 1.0, 1.0])
-
         glPushMatrix()
         self.centerView()
 
-        x_span, y_span, z_span = self.colorModel.shape
-        for x, y, z in np.ndindex(*self.colorModel.shape):
+        # origin-relative poly cylinder points for each dimension
+        poly_cylinders =[[(-1, 0, 0), (0, 0,  0), (1, 0, 0), (2, 0, 0)],
+                         [(0, -2, 0), (0, -1, 0), (0, 0, 0), (0, 1, 0)],
+                         [(0, 0, -2), (0, 0, -1), (0, 0, 0), (0, 0, 1)]]
+
+        for node in np.ndindex(*self.colorModel.shape):
             glPushMatrix()
+            self.centerNode(node)
+            colors = self.colorModel.avg_link_colors[node]
 
-            glTranslatef((x + self.seam[0]) % x_span,
-                         -((y + self.seam[1]) % y_span),
-                         -((z + self.seam[2]) % z_span))
+            # Draw links for each dim as poly cylinders
+            for dim in range(3):
+                glColor4f(*colors[dim])
+                glePolyCylinder(poly_cylinders[dim], None, self.link_radius)
 
-            # average positive and negative color values
-            # TODO: should color model just store the normalized values?
-            # TODO: Averaging colors doesn't really make sense if the color map isn't linear.
-            pos = self.colorModel.pos_link_colors[x, y, z]
-            neg = self.colorModel.neg_link_colors[x, y, z]
-            colors = (pos + neg) / 2
-
-            # x+
-            glColor4f(*colors[0])
-            glePolyCylinder([(-1, 0, 0), (0, 0, 0), (1, 0, 0), (2, 0, 0)],
-                            None, self.link_radius)
-            # y+
-            glColor4f(*colors[1])
-            glePolyCylinder([(0, -2, 0), (0, -1, 0), (0, 0, 0), (0, 1, 0)],
-                            None, self.link_radius)
-            # z+
-            glColor4f(*colors[2])
-            glePolyCylinder([(0, 0, -2), (0, 0, -1), (0, 0, 0), (0, 0, 1)],
-                            None, self.link_radius)
             glPopMatrix()
         glPopMatrix()
 

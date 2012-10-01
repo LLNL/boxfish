@@ -5,12 +5,19 @@ Author:
 """
 from contextlib import contextmanager
 from OpenGL.GL import *
+from glefix import *
 
 @contextmanager
 def glSection(type):
     glBegin(type)
     yield
     glEnd()
+
+@contextmanager
+def glMatrix():
+    glPushMatrix()
+    yield
+    glPopMatrix()
 
 @contextmanager
 def attributes(*glBits):

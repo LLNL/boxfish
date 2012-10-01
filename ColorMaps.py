@@ -47,18 +47,26 @@ bdict = {'red':   ((0.0, 0.0,    0.0),
 BFBlGyRdmap = matplotlib.colors.LinearSegmentedColormap('BFBlGyRdmap',bdict,256)
 boxfish_maps['BFBlGyRd'] = BFBlGyRdmap
 
-# Return whether colormap (string) is in our set
 def hasMap(colormap):
+    """Returns True if the given colormap String is found in our list
+       of custom colormaps.
+    """
     return colormap in boxfish_maps
 
-# Return the map matching colormap(string)
 def getMap(colormap):
+    """Returns the matplotlib colormap object associated with the given
+       name parameter. It searches both the custom colormaps and the
+       matplotlib colormaps.
+    """
     if hasMap(colormap):
         return boxfish_maps[colormap]
     else:
         return cm.get_cmap(colormap)
 
 def mapNames():
+    """Returns a list of colormap names including both matplotlib colormaps
+       and custom ones.
+    """
     map_names = []
     for mpl_map in cm.datad:
         map_names.append(mpl_map)

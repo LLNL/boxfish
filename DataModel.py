@@ -13,7 +13,10 @@ class AbstractTreeItem(object):
     """
 
     def __init__(self, name, parent=None):
-
+        """Construct an AbstractTreeItem with give name and parent
+           AbstractTreeItem.
+        """
+        super(AbstractTreeItem, self).__init__()
         self.name = name
         self._children = []
         self._parent = parent
@@ -22,13 +25,17 @@ class AbstractTreeItem(object):
             parent.addChild(self)
 
     def typeInfo(self):
+        """Return the type of model item."""
         return "ABSTRACT"
 
     def addChild(self, child):
+        """Add a child item to this item at the end of the child list."""
         self._children.append(child)
 
     def insertChild(self, position, child):
-
+        """Add a child item to this item at the given position in the
+           child list.
+        """
         if position < 0 or position > len(self._children):
             return False
 
@@ -37,7 +44,7 @@ class AbstractTreeItem(object):
         return True
 
     def removeChild(self, position):
-
+        """Remove the child item at the given position."""
         if position < 0 or position > len(self._children):
             return False
 
@@ -47,25 +54,33 @@ class AbstractTreeItem(object):
         return True
 
     def child(self, row):
+        """Return the child item at the given position."""
         return self._children[row]
 
     def childCount(self):
+        """Return the number of children."""
         return len(self._children)
 
     def parent(self):
+        """Return the parent item of this item."""
         return self._parent
 
     def row(self):
+        """Return the position of this item relative to its parent item."""
         if self._parent is not None:
             return self._parent._children.index(self)
 
-    def buildAttributeList(self, attributes = set()):
+    def buildAttributeSet(self, attributes = set()):
+        """Return a set of all AttributeItems found under this item."""
         for child in self._children:
-            child.buildAttributeList(attributes)
+            child.buildAttributeSet(attributes)
 
         return attributes
 
     def buildAttributeValues(self, attribute, values = set()):
+        """Return a set of all known values for a given attribute any
+           place it is found under this item.
+        """
         for child in self._children:
             child.buildAttributeValues(attribute, values)
 
@@ -73,12 +88,14 @@ class AbstractTreeItem(object):
 
 
 class RunItem(AbstractTreeItem):
-    """Item representing an entire run. Holds the run
-       metadata. Its children are divided into tables
-       and projections.
+    """Item representing an entire run. Holds the run metadata. Its
+       children are divided into tables and projections.
     """
 
     def __init__(self, name, metadata, parent=None):
+        """Construct a RunItem. The metadata should be represented as a
+           dict.
+        """
         super(RunItem, self).__init__(name, parent)
 
         self._metadata = metadata
@@ -87,32 +104,34 @@ class RunItem(AbstractTreeItem):
         self._projection_subdomains = None
 
     def typeInfo(self):
+        """Returns RUN"""
         return "RUN"
 
     def __contains__(self, key):
-        return self.hasMetaData(key)
-
-    def __getitem__(self, key):
-        return self.getMetaData(key)
-
-    def hasMetaData(self, key):
+        """Determine if a key is present in the RunItem's metadata."""
         if self._metadata is not None \
             and key in self._metadata:
             return True
 
         return False
 
-    def getMetaData(self, key):
+    def __getitem__(self, key):
+        """Retrieve the value of the metadata associated ith the given key.
+           Returns None if the key is not in the metadata.
+        """
         if self._metadata is not None \
             and key in self._metadata:
             if isinstance(self._metadata[key], dict):
-                # Caution: not deep copy, bad modules could do bad things 
+                # Caution: not deep copy, bad modules could do bad things
                 return self._metadata[key].copy()
             else:
                 return self._metadata[key]
         return None
 
     def getRun(self):
+        """Returns this item. This is used for finding the RunItem from
+           anywhere in the subtree.
+        """
         return self
 
     def refreshSubdomains(self):
@@ -165,10 +184,8 @@ class RunItem(AbstractTreeItem):
             self.subdomain_matrix[j][i] = projection
 
 
-
-
     def getTable(self, table_name):
-        """Look up a table by name."""
+        """Look up a child table by name."""
         for child in self._children:
             if child.name == "tables":
                 tables = child
@@ -178,6 +195,7 @@ class RunItem(AbstractTreeItem):
                 return table
 
         return None
+
 
     def findAttribute(self, attribute, table):
         """Find a table with the given attribute. Preference is given
@@ -293,30 +311,35 @@ class RunItem(AbstractTreeItem):
         return CompositionProjection(subdomain1, subdomain2, projection_list =
             projection_list)
 
+
 class SubRunItem(AbstractTreeItem):
-    """Item that falls below a Run in the hierarchy."""
+    """Item that falls below a Run in the hierarchy. Such items can
+       find their governing RunItem and search/retrieve metadata up
+       the tree.
+    """
 
     def __init__(self, name, parent = None):
+        """Construct a SubRunItem."""
         super(SubRunItem, self).__init__(name, parent)
 
     def __contains__(self, key):
-        return self.hasMetaData(key)
-
-    def __getitem__(self, key):
-        return self.getMetaData(key)
-
-    # Passed metadata calls up to parent
-    def hasMetaData(self, key):
+        """Searches up tree for the presence of the key in some item's
+           metadata.
+        """
         if self.parent() is not None:
-            return self.parent().hasMetaData(key)
+            return key in self.parent()
         return False
 
-    def getMetaData(self, key):
-        if self.parent() is not None and self.parent().hasMetaData(key):
-            return self.parent().getMetaData(key)
+    def __getitem__(self, key):
+        """Searches up the tree for the value associated with the given
+           tree. Returns None if invalid or not found.
+        """
+        if self.parent() is not None and key in self.parent():
+            return self.parent()[key]
         return None
 
     def getRun(self):
+        """Returns the RunItem up the tree from this item."""
         if self.parent() is not None:
             return self.parent().getRun()
         return None
@@ -324,26 +347,21 @@ class SubRunItem(AbstractTreeItem):
 
 
 class DataObjectItem(SubRunItem):
-    """Item attached to a data object and also having
-       metda data. Examples: Table, Projection.
+    """Item attached to a data object and also having meta data.
+       Examples: Table, Projection.
     """
 
     def __init__(self, name, metadata, parent = None):
+        """Construct a DataObjectItem. The metadata should be a dict."""
         super(DataObjectItem, self).__init__(name, parent)
 
         self._metadata = metadata
 
     def __contains__(self, key):
-        return self.hasMetaData(key)
-
-    def __getitem__(self, key):
-        return self.getMetaData(key)
-
-    # It first searches its parent data, then its own
-    # This means the run metadata takes precedence
-    def hasMetaData(self, key):
-
-        if self.parent() is not None and self.parent().hasMetaData(key):
+        """Returns True if the given key is in the metadata of this item
+           or an item up the tree from this item.
+        """
+        if self.parent() is not None and key in self.parent():
             return True
 
         if self._metadata is not None \
@@ -352,16 +370,19 @@ class DataObjectItem(SubRunItem):
 
         return False
 
-
-    def getMetaData(self, key):
-
-        if self.parent() is not None and self.parent().hasMetaData(key):
-            return self.parent().getMetaData(key)
+    def __getitem__(self, key):
+        """Returns the value associated with the given key in the metadata
+           of this item or an item up the tree from this item. If it is
+           found in multiple places, the one furthest up the tree will
+           be returned.
+        """
+        if self.parent() is not None and key in self.parent():
+            return self.parent()[key]
 
         if self._metadata is not None \
             and key in self._metadata:
             if isinstance(self._metadata[key], dict):
-                return self._metadata[key].viewitems()
+                return self._metadata[key].copy()
             else:
                 return self._metadata[key]
 
@@ -374,23 +395,28 @@ class GroupItem(SubRunItem):
     """
 
     def __init__(self, name, parent=None):
+        """Construct a GroupItem."""
         super(GroupItem, self).__init__(name, parent)
 
     def typeInfo(self):
+        """Return GROUP."""
         return "GROUP"
 
 
 class ProjectionItem(DataObjectItem):
-    """Item for holding a projection and its metadata. The data types
-       of the projection are represented as children.
+    """Item for holding a projection and its metadata.
     """
 
     def __init__(self, name, projection, metadata, parent = None):
+        """Construct a ProjectionItem. The projection is a Projection
+           object. The metadata is a dict.
+        """
         super(ProjectionItem, self).__init__(name, metadata, parent)
 
         self._projection = projection
 
     def typeInfo(self):
+        """Return PROJECTION."""
         return "PROJECTION"
 
 
@@ -401,21 +427,31 @@ class TableItem(DataObjectItem):
     """
 
     def __init__(self, name, table, metadata, parent = None):
+        """Construct a TableItem. The table is a Table object. The
+           metadata is a dict.
+        """
         super(TableItem, self).__init__(name, metadata, parent)
 
-        self._metadata = metadata
         self._table = table
 
     def typeInfo(self):
+        """Return TABLE."""
         return "TABLE"
 
     def hasAttribute(self, attribute):
+        """Returns True if this item has an AttributeItem with the given
+           name.
+        """
         for child in self._children:
             if child.name == attribute:
                 return True
         return False
-    
+
     def buildAttributeValues(self, attribute, values = set()):
+        """If the contained Table contains an attribute of the given name,
+           returns a set of all values that attribute takes. Returns an
+           empty set otherwise.
+        """
         if self.hasAttribute(attribute):
             attributes = [attribute]
             attribute_list = self._table.attributes_by_identifiers(
@@ -433,9 +469,12 @@ class TableItem(DataObjectItem):
            of starting identifiers. Returns a list of valid identifiers
            on the table.
 
-           conditions - a Clause object
-           table - a tableItem in the DataTree
-           identifiers - list of identifiers from the table
+           conditions
+               A Clause object to be evaluated on the table.
+
+           identifiers
+               A list of identifiers from the table indicating which
+               table rows should be evaluated over.
         """
 
         # Maybe we should just do this with sets, maintaing order
@@ -498,41 +537,39 @@ class AttributeItem(SubRunItem):
     # These are more intimately connected with their table and
     # we will only think of them by name (and potentially type)
     def __init__(self, name, parent=None):
+        """Construct an AttributeItem."""
         super(AttributeItem, self).__init__(name, parent)
 
     def typeInfo(self):
+        """Return ATTRIBUTE."""
         return "ATTRIBUTE"
 
-    def buildAttributeList(self, attributes = set()):
+    def buildAttributeSet(self, attributes = set()):
+        """Returns a set containing this attribute's name. This is the
+           base cause of a recursive building of an attribute list on
+           any subtree.
+        """
         attributes.add(self.name)
         return attributes
 
 
-class SubDomainItem(SubRunItem):
-    """Item for containing individual attributes. Access to these
-       will be done through parent items.
-    """
-
-    def __init__(self, name, parent=None):
-        super(SubDomainItem, self).__init__(name, parent)
-
-    def typeInfo(self):
-        return "SUBDOMAIN"
-
-
-
 class DataTree(QAbstractItemModel):
-    """Data is accessed through this datatree. It is organized as a tree
+    """Data, largely in the form of input tables and projections, is
+       accessed through this datatree. It is organized as a tree
        with Runs as level 1, Groups as level 2, Tables/Projections at
        level 3 and Attributes at level 4.
     """
 
-    def __init__(self, root = AbstractTreeItem("BoxFish"), parent=None):
-        super(DataTree, self).__init__(parent)
+    def __init__(self, root = AbstractTreeItem("BoxFish")):
+        """Construct the DataTree for Boxfish."""
+        super(DataTree, self).__init__(None)
         self._rootItem = root
 
 
     def rowCount(self, parent):
+        """Return the number of children under the root node, which
+           are all the Runs.
+        """
         if not parent.isValid():
             parentItem = self._rootItem
         else:
@@ -540,13 +577,16 @@ class DataTree(QAbstractItemModel):
 
         return parentItem.childCount()
 
-    # We only show the names of things for now, so one row
     def columnCount(self, parent):
+        """This returns 1 because we display only one piece of information
+           for each tree node, its name.
+        """
         return 1
 
-    # Given data for each row for each role
     def data(self, index, role = Qt.UserRole):
-
+        """In the DisplayRole case, returns the node name. No other
+           roles are handled.
+        """
         if not index.isValid():
             return None
 
@@ -556,19 +596,22 @@ class DataTree(QAbstractItemModel):
             if index.column() == 0:
                 return item.name
 
-        # Boxfish specific stuff can be done under UserRole
-        # if we think of anything to use it for.
+        # Boxfish specific stuff may be done under UserRole (future)
         elif role == Qt.UserRole:
             pass
 
-    # Display name of each column of information
+
     def headerData(self, section, orientation, role):
+        """Returns 'Data' in the DisplayRole case. No other behavior."""
         if role == Qt.DisplayRole:
             if section == 0:
                 return "Data"
 
 
     def flags(self, index):
+        """Returns the flags required by the display for each type
+           of node in the DataTree.
+        """
         if not index.isValid():
             return 0
 
@@ -596,7 +639,7 @@ class DataTree(QAbstractItemModel):
 
 
     def parent(self, index):
-
+        """Returns the QModelIndex of the parent of any given item."""
         item = self.getItem(index)
         parentItem = item.parent()
 
@@ -607,7 +650,9 @@ class DataTree(QAbstractItemModel):
 
 
     def index(self, row, column, parent):
-
+        """Returns a QModelIndex representing the child of the given
+           parent at the given row and column position.
+        """
         parentItem = self.getItem(parent)
         childItem = parentItem.child(row)
 
@@ -618,6 +663,7 @@ class DataTree(QAbstractItemModel):
 
 
     def getItem(self, index):
+        """Returns the tree item at the given QModelIndex."""
         if index.isValid():
             item = index.internalPointer()
             if item:
@@ -625,15 +671,32 @@ class DataTree(QAbstractItemModel):
 
         return self._rootItem
 
+    def getRun(self, run):
+        """Returns a RunItem with the given name."""
+        for child in self._rootItem._children:
+            if child.name == run:
+                return child
+        return None
+
     def generateAttributeList(self):
-        return sorted(self._rootItem.buildAttributeList(set()))
+        """Returns a sorted list of all attribute names in the
+           entire DataTree.
+        """
+        return sorted(self._rootItem.buildAttributeSet(set()))
 
     def getAttributeValues(self, attribute):
+        """Returns a sorted list of all known values of the given
+           attribute across all runs and tables in which it appears.
+        """
         return sorted(self._rootItem.buildAttributeValues(attribute, set()))
 
-    # Add a projection and its domains to the datatree.
+
     def insertProjection(self, name, projection, metadata, position=-1, \
         rows=1, parent=QModelIndex()):
+        """Adds a ProjectionItem to the DataTree with the given name,
+           metadata, and Projection object. The ProjectionItem is added
+           under the given ParentItem.
+        """
         parentItem = self.getItem(parent)
         if position == -1:
             position = parentItem.childCount()
@@ -644,19 +707,16 @@ class DataTree(QAbstractItemModel):
             parentItem)
         self.endInsertRows()
 
-        #Create attributes
-        #self.beginInsertRows(self.createIndex(position, 0, projectionItem), \
-        #    0, 2)
-        #attItem = SubDomainItem(projection.source, projectionItem)
-        #attItem = SubDomainItem(projection.destination, projectionItem)
-        #self.endInsertRows()
-
         return True
 
 
     # Add a table and its attributes to the datatree.
     def insertTable(self, name, table, metadata, position=-1, rows=1, \
         parent=QModelIndex()):
+        """Adds a TableItem to the DataTree with the given name, metadata,
+           and Table object. Also creates the AttributeItems under the
+           TableItem. The TableItem is added under the given ParentItem.
+        """
         parentItem = self.getItem(parent)
         if position == -1:
             position = parentItem.childCount()
@@ -716,7 +776,10 @@ class DataTree(QAbstractItemModel):
                 filepath = os.path.join(os.path.dirname(filename),
                     filedict['filename'])
                 metadata, data = yl.load_table(filepath)
-                combined_meta = dict(metadata.items() + filedict.items())
+                if metadata:
+                    combined_meta = dict(metadata.items() + filedict.items())
+                else:
+                    combined_meta = filedict
                 atable = Table()
                 atable.fromRecArray(data_type, filedict['field'], data)
                 self.insertTable(filedict['filename'], atable, combined_meta, \
@@ -747,7 +810,10 @@ class DataTree(QAbstractItemModel):
                     filepath = os.path.join(os.path.dirname(filename),
                         filedict['filename'])
                     metadata, data = yl.load_table(filepath)
-                    combined_meta = dict(metadata.items() + filedict.items())
+                    if metadata:
+                        combined_meta = dict(metadata.items() + filedict.items())
+                    else:
+                        combined_meta = filedict
                     atable = Table()
                     atable.fromRecArray(mydomains[0], mykeys[0], data)
                     aprojection = TableProjection(mydomains[0], mydomains[1],
@@ -769,6 +835,12 @@ class DataTree(QAbstractItemModel):
         return True
 
     def createSubDomainTables(self, run, projections, tables):
+        """If there are SubDomains represented by the projections in the
+           run but not in any tables in that run, this function will create
+           a table containing just the IDs for each SubDomain. This is
+           calculated by performing all possible projections into that
+           unrepresented Subdomain and taking the union of the results.
+        """
         # Determine which subdomains are not covered by tables
         uncovered_subdomains = set(run._projection_subdomains) \
             - set(run._table_subdomains)
@@ -834,6 +906,7 @@ class DataTree(QAbstractItemModel):
     # most likely unless we also override dropMimeData(). For now we don't
     # want drop actions on standard views anyway.
     def mimeData(self, indices):
+        """Returns a DataIndexMime containing the given indices."""
         return DataIndexMime(indices)
 
 
@@ -842,11 +915,13 @@ class DataIndexMime(QMimeData):
     """
 
     def __init__(self, data_index):
+        """Constructs a DataIndexMime containing the given indices."""
         super(DataIndexMime, self).__init__()
 
         self.data_index = data_index
 
     def getDataIndices(self):
+        """Returns the list of QModelIndex contained in this object."""
         return self.data_index
 
 

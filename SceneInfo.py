@@ -8,6 +8,7 @@ class Scene(QObject):
     changeSignal = Signal(QObject) # For changes applied to this scene
 
     def __init__(self):
+        """Construct a Scene object."""
         super(Scene, self).__init__()
 
     def announceChange(self):
@@ -39,6 +40,7 @@ class HighlightScene(Scene):
         self.highlight_sets = highlight_sets
 
     def copy(self):
+        """Creates a copy of this HighlightScene."""
         highlights = list()
         for highlight_set in self.highlight_sets:
             highlights.appen(highlight_set.copy())
@@ -65,8 +67,9 @@ class HighlightSet(object):
         self.run = run # QModelIndex
 
     def copy(self):
+        """Creates a copy of this HighlightSet."""
         return HighlightSet(self.highlights[:], self.run)
-        
+
 
 
 class AttributeScene(Scene):
@@ -80,6 +83,9 @@ class AttributeScene(Scene):
     def __init__(self, attributes,
         color_map = ColorMaps.getMap('gist_eart_r'),
         color_range = (0.0, 0.0)):
+        """Construct an AttributeScene pertaining to the given attributes,
+           with the given colormap and color range.
+        """
         super(AttributeScene, self).__init__()
 
         self.attributes = attributes # Needs to identify combination of attrs
@@ -111,5 +117,6 @@ class ModuleScene(Scene):
         self.module_name = module_name
 
     def copy(self):
+        """Create and return a copy of this ModuleScene."""
         return ModuleScene(self.agent_type, self.module_name)
 

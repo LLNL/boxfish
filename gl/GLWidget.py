@@ -7,16 +7,17 @@ Authors:
 Original rotation code was borrowed liberally from boxfish by Kate Isaacs and Josh Levine.
 """
 
+import math
+import numpy as np
+from exceptions import *
+
 from PySide.QtCore import *
 from PySide.QtGui import *
 from PySide.QtOpenGL import *
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 
-from GLUtils import *
-
-import math
-import numpy as np
+from gl.glutils import *
 
 class GLWidget(QGLWidget):
     """ This class implements basic support for interactive OpenGL application.  This includes support
@@ -40,11 +41,54 @@ class GLWidget(QGLWidget):
         self.setFocusPolicy(Qt.StrongFocus)
 
         # enabled/disabled features
-        self.enable_rotation = keywords.get("rotation", True)  #rotation enabled by default
-        self.enable_perspective = keywords.get("perspective", True)  #perspective (as opposed to orthographic)
+        def kwarg(name, default, attr_name=None):
+            if not attr_name: attr_name = name
+            setattr(self, attr_name, keywords.get(name, default))
 
-        self.translation = np.zeros([3])      # Initial translation is zero in all directions.
-        self.rotation = np.identity(4)        # Initial rotation is just the identity matrix.
+        # enable rotation and translation
+        kwarg("rotation", True, "enable_rotation")
+        kwarg("translation", True, "enable_translation")
+
+        # perspective (vs. orthographic)
+        kwarg("perspective", True, "enable_perspective")
+
+        kwarg("fov", 45.0) # Vertical field of view in degrees
+        kwarg("far_plane", 1000.0)  # Far clipping plane
+        kwarg("near_plane", 0.1)    # Near clipping plane
+
+        self.translation = np.zeros(3)
+        self.rotation = np.identity(4)
+
+
+    def set_translation(self, t):
+        """Ensure that translation is always a numpy array."""
+        if type(t) == np.ndarray and t.dtype == float:
+            self._translation = t
+        else:
+            self._translation = np.array(t, dtype=float)
+
+        if self._translation.shape != (3,):
+            raise ValueError("Illegal translation vector: " + str(t))
+
+    def get_translation(self):
+        return self._translation
+
+    translation = property(get_translation, set_translation)
+
+    def set_rotation(self, r):
+        """Ensure that rotation is always a valid 4x4 numpy array."""
+        if type(r) == np.ndarray and r.dtype == float:
+            self._rotation = r
+        else:
+            self._rotation = np.array(r, dtype=float)
+
+        if self._rotation.shape != (4,4):
+            raise ValueError("Illegal rotation matrix: " + str(t))
+
+    def get_rotation(self):
+        return self._rotation
+
+    rotation = property(get_rotation, set_rotation)
 
 
     def map_to_sphere(self, x, y):
@@ -114,7 +158,10 @@ class GLWidget(QGLWidget):
 
         aspect = float(width)/height
         if self.enable_perspective:
-            set_perspective(45.0, aspect, 0.1, 100.0)
+            set_perspective(self.fov,
+                            aspect,
+                            self.near_plane,
+                            self.far_plane)
         else:
             maxdim = max(self.paths.shape)
             set_ortho(maxdim, aspect)
@@ -182,25 +229,32 @@ class GLWidget(QGLWidget):
            need to either call self.orient_scene() or do your own glTranslate() and
            glRotate() based on self.translation and self.rotation.
            """
-        if event.orientation() == Qt.Orientation.Vertical:
-            if int(Qt.Key_Shift) in self.pressed_keys:
-                self.translation[1] += .01 * event.delta()
-            else:
-                self.translation[2] += .01 * event.delta()
+        if self.enable_translation:
+            if event.orientation() == Qt.Orientation.Vertical:
+                if int(Qt.Key_Shift) in self.pressed_keys:
+                    self.translation[1] += .01 * event.delta()
+                else:
+                    self.translation[2] += .01 * event.delta()
 
-        elif event.orientation() == Qt.Orientation.Horizontal:
-            self.translation[0] -= .01 * event.delta()
+            elif event.orientation() == Qt.Orientation.Horizontal:
+                self.translation[0] -= .01 * event.delta()
 
-        self.transformChangeSignal.emit(self.rotation, self.translation)
+            self.transformChangeSignal.emit(self.rotation, self.translation)
 
-        self.updateGL()
+            self.updateGL()
 
     def keyPressEvent(self, event):
         self.pressed_keys.add(event.key())
 
     def keyReleaseEvent(self, event):
-        if event.key() in self.pressed_keys:
-            self.pressed_keys.remove(event.key())
+        key = event.key()
+        if key in self.pressed_keys:
+            self.pressed_keys.remove(key)
+        self.keyAction(key)
+
+    def keyAction(self, key):
+        """To be implemented by subclasses"""
+        pass
 
     def orient_scene(self):
         """You should call this from paintGL() to orient the scene before rendering.
@@ -213,13 +267,17 @@ class GLWidget(QGLWidget):
 
 
     def set_transform(self, rotation, translation):
-        if translation is not None:
-            self.translation = translation
-        if self.enable_rotation and rotation is not None:
-            self.rotation = rotation
-        if translation is not None or rotation is not None:
-            self.updateGL()
+        need_update = False
 
+        if self.enable_translation and translation != None:
+            self.translation = translation
+            need_update = True
+        if self.enable_rotation and rotation != None:
+            self.rotation = rotation
+            need_update = True
+
+        if need_update:
+            self.updateGL()
 
 def set_perspective(fovY, aspect, zNear, zFar):
     """NeHe replacement for gluPerspective"""

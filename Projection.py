@@ -2,45 +2,58 @@ from SubDomain import *
 from Query import *
 
 def InputFileKey(input_file_key, enabled = True):
-    """InputFileKey decorator :
-       input_file_key - name that can be used to instantiate from file
-       enabled - true if the user can create one
+    """Decorator associates the key from a Boxfish meta file with a type
+       of projection.
+
+       input_file_key
+          The name that can be used to instantiate from file
     """
     def input_file_key_inner(cls):
         cls.input_file_key = input_file_key
-        cls.enabled = enabled
         return cls
     return input_file_key_inner
 
-@InputFileKey("N/A", enabled = False)
+
 class Projection(object):
+    """Projections relate IDs of one domain to IDs of another."""
 
-  def __init__(self,source = "undefined", destination = "undefined", **kwargs):
-    super(Projection, self).__init__()
+    def __init__(self,source = "undefined", destination = "undefined",
+        **kwargs):
+        """Construct a Projection between domains source and destination.
+        """
+        super(Projection, self).__init__()
 
-    if isinstance(source,str):
-      self.source = source
-    elif isinstance(source,SubDomain):
-      self.source = source.subdomain()
-    else:
-      raise ValueError("A projection can only be initialized with names or SubDomains")
+        if isinstance(source,str):
+            self.source = source
+        elif isinstance(source,SubDomain):
+            self.source = source.subdomain()
+        else:
+            raise ValueError("A projection can only be initialized with "
+                + "names or SubDomains")
 
-    if isinstance(destination,str):
-      self.destination = destination
-    elif isinstance(destination,SubDomain):
-      self.destination = destination.subdomain()
-    else:
-      raise ValueError("A projection can only be initialized with names or SubDomains")
+        if isinstance(destination,str):
+            self.destination = destination
+        elif isinstance(destination,SubDomain):
+            self.destination = destination.subdomain()
+        else:
+            raise ValueError("A projection can only be initialized with "
+                + "names or SubDomains")
 
 
-  def relates(self,source,destination):
-
-    return (((self.source == source) and (self.destination == destination)) or
+    def relates(self,source,destination):
+        """Returns True if this Projection is between the two given
+           domains.
+        """
+        return (((self.source == source) and
+            (self.destination == destination)) or
             ((self.source == destination) and (self.destination == source)))
 
 
-  def project(self, subdomain, destination):
-    raise NotImplementedError("Cannot perform projection.")
+    def project(self, subdomain, destination):
+        """Take the IDs in the given subdomain and returns a SubDomain of
+           those IDs as projected into the given destination.
+        """
+        raise NotImplementedError("Cannot perform projection.")
 
 #  def make_projection_dict(self, subdomain, destination):
 #    """Makes a dict from each domain_id in the subdomain.
@@ -55,63 +68,79 @@ class Projection(object):
 #
 #    return projection_dict
 
-  def source_ids(self):
-      """Returns all of the ids associated with the source subdomain.
-         If unable to calculate these ids, return None.
+    def source_ids(self):
+        """Returns all of the ids associated with the source subdomain.
+           If unable to calculate these ids, return None.
 
-         This is for making tables out of the subdomain.
-      """
-      return None
+           This is for making tables out of the subdomain.
+        """
+        return None
 
-  def destination_ids(self):
-      """Returns all of the ids associated with the destination subdomain.
-         If unable to calculate these ids, return None.
+    def destination_ids(self):
+        """Returns all of the ids associated with the destination subdomain.
+           If unable to calculate these ids, return None.
 
-         This is for making tables out of the subdomain.
-      """
-      return None
+           This is for making tables out of the subdomain.
+        """
+        return None
 
-  @classmethod
-  def instantiate(cls, key, source, destination, **kwargs):
+    @classmethod
+    def instantiate(cls, key, source, destination, **kwargs):
+        """Create a Projection between source and destination where
+           the Projection is associated with the given key. The **kwargs
+           are any that may be required by the Projection.
+        """
+        if hasattr(cls, 'input_file_key') and \
+            cls.input_file_key.upper() == key.upper():
+            return cls(source, destination, **kwargs)
+        else:
+            for s in cls.__subclasses__():
+                result = s.instantiate(key, source, destination, **kwargs)
+                if result is not None:
+                    return result
+            return None
 
-      if hasattr(cls, 'input_file_key') and cls.input_file_key == key:
-          return cls(source, destination, **kwargs)
-      else:
-          for s in cls.__subclasses__():
-              result = s.instantiate(key, source, destination, **kwargs)
-              if result is not None:
-                  return result
-          return None
 
 @InputFileKey("identity")
 class IdentityProjection(Projection):
-  """A default identify mapping, for example, for the standard MPI rank <-> core
-     mapping
-  """
+    """A default identify mapping, for example, for the standard MPI
+       rank <-> core mapping
+    """
 
-  def __init__(self,source = "undefined", destination = "undefined", **kwargs):
-    super(IdentityProjection, self).__init__(source,destination,**kwargs)
+    def __init__(self,source = "undefined", destination = "undefined",
+        **kwargs):
+        """Construct an IdentityProjection."""
+        super(IdentityProjection, self).__init__(source,destination,**kwargs)
 
-  def project(self,subdomain,destination):
-
-    result = SubDomain.instantiate(destination,subdomain)
-    return result
+    def project(self,subdomain,destination):
+        """Projects the subdomain onto the destination by returning the list
+           of IDs found in subdomain packaged in a SubDomain of type
+           destination.
+        """
+        result = SubDomain.instantiate(destination,subdomain)
+        return result
 
 
 @InputFileKey("composition")
 class CompositionProjection(Projection):
-    """Applies the projections in the list of tuples to get from
-       source to destination.
-
-       projection_list: List of (Projection, source, destination) where
-                        the first entry's source is CompositionProjection's
-                        source and the last entry's destination is
-                        CompositionProjection's destination and in between
-                        each source is the destination of the preceeding tuple.
+    """CompositionProjection combines a list of Projections that provide
+       a path between source and destination SubDomains.
     """
 
-    def __init__(self,source="underfined", destination="undefined", **kwargs):
-        super(CompositionProjection, self).__init__(source,destination,**kwargs)
+    def __init__(self,source="undefined", destination="undefined", **kwargs):
+        """Construct a CompositionProjection between source and destination.
+
+           Required keyword argument:
+
+           projection_list
+               List of (Projection, source, destination) where the first
+               entry's source is CompositionProjection's source and the
+               last entry's destination is CompositionProjection's
+               destination and in between each source is the destination of
+               the preceeding tuple.
+        """
+        super(CompositionProjection, self).__init__(source,destination,
+            **kwargs)
 
         if kwargs:
             if 'projection_list' not in kwargs:
@@ -121,6 +150,8 @@ class CompositionProjection(Projection):
 
 
     def project(self, subdomain, destination):
+        """Convert the IDs in subdomain into a SubDomain of type destination.
+        """
         sub = subdomain
         if destination == self.destination:
             for proj, src, dest in self._projection_list:
@@ -134,44 +165,60 @@ class CompositionProjection(Projection):
         return sub
 
     def source_ids(self):
+        """Return a list of all known IDs from the source SubDomain."""
         return self._projection_list[0].source_ids()
 
     def destination_ids(self):
+        """Return a list of all known IDs from the destination Subdomain."""
         return self._projection_list[-1].destination_ids()
 
 
 @InputFileKey("file")
 class TableProjection(Projection):
-  """Mapping defined by Table.
-  """
+    """Mapping defined by Table object."""
 
-  def __init__(self, source = "undefined", destination = "undefined", **kwargs):
-    super(TableProjection, self).__init__(source, destination, **kwargs)
+    def __init__(self, source = "undefined", destination = "undefined",
+        **kwargs):
+        """Construct a TableProjection between source and destination.
 
-    if kwargs:
-        if 'source_key' not in kwargs or 'destination_key' not in kwargs\
-            or 'table' not in kwargs:
-            raise ValueError("TableProjection constructor requires source_key, "
-                + "destination_key, and table.")
-        self._table = kwargs["table"]
-        self._source_key = kwargs["source_key"]
-        self._destination_key = kwargs["destination_key"]
+           Required keyword argument:
 
-        self._source_dict = dict()
-        self._destination_dict = dict()
-        key_lists = self._table.attributes_by_identifiers(
-            self._table.identifiers(), [self._source_key, self._destination_key],
-            unique = False)
-        for source, destination in zip(*key_lists):
-            if source in self._source_dict:
-                self._source_dict[source].append(destination)
-            else:
-                self._source_dict[source] = [destination]
+           table
+               Table object defining projection.
 
-            if destination in self._destination_dict:
-                self._destination_dict[destination].append(source)
-            else:
-                self._destination_dict[destination] = [source]
+           source_key
+               The column name of the source IDs in the table
+
+           destination_key
+               The column name of the destination IDs in the table
+        """
+        super(TableProjection, self).__init__(source, destination, **kwargs)
+
+        if kwargs:
+            if 'source_key' not in kwargs or 'destination_key' not in kwargs\
+                or 'table' not in kwargs:
+                raise ValueError("TableProjection constructor requires "
+                    + "source_key, destination_key, and table.")
+            self._table = kwargs["table"]
+            self._source_key = kwargs["source_key"]
+            self._destination_key = kwargs["destination_key"]
+
+            self._source_dict = dict()
+            self._destination_dict = dict()
+            key_lists = self._table.attributes_by_identifiers(
+                self._table.identifiers(),
+                [self._source_key, self._destination_key],
+                unique = False)
+            for source, destination in zip(*key_lists):
+                if source in self._source_dict:
+                    self._source_dict[source].append(destination)
+                else:
+                    self._source_dict[source] = [destination]
+
+                if destination in self._destination_dict:
+                    self._destination_dict[destination].append(source)
+                else:
+                    self._destination_dict[destination] = [source]
 
 
   #def make_projection_dict(self, subdomain, destination):
@@ -185,23 +232,26 @@ class TableProjection(Projection):
   #            if key in subdomain }
 
 
-  def project(self, subdomain, destination):
+    def project(self, subdomain, destination):
+        """Convert the IDs in subdomain into a SubDomain of type destination.
+        """
+        keys = list()
+        if destination == self.destination:
+            for domain_id in subdomain:
+                keys.extend(self._source_dict[domain_id])
+        else:
+            for domain_id in subdomain:
+                keys.extend(self._destination_dict[domain_id])
 
-      keys = list()
-      if destination == self.destination:
-          for domain_id in subdomain:
-              keys.extend(self._source_dict[domain_id])
-      else:
-          for domain_id in subdomain:
-              keys.extend(self._destination_dict[domain_id])
+        return SubDomain.instantiate(destination, list(set(keys)))
 
-      return SubDomain.instantiate(destination, list(set(keys)))
+    def source_ids(self):
+        """Return a list of all known IDs from the source SubDomain."""
+        return [x for x in self._source_dict]
 
-  def source_ids(self):
-      return [x for x in self._source_dict]
-
-  def destination_ids(self):
-      return [x for x in self._destination_dict]
+    def destination_ids(self):
+        """Return a list of all known IDs from the destination Subdomain."""
+        return [x for x in self._destination_dict]
 
 
 
@@ -215,7 +265,7 @@ class NodeLinkProjection(Projection):
        Destination: Links mapped to their destination node. Nodes mapped to
                     link ends.
 
-       Both: Double counts... links mapped to both source and destination 
+       Both: Double counts. Links mapped to both source and destination
              nodes. Nodes mapped onto all links they are incident upon.
 
 
@@ -226,21 +276,39 @@ class NodeLinkProjection(Projection):
        the nodes and coordinates of the source and destination for links.
        The projection is based upon these coordinates.
     """
-    def __init__(self, source = "undefined", destination = "undefined", **kwargs):
+    def __init__(self, source = "undefined", destination = "undefined",
+        **kwargs):
         """Construct a NodeLink Projection.
 
-        run: RunItem governing this projection
-        node_policy: how nodes map onto links
-        link_policy: how links map onto nodes
+           Required keyword arguments:
 
-        Policies: 'Source', 'Destination', and 'Both'
+           run
+                RunItem governing this projection
+
+           node_policy
+                How nodes map onto links
+
+           link_policy
+                How links map onto nodes
+
+            Policies: 'Source', 'Destination', and 'Both'
+
+            Source: Links mapped to their source node. Nodes mapped to all
+                    links emanating from them.
+
+            Destination: Links mapped to their destination node. Nodes
+                         mapped to link ends.
+
+            Both: Double counts. Links mapped to both source and
+                  destination nodes. Nodes mapped onto all links they are
+                  incident upon.
         """
         super(NodeLinkProjection, self).__init__(Nodes(), Links(), **kwargs)
 
         if kwargs:
             if 'run' not in kwargs or 'node_policy' not in kwargs\
                 or 'link_policy' not in kwargs:
-                raise ValueError("NodeLinkProjection constructor requires " 
+                raise ValueError("NodeLinkProjection constructor requires "
                 + "run, node_policy, and link_policy.")
 
             self.run = kwargs['run']
@@ -253,14 +321,16 @@ class NodeLinkProjection(Projection):
             # to our own hardcoded defaults
             hardware_info = self.run["hardware"]
 
-            self.source_table = self.run.getTable(hardware_info["coords_table"])
+            self.source_table = \
+                self.run.getTable(hardware_info["coords_table"])
             self.destination_table = self.run.getTable(
                 hardware_info["link_coords_table"])
 
             self.coords = hardware_info["coords"]
-            self.source_coords = [hardware_info["source_coords"][coord] 
+            self.source_coords = [hardware_info["source_coords"][coord]
                 for coord in self.coords]
-            self.destination_coords = [hardware_info["destination_coords"][coord] 
+            self.destination_coords \
+                = [hardware_info["destination_coords"][coord]
                 for coord in self.coords]
 
 
@@ -294,7 +364,7 @@ class NodeLinkProjection(Projection):
             link_coord_names.extend(self.destination_coords)
             link_coords, link_ids \
                 = self.destination_table._table.group_attributes_by_attributes(
-                self.destination_table._table.identifiers(), 
+                self.destination_table._table.identifiers(),
                 link_coord_names, [self.destination_table['field']], 'mean')
             for link_id, link_tuple in zip(link_ids[0], link_coords):
                 link_id = int(link_id)
@@ -311,14 +381,20 @@ class NodeLinkProjection(Projection):
                     self.coord_link_dict_source[source].append(link_id)
                 if destination not in self.coord_link_dict_destination:
                     self.coord_link_dict_destination[destination] = [link_id]
-                elif link_id not in self.coord_link_dict_destination[destination]:
-                    self.coord_link_dict_destination[destination].append(link_id)
+                elif link_id \
+                    not in self.coord_link_dict_destination[destination]:
+                    self.coord_link_dict_destination[destination].append(
+                        link_id)
 
 
             self.make_dicts()
 
-    
+
     def make_dicts(self):
+        """Creates dicts that map node IDs to lists of link IDs and vice
+           versa. These are created based on node_policy and link_policy
+           and used to peform the projections.
+        """
         self.node_dict = dict()
         self.link_dict = dict()
         for node_id in self.node_coord_dict:
@@ -337,8 +413,8 @@ class NodeLinkProjection(Projection):
                     self.link_dict[link_id].append(node_id)
 
             self.node_dict[node_id] = link_list
-  
-  
+
+
 #    def make_projection_dict(self, subdomain, destination):
 #        if destination == self.destination:
 #            return { key : val for key, val in self.node_dict.iteritems()
@@ -349,6 +425,8 @@ class NodeLinkProjection(Projection):
 
 
     def project(self, subdomain, destination):
+        """Convert the IDs in subdomain into a SubDomain of type destination.
+        """
         keys = list()
         if destination == self.destination: # Nodes -> Links
             for node_id in subdomain:
@@ -356,19 +434,23 @@ class NodeLinkProjection(Projection):
         else:
             for link_id in subdomain:
                 keys.extend(self.link_dict[link_id])
-            
+
         return SubDomain.instantiate(destination, list(set(keys)))
 
 
     def update_policies(self, node_policy, link_policy):
-
+        """Changes the node and link policies to the ones given and re-makes
+           the projection dicts accordingly.
+        """
         self.node_policy = node_policy
         self.link_policy = link_policy
 
         self.makedicts()
 
     def source_ids(self):
+        """Return a list of all known IDs from the source SubDomain."""
         return [x for x in self.node_dict]
 
     def destination_ids(self):
+        """Return a list of all known IDs from the destination Subdomain."""
         return [x for x in self.link_dict]
