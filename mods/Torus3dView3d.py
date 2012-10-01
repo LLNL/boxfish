@@ -115,13 +115,7 @@ class GLTorus3dView(GLWidget):
         for node in np.ndindex(*self.colorModel.shape):
             glPushMatrix()
             self.centerNode(node)
-
-            # average positive and negative color values
-            # TODO: should color model just store the normalized values?
-            # TODO: Averaging colors doesn't really make sense if the color map isn't linear.
-            pos = self.colorModel.pos_link_colors[node]
-            neg = self.colorModel.neg_link_colors[node]
-            colors = (pos + neg) / 2
+            colors = self.colorModel.avg_link_colors[node]
 
             # Draw links for each dim as poly cylinders
             for dim in range(3):

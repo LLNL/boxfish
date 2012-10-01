@@ -218,11 +218,7 @@ class GLTorus2dView(GLWidget):
 
         shape, axis = self.shape, self.axis
         for start_node in np.ndindex(*shape):
-            # average positive and negative color values on links
-            x, y, z = start_node
-            pos = self.colorModel.pos_link_colors[x, y, z]
-            neg = self.colorModel.neg_link_colors[x, y, z]
-            colors = (pos + neg) / 2
+            colors = self.colorModel.avg_link_colors[start_node]
 
             start_cyl = cylinder(start_node, shape, axis)
             start = np.array(self.map2d(start_node))

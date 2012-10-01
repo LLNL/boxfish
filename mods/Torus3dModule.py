@@ -135,6 +135,7 @@ class Torus3dViewColorModel(object):
     def clearLinks(self):
         self.pos_link_colors = np.tile(self.default_link_color, self._shape + [3, 1])
         self.neg_link_colors = np.tile(self.default_link_color, self._shape + [3, 1])
+        self.avg_link_colors = np.tile(self.default_link_color, self._shape + [3, 1])
 
     def setShape(self, shape):
         if self._shape != shape:
@@ -175,7 +176,13 @@ class Torus3dViewColorModel(object):
         self.shape = shape
 
         # Make sure we have no more values than links
-        assert len(vals) <= (np.product(self.shape) * 6)
+        num_values = len(vals)
+        num_links = np.product(self.shape) * 6
+        if num_values > num_links:
+            raise ValueError("received %d values for %d links!"
+                             % (num_values, num_links))
+
+        avg_link_values = np.zeros(self._shape + [3, 1])
 
         cval = cmap_range(vals)
         for coord, val in zip(coords, vals):
@@ -186,15 +193,19 @@ class Torus3dViewColorModel(object):
             diff = end - start               # difference bt/w start and end
             axis = np.nonzero(diff)[0]       # axis where start and end differ
 
-            c = self.node_cmap(cval(val))
-            if diff[axis] == 1:    # positive direction link
+            c = self.link_cmap(cval(val))
+            if diff[axis] == 1 or diff[axis] < -1:   # positive direction link
                 self.pos_link_colors[sx, sy, sz, axis] = c
-            elif diff[axis] == -1: # negative direction link
+                avg_link_values[sx, sy, sz, axis] += val
+            elif diff[axis] == -1 or diff[axis] > 1: # negative direction link
                 self.neg_link_colors[tx, ty, tz, axis] = c
-            elif diff[axis] < 0:   # positive torus wraparound link
-                self.pos_link_colors[sx, sy, sz, axis] = c
-            elif diff[axis] > 0:   # negative torus wraparound link
-                self.neg_link_colors[tx, ty, tz, axis] = c
+                avg_link_values[tx, ty, tz, axis] += val
+
+        for index in np.ndindex(self.shape):
+            x, y, z = index
+            for axis in range(3):
+                color = cval(avg_link_values[x, y, z, axis])
+                self.avg_link_colors[x, y, z, axis] = self.link_cmap(color)
 
         self._notifyListeners()
 
