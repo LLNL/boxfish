@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# Makes a timestamped, commit-stamped archive of the current HEAD.
+# Author: Todd Gamblin
+#
+head=$(git rev-parse --short HEAD)
+tstamp=$(date +%Y-%m-%d)
+
+git archive --format=tar.gz --prefix="boxfish-${tstamp}-${head}/" HEAD -o boxfish-${tstamp}-${head}.tar.gz
+
