@@ -776,7 +776,10 @@ class DataTree(QAbstractItemModel):
                 filepath = os.path.join(os.path.dirname(filename),
                     filedict['filename'])
                 metadata, data = yl.load_table(filepath)
-                combined_meta = dict(metadata.items() + filedict.items())
+                if metadata:
+                    combined_meta = dict(metadata.items() + filedict.items())
+                else:
+                    combined_meta = filedict
                 atable = Table()
                 atable.fromRecArray(data_type, filedict['field'], data)
                 self.insertTable(filedict['filename'], atable, combined_meta, \
@@ -807,7 +810,10 @@ class DataTree(QAbstractItemModel):
                     filepath = os.path.join(os.path.dirname(filename),
                         filedict['filename'])
                     metadata, data = yl.load_table(filepath)
-                    combined_meta = dict(metadata.items() + filedict.items())
+                    if metadata:
+                        combined_meta = dict(metadata.items() + filedict.items())
+                    else:
+                        combined_meta = filedict
                     atable = Table()
                     atable.fromRecArray(mydomains[0], mykeys[0], data)
                     aprojection = TableProjection(mydomains[0], mydomains[1],
