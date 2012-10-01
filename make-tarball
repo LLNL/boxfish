@@ -3,8 +3,9 @@
 # Makes a timestamped, commit-stamped archive of the current HEAD.
 # Author: Todd Gamblin
 #
-head=$(git rev-parse --short HEAD)
-tstamp=$(date +%Y-%m-%d)
+head=`git log -1 --format="%h" HEAD`
+dstamp=`git log -1 --format="%ct" HEAD | perl -MPOSIX -le 'print strftime "%F", localtime <STDIN>'`
 
-git archive --format=tar.gz --prefix="boxfish-${tstamp}-${head}/" HEAD -o boxfish-${tstamp}-${head}.tar.gz
+filename="boxfish-${dstamp}-${head}"
+git archive --format=tar.gz --prefix="${filename}/" HEAD -o ${filename}.tar.gz
 
