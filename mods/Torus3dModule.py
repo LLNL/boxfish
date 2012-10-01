@@ -156,6 +156,22 @@ class Torus3dViewColorModel(object):
     def unregisterListener(self, listener):
         self.listeners.remove(listener)
 
+    def map_node_color(self, node_val):
+        """Turns a color value in [0,1] into a 4-tuple RGBA color"""
+        return self.node_cmap(cval(val))
+
+    def map_node_color(self, val):
+        """Turns a color value in [0,1] into a 4-tuple RGBA color.
+           Used to map nodes.
+        """
+        return self.node_cmap(val)
+
+    def map_link_color(self, val):
+        """Turns a color value in [0,1] into a 4-tuple RGBA color.
+           Used to map links.
+        """
+        return self.link_cmap(val)
+
     @Slot(list, list)
     def updateNodeData(self, shape, coords, vals):
         if not vals:
@@ -165,7 +181,7 @@ class Torus3dViewColorModel(object):
         cval = cmap_range(vals)
         for coord, val in zip(coords, vals):
             x, y, z = coord
-            self.node_colors[x, y, z] = self.node_cmap(cval(val))
+            self.node_colors[x, y, z] = self.map_node_color(cval(val))
 
         self._notifyListeners()
 
@@ -193,7 +209,7 @@ class Torus3dViewColorModel(object):
             diff = end - start               # difference bt/w start and end
             axis = np.nonzero(diff)[0]       # axis where start and end differ
 
-            c = self.link_cmap(cval(val))
+            c = self.map_link_color(cval(val))
             if diff[axis] == 1 or diff[axis] < -1:   # positive direction link
                 self.pos_link_colors[sx, sy, sz, axis] = c
                 avg_link_values[sx, sy, sz, axis] += val
@@ -204,8 +220,8 @@ class Torus3dViewColorModel(object):
         for index in np.ndindex(self.shape):
             x, y, z = index
             for axis in range(3):
-                color = cval(avg_link_values[x, y, z, axis])
-                self.avg_link_colors[x, y, z, axis] = self.link_cmap(color)
+                color_val = cval(avg_link_values[x, y, z, axis])
+                self.avg_link_colors[x, y, z, axis] = self.map_link_color(color_val)
 
         self._notifyListeners()
 
