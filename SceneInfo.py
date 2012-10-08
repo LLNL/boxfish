@@ -43,7 +43,7 @@ class HighlightScene(Scene):
         """Creates a copy of this HighlightScene."""
         highlights = list()
         for highlight_set in self.highlight_sets:
-            highlights.appen(highlight_set.copy())
+            highlights.append(highlight_set.copy())
         return HighlightScene(highlights)
 
 
@@ -59,12 +59,12 @@ class HighlightSet(object):
                A SubDomain containing the highlighted ids.
 
            run
-               The DataTree index of the run under which these
-                 highlights fall.
+               The DataTree item of the run under which these
+               highlights fall.
         """
         super(HighlightSet, self).__init__()
         self.highlights = highlights # Subdomain
-        self.run = run # QModelIndex
+        self.run = run # RunItem
 
     def copy(self):
         """Creates a copy of this HighlightSet."""

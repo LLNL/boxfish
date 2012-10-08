@@ -1,5 +1,6 @@
 from ModuleAgent import *
 from ModuleView import *
+from SceneInfo import *
 
 import sys
 from PySide.QtCore import Signal, Slot
@@ -75,14 +76,24 @@ class TableAgent(ModuleAgent):
            determine what currently in this module could be highlighted
            and alert any listening views.
         """
+        if self.tables is None:
+            return 
+
         table_highlights = list()
         # Note, right now, via ModuleAgent, this is assuming that all
         # runs project to each other via Identity
         for table, run in zip(self.tables, self.runs):
             ids = self.getHighlightIDs(table, run)
-            table_highlights.append(id)
+            table_highlights.append(ids)
 
         self.highlightUpdateSignal.emit(table_highlights)
+
+    def changeHighlights(self, table, run, ids):
+        """Change the highlights associated with this module. This
+           function is meant to be called by the view when it
+           detects highlights have changed.
+        """
+        self.setHighlights([table], [run], [ids])
 
 
 
@@ -118,6 +129,7 @@ class TableView(ModuleView):
         # agent is not None, so the check is not required hereafter.
         if self.agent is not None:
             self.agent.tableUpdateSignal.connect(self.updateTables)
+            self.agent.highlightUpdateSignal.connect(self.updateSelection)
 
 
     def createView(self):
@@ -172,10 +184,22 @@ class TableView(ModuleView):
             tableWidget.idsChanged.connect(self.selectionChanged)
             self.tabs.addTab(tableWidget, table)
 
+    @Slot(list)
+    def updateSelection(self, table_highlights):
+        """Highlight the given table ids.
+
+           table_highlights
+               A list of lists of ids, one per table
+        """
+        for i, ids in enumerate(table_highlights):
+            table = self.tabs.widget(i)
+            table.selectRows(ids)
+
+
     @Slot(str, str, set)
     def selectionChanged(self, table, run, ids):
-        print table
-        print ids
+        """Pass along the selection information to the agent."""
+        self.agent.changeHighlights(table, run, ids)
 
 
 class TableTab(QTableWidget):

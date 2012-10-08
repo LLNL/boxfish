@@ -60,7 +60,7 @@ class ModuleAgent(QObject):
         # with projections.
         self.apply_highlights = True
         self._propagate_highlights = False
-        self._highlights = HighlightScene() # Local highlights
+        self.highlights = HighlightScene() # Local highlights
 
         # Reference highlights for subtree
         self._highlights_ref = HighlightScene()
@@ -334,12 +334,35 @@ class ModuleAgent(QObject):
         # Since there was no direct way, we need to find and apply projections
         for hs in self._highlights.highlight_sets:
             projection = runItem.getProjection(tableDomain,
-                hs.highlights)
+                hs.highlights.subdomain())
             if projection is not None:
                 highlights.extend(projection.project(hs.highlights, tableDomain))
         
         return highlights
 
+    def setHighlights(self, tables, runs, ids):
+        """Sets the highlight of this particular agent and announces the change.
+
+           tables
+               A list of table names for the highlights
+
+           runs
+               A list of run names for the highlights
+
+           ids
+               A list of lists of ids, one for each table, of the highlights.
+        """
+        highlight_sets = list()
+        for table, run, ids in zip(tables, runs, ids):
+            runItem = self.datatree.getRun(run)
+            tableItem = runItem.getTable(table)
+            domain = tableItem._table.subdomain()
+
+            highlight_sets.append(HighlightSet(
+                SubDomain.instantiate(domain, ids),
+                runItem))
+        self._highlights.highlight_sets = highlight_sets
+        self._highlights.announceChange()
 
 
     @property
@@ -413,7 +436,7 @@ class ModuleAgent(QObject):
             self._highlights_ref = scene
 
             if self.apply_highlights:
-                self._highlights.highlight_set = scene.highlight_set
+                self._highlights.highlight_sets = scene.highlight_sets
                 self.highlightSceneChangeSignal.emit()
         elif isinstance(scene, ModuleScene):
             # And we update our module scene dict
