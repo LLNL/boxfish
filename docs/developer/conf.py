@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Boxfish'
-copyright = u'2012, PAVE'
+copyright = u'2012, Lawrence Livermore National Security, LLC'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -96,7 +96,19 @@ html_theme = 'default'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {
+    "footerbgcolor": "DarkGrey",
+    "footertextcolor": "White",
+    "sidebarbgcolor": "LightGrey",
+    "sidebartextcolor": "Black",
+    "sidebarlinkcolor": "RoyalBlue",
+    "relbarbgcolor": "Black",
+    "linkcolor": "RoyalBlue",
+    "visitedlinkcolor": "RoyalBlue",
+    "headtextcolor": "Black",
+    "bodyfont": "Helvetica, 'Lucida Sans Unicode', Tahoma, Arial, sans-serif",
+    "headfont": "Helvetica, 'Lucida Sans Unicode', Tahoma, Arial, sans-serif"
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
@@ -228,7 +240,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'Boxfish', u'Boxfish Documentation',
-   u'PAVE', 'Boxfish', 'One line description of project.',
+   u'PAVE', 'Boxfish', 'Performance Data Visualizer.',
    'Miscellaneous'),
 ]
 
