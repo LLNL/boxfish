@@ -114,6 +114,50 @@ class ModuleAgent(QObject):
         if name not in self.requests:
             raise ValueError("No request named " + name)
         self.requests[name].indices = indices
+    
+    def requestOnDomain(self, name, domain_table, row_aggregator,
+        attribute_aggregator, domain_attributes = list(),
+        domain_aggregator = "mean"):
+        """Gets results of the request, aggregated by the domain of
+           the domain table.
+
+           name
+               The tag of the request on which to perform this operation.
+
+           domain_table
+               Domain table on which to process a request. Requested indices
+               will be projected onto this domain.
+
+           row_aggregator
+               Aggregation operator for combining rows on an ID
+
+           attribute_aggregator
+               Aggregation operator for combining attributes (columns) for
+               each row if multiple indices have been added to this Request.
+
+           domain_attributes
+               Optional list of attributes from the domain_table to fetch
+               along with non-filtered domain ID rows.
+
+           domain_aggregator
+               Aggregation operator for combining rows with the same ID but
+               potentially different domain_attriute values.
+
+           Returns:
+               ids
+                  List of ids from the domain_table.
+
+               values
+                   List of lists that go with the ids. The first list is the
+                   aggregated request. All additional lists are the
+                   requested domain_attributes
+        """
+        if name not in self.requests:
+            raise ValueError("No request named " + name)
+
+        return self.requests[name].aggregateDomain(domain_table,
+            row_aggregator, attribute_aggregator, domain_attributes,
+            domain_aggregator)
 
     # This is likely to change to something that forces domain IDs
     def requestGroupBy(self, name, group_by_attributes, group_by_table,
@@ -306,21 +350,24 @@ class ModuleAgent(QObject):
            domain as the table, all will be applied.
 
            table
-               String name of a table in the DataTree.
+               TableItem or string name of a table in the DataTree.
 
            run
-               String name of the corresponding run in the DataTree
+               RunItem or string name of the corresponding run in the DataTree
 
 
            Note, at this time, assumes identity projections between
            runs. This may change.
         """
-        runItem = self.datatree.getRun(run)
-        if runItem is None:
-            return
-        tableItem = runItem.getTable(table)
-        if tableItem is None:
-            return
+        if not isinstance(run, RunItem):
+            runItem = self.datatree.getRun(run)
+            if runItem is None:
+                return
+
+        if not isinstance(table, TableItem):
+            tableItem = runItem.getTable(table)
+            if tableItem is None:
+                return
 
         tableDomain = tableItem._table.subdomain()
         highlights = SubDomain.instantiate(tableDomain)
