@@ -324,15 +324,20 @@ class ModuleAgent(QObject):
 
         tableDomain = tableItem._table.subdomain()
         highlights = SubDomain.instantiate(tableDomain)
-        for highlight_set in self._highlights.highlight_sets:
-            if highlight_set.highlights.subdomain() == tableDomain:
-                highlights.extend(highlight_set.highlights)
+        for hs in self._highlights.highlight_sets:
+            if hs.highlights.subdomain() == tableDomain:
+                highlights.extend(hs.highlights)
 
         if len(highlights) > 0: # We found a SubDomain match
             return highlights
 
         # Since there was no direct way, we need to find and apply projections
-        # TODO
+        for hs in self._highlights.highlight_sets:
+            projection = runItem.getProjection(tableDomain,
+                hs.highlights)
+            if projection is not None:
+                highlights.extend(projection.project(hs.highlights, tableDomain))
+        
         return highlights
 
 

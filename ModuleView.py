@@ -432,6 +432,65 @@ class BFDockWidget(QDockWidget):
         super(BFDockWidget, self).closeEvent(e)
 
 
+class DragDockLabel(QLabel):
+    """This creates a label that can be used for BFDockWidget
+       Drag & Drop operations. This is the black bar found under
+       the title bar of all DockWidgets that can be used to drag
+       and drop the Modules.
+    """
+
+    def __init__(self, dock):
+        """Construct a DragDockLabel for the given dock."""
+        super(DragDockLabel,self).__init__("Drag Me")
+
+        self.dock = dock
+        self.setAcceptDrops(True)
+        self.setScaledContents(True)
+        self.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        self.setToolTip("Click and drag to change parent.")
+
+        pm = QPixmap(1,10)
+        pm.fill(Qt.black)
+        self.setPixmap(pm)
+
+    def mousePressEvent(self, e):
+        pass
+
+    def mouseMoveEvent(self, e):
+        """On drag, create a ModuleViewMime containing the dock that
+           contains this label.
+        """
+        drag = QDrag(self)
+        drag.setMimeData(ModuleViewMime(self.dock))
+        dropAction = drag.start(Qt.MoveAction)
+
+
+
+class DragToolBar(QToolBar):
+    """This creates a toolbar that can be used for BFDockWidget
+       Drag & Drop operations to drag the containing DocKWidget.
+    """
+
+    def __init__(self, title, parent, dock):
+        """Construct a DragToolBar with the given title and Qt parent and
+           belonging to the given dock.
+        """
+        super(DragToolBar, self).__init__(title, parent)
+
+        self.dock = dock
+
+    def mousePressEvent(self, e):
+        pass
+
+    def mouseMoveEvent(self, e):
+        """On drag, create a ModuleViewMime containing the dock that
+           contains this toolbar.
+        """
+        drag = QDrag(self)
+        drag.setMimeData(ModuleViewMime(self.dock))
+        dropAction = drag.start(Qt.MoveAction)
+
+
 class ModuleViewMime(QMimeData):
     """This allows passing of the QDockWidget between windows
        during Drag & Drop.
