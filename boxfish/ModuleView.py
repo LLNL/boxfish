@@ -132,7 +132,7 @@ class ModuleView(QMainWindow):
         """Creates a module and inserts it into the Boxfish tree.
 
            module_name
-               The display name of the module used to determine the 
+               The display name of the module used to determine the
                specific type of ModelView/ModelAgent to create.
 
            parent
@@ -409,7 +409,7 @@ class BFDockWidget(QDockWidget):
             super(BFDockWidget, self).mousePressEvent(e)
 
     # Attempts to have DockWidget be drag/droppable between DockWidgets
-    # with modifier buttons. I haven't been able to do this with a 
+    # with modifier buttons. I haven't been able to do this with a
     # mouse button and even though the keyboard modifier works, there
     # has been some odd behavior with widgets momentarily jumping out
     # of their parent visually.
@@ -673,7 +673,7 @@ class OverlayDialog(QDialog):
     """
 
     def __init__(self, parent, widget):
-        """Construct an OverlayDialog with the given Qt GUI parent and 
+        """Construct an OverlayDialog with the given Qt GUI parent and
            displaying the given widget.
         """
         super(OverlayDialog, self).__init__(parent, Qt.SplashScreen)

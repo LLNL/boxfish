@@ -1,15 +1,16 @@
-from PySide.QtCore import *
-from ModuleAgent import *
-from ModuleView import *
-
-import TorusIcons
 import sys
 import numpy as np
 import matplotlib.cm as cm
 
+from PySide.QtCore import *
+
+from boxfish.ModuleAgent import *
+from boxfish.ModuleView import *
+import TorusIcons
+
 class Torus3dAgent(ModuleAgent):
     # shape, ids, values, id->coords dict, coords->id dict
-    nodeUpdateSignal = Signal(list, list, list, dict, dict) 
+    nodeUpdateSignal = Signal(list, list, list, dict, dict)
     linkUpdateSignal = Signal(list, list, list, dict, dict)
 
     # rotation and translation
@@ -57,16 +58,16 @@ class Torus3dAgent(ModuleAgent):
 
             self.node_coords_dict, self.coords_node_dict = \
                 self.coords_table.createIdAttributeMaps(coords)
-            
+
 
             link_coords = [hardware["source_coords"][coord]
-                for coord in coords] 
+                for coord in coords]
             link_coords.extend([hardware["destination_coords"][coord]
                 for coord in coords])
             self.link_coords_table = run.getTable(hardware["link_coords_table"])
             self.link_coords_dict, self.coords_link_dict = \
                 self.link_coords_table.createIdAttributeMaps(link_coords)
-                
+
 
     def requestUpdated(self, name):
         if name == "nodes":

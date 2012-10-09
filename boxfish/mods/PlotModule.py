@@ -1,6 +1,3 @@
-from ModuleAgent import *
-from ModuleView import *
-
 import sys
 import matplotlib
 import numpy as np
@@ -10,11 +7,13 @@ matplotlib.rcParams['backend.qt4']='PySide'
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import \
     FigureCanvasQTAgg as FigureCanvas
-#from matplotlib.backends.backend_qt4agg import \
-#    NavigationToolbar2QT as NavigationToolbar
 
 from PySide.QtCore import *
 from PySide.QtGui import *
+
+from boxfish.ModuleAgent import *
+from boxfish.ModuleView import *
+
 
 class PlotterAgent(ModuleAgent):
 
@@ -104,9 +103,9 @@ class PlotterView(ModuleView):
             # transformed to display coords and inverted (because
             # matplotlib starts at bottom left), then it is xdata
             # otherwise it is ydata
-            
+
             # Event position wrt widget
-            drop_point = event.pos() 
+            drop_point = event.pos()
 
             # Axes position wrt plotter coords
             axes_corner = self.plotter.axes.transAxes.transform((0,0))
@@ -132,7 +131,7 @@ class PlotterWidget(QWidget):
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self)
         self.canvas.mpl_connect('pick_event', self.onPick)
-        
+
         # Toolbar Doesn't get along with Kate's MPL at the moment so the
         # mpl_connects will handle that for the moment
         #self.toolbar = NavigationToolbar(self.canvas, self.canvas)
@@ -141,7 +140,7 @@ class PlotterWidget(QWidget):
         self.canvas.mpl_connect('button_press_event', self.onMouseButtonPress)
         self.lastX = 0
         self.lastY = 0
-        
+
         self.axes = self.fig.add_subplot(111)
 
         vbox = QVBoxLayout()
@@ -155,7 +154,7 @@ class PlotterWidget(QWidget):
         self.axes.set_xlabel("Drag here to set x axis.")
         self.axes.set_ylabel("Drag here to set y axis.")
         print "Drawing"
-        self.canvas.draw() # Why does this take so long on 4726 iMac? 
+        self.canvas.draw() # Why does this take so long on 4726 iMac?
 
 
     def plotData(self, ids, vals):
@@ -213,7 +212,7 @@ class PlotterWidget(QWidget):
     # Calculates the translate required by the drag for a single dimension
     # dtuple - the current limits in some dimension
     # motion - the movement of the drag in pixels in that dimension
-    # figsize - estimate of the size of the figure 
+    # figsize - estimate of the size of the figure
     # Note: the dtuple is in data coordinates, the motion is in pixels,
     # we estimate how much motion there is based on the figsize and then
     # scale it appropriately to the data coordinates to get the proper
@@ -222,20 +221,20 @@ class PlotterWidget(QWidget):
         dmin, dmax = dtuple
         drange = dmax - dmin
         dots = self.fig.dpi * figsize
-        offset = float(motion * drange) / float(dots) 
+        offset = float(motion * drange) / float(dots)
         newmin = dmin + offset
         newmax = dmax + offset
         return tuple([newmin, newmax])
 
-    # When the user clicks the left mouse button, that is the start of 
-    # their drag event, so we set the last-coordinates that are used to 
+    # When the user clicks the left mouse button, that is the start of
+    # their drag event, so we set the last-coordinates that are used to
     # calculate drag
     def onMouseButtonPress(self, event):
         if event.button == 1:
             self.lastX = event.x
             self.lastY = event.y
 
-    # On mouse wheel scrool, we zoom 
+    # On mouse wheel scrool, we zoom
     def onScroll(self, event):
         zoom = event.step
         xmin, xmax = self.calcZoom(self.axes.get_xlim(), 1. + zoom*0.05)
@@ -257,4 +256,4 @@ class PlotterWidget(QWidget):
         newmax = dcenter + dlen*scale
         return tuple([newmin, newmax])
 
-            
+

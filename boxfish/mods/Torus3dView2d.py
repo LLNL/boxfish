@@ -5,11 +5,12 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLE import *
 
-from ModuleView import *
+from boxfish.ModuleView import *
+from boxfish.gl.GLWidget import GLWidget
+from boxfish.gl.glutils import *
+
 from GLModuleScene import *
 from Torus3dModule import *
-from gl.GLWidget import GLWidget
-from gl.glutils import *
 
 
 @Module("3D Torus - 2D View", Torus3dAgent, GLModuleScene)

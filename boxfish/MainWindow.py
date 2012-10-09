@@ -7,7 +7,6 @@ from PySide.QtGui import *
 from FilterBox import *
 from DataModel import *
 from ModuleAgent import *
-from OpenGL.GLUT import glutInit
 
 class MainWindow(QMainWindow):
     """This is the actual main Window of boxfish, containing all other
@@ -110,6 +109,7 @@ class MainWindow(QMainWindow):
         sys.path = saved_syspath # Revert true sys.path
 
         modules = ModuleView.subclassList()
+        print modules
         return modules
 
 class TopAgent(ModuleAgent):
@@ -162,27 +162,5 @@ class ModuleListModel(QStringListModel):
         if role == Qt.DisplayRole:
             if section == 0:
                 return "Modules"
-
-
-if __name__ == "__main__":
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    # May be called on some systems, not on others and the latter
-    # will crash without it if GLUT stuff is used.
-    glutInit(sys.argv)
-
-    app = QApplication(sys.argv)
-    #app.setStyle('plastique')
-    bf = MainWindow()
-
-    # Open runs based on command line arguments
-    if len(sys.argv) > 1:
-        bf.openRun(*sys.argv[1:])
-
-    bf.show()
-    bf.raise_()
-    sys.exit(app.exec_())
-
-
 
 

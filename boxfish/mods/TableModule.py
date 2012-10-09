@@ -1,12 +1,11 @@
-from ModuleAgent import *
-from ModuleView import *
-from SceneInfo import *
-
 import sys
 from PySide.QtCore import Signal, Slot
 from PySide.QtGui import QTabWidget, QTableWidget, QAbstractItemView, \
     QItemSelectionModel
 
+from boxfish.ModuleAgent import *
+from boxfish.ModuleView import *
+from boxfish.SceneInfo import *
 
 class TableAgent(ModuleAgent):
     """This is the agent for the Table Module. It is relatively
@@ -77,7 +76,7 @@ class TableAgent(ModuleAgent):
            and alert any listening views.
         """
         if self.tables is None:
-            return 
+            return
 
         table_highlights = list()
         # Note, right now, via ModuleAgent, this is assuming that all
@@ -124,7 +123,7 @@ class TableView(ModuleView):
         self.selected = []
 
         # self.agent may not be accessible of parent_view is None,
-        # so any actions in the constructor involving agent should 
+        # so any actions in the constructor involving agent should
         # do this check. All other functions are only accessible when
         # agent is not None, so the check is not required hereafter.
         if self.agent is not None:
@@ -133,21 +132,21 @@ class TableView(ModuleView):
 
 
     def createView(self):
-        """This required function creates the main view container for 
+        """This required function creates the main view container for
            this module, in this case a QTabWidget to hold all the table
            views. The rest of the GUI is handled by the superclass.
         """
         self.tabs = QTabWidget()
         return self.tabs
 
-    
+
     def droppedData(self, indexList):
         """Overrides the superclass method to send the agent the dropped
            data indices.
         """
         self.agent.addDataIndices(indexList)
 
-    
+
     @Slot(list, list, list, list, list)
     def updateTables(self, tables, runs, ids, headers, values):
         """Creates table views.
@@ -156,11 +155,11 @@ class TableView(ModuleView):
                A list of tables for which we have data.
 
            ids
-               A list of lists of the corresponding SubDomain ids for 
+               A list of lists of the corresponding SubDomain ids for
                each row of each table's returned values.
 
            headers
-               A list of lists of the column names that go with the 
+               A list of lists of the column names that go with the
                given values for each table.
 
            values
@@ -168,12 +167,12 @@ class TableView(ModuleView):
         """
 
         # We need to save tables, id_lists for selection later
-        self.tables = tables 
+        self.tables = tables
         self.id_lists = ids
-        
+
         if tables is None:
             return
-        
+
         self.tabs.clear() # Get rid of old data
 
         # For each table, create a table view and populate it with the
@@ -237,7 +236,7 @@ class TableTab(QTableWidget):
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setHorizontalHeaderLabels(headers)
         self.itemSelectionChanged.connect(self.handleSelection)
-            
+
         # Populate table
         for index, value_list in enumerate(values):
             for i in range(self.rowCount()):
@@ -255,7 +254,7 @@ class TableTab(QTableWidget):
         selected_items = self.selectedItems()
         for item in selected_items:
             id_set.add(self.ids[item.row()])
-        
+
         self.idsChanged.emit(self.table, self.run, id_set)
 
 
@@ -266,7 +265,7 @@ class TableTab(QTableWidget):
         if self.rowCount() <= 0:
             return
         self.user_selection = False # We don't want to cause this to emit anything
-        
+
         selectionModel = self.selectionModel()
         selectionModel.clearSelection()
         selection = selectionModel.selection()

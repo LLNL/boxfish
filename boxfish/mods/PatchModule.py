@@ -5,11 +5,13 @@ import matplotlib.cm as cm
 from PySide.QtCore import *
 from OpenGL.GLUT import *
 
-from ModuleAgent import *
-from ModuleView import *
-from GLModuleScene import *
-from gl.GLWidget import GLWidget
+from boxfish.ModuleAgent import *
+from boxfish.ModuleView import *
+from boxfish.gl.GLWidget import GLWidget
+
 from Torus3dModule import *
+from GLModuleScene import *
+
 
 class PatchAgent(ModuleAgent):
     patchUpdateSignal = Signal(list,list)
