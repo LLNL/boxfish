@@ -116,8 +116,7 @@ class ModuleAgent(QObject):
         self.requests[name].indices = indices
     
     def requestOnDomain(self, name, domain_table, row_aggregator,
-        attribute_aggregator, domain_attributes = list(),
-        domain_aggregator = "mean"):
+        attribute_aggregator):
         """Gets results of the request, aggregated by the domain of
            the domain table.
 
@@ -135,14 +134,6 @@ class ModuleAgent(QObject):
                Aggregation operator for combining attributes (columns) for
                each row if multiple indices have been added to this Request.
 
-           domain_attributes
-               Optional list of attributes from the domain_table to fetch
-               along with non-filtered domain ID rows.
-
-           domain_aggregator
-               Aggregation operator for combining rows with the same ID but
-               potentially different domain_attriute values.
-
            Returns:
                ids
                   List of ids from the domain_table.
@@ -156,34 +147,8 @@ class ModuleAgent(QObject):
             raise ValueError("No request named " + name)
 
         return self.requests[name].aggregateDomain(domain_table,
-            row_aggregator, attribute_aggregator, domain_attributes,
-            domain_aggregator)
+            row_aggregator, attribute_aggregator)
 
-    # This is likely to change to something that forces domain IDs
-    def requestGroupBy(self, name, group_by_attributes, group_by_table,
-        row_aggregator, attribute_aggregator):
-        """Performs a group by operation on the request of the given name,
-           returning the values of the attributes associated with the
-           request's indices. If the request has no indices associated with
-           it, this returns None,None. Otherwise returns a list of groups
-           and a list of values associated with that group.
-
-           group_by_attributes
-               List of attribute names that will be used to form groups
-
-           group_by_table
-               Name of table where group_by_attributes are found
-
-           row_aggregator
-               Aggregator name for how rows should be combined for each group
-
-           attribute_aggregator
-               Aggregator name for how columns should be combined per row
-        """
-        if name not in self.requests:
-            raise ValueError("No request named " + name)
-        return self.requests[name].groupby(group_by_attributes,
-            group_by_table, row_aggregator, attribute_aggregator)
 
     def requestGetRows(self, name):
         """Gets all rows of all tables for the attributes associated with
@@ -584,101 +549,8 @@ class ModuleRequest(QObject):
         return True
 
 
-    def groupby(self, group_by_attributes, group_by_table, row_aggregator,
-        attribute_aggregator):
-        """Gets results of the request, grouped by the given attributes
-           and aggregated by the given aggregators.
-           group_by_attributes - list of attribute names by which to group
-           group_by_table - table from which those attributes come
-           row_aggregator - how rows should be combined
-           attribute_aggregator - how attributes (columns) should be
-           combined.
-
-           Note, if the groups have overlapping IDs associated with
-           their table, then the values return will have double counting
-           for those IDs in their groups.
-        """
-        if not self.preprocess():
-            return None, None
-
-        # Get mapping of group_by_attributes to their subdomain ID
-        # THIS IS PAINFULLY SLOW
-
-        # This is where we store intermediate values
-        aggregate_values = dict()
-
-        # The groups we need and their corresponding primary key so
-        # we can project data onto them.
-        groups, ids = group_by_table._table.group_attributes_by_attributes(
-            group_by_table._table.identifiers(), group_by_attributes,
-            [group_by_table._table._key], row_aggregator)
-
-        self.attribute_groups = self.sortIndicesByTable(self._indices)
-        for table, attribute_group in self.attribute_groups:
-            # Determine if projection exists, if not, skip
-            projection = group_by_table.getRun().getProjection(
-                group_by_table._table.subdomain(),
-                table._table.subdomain())
-            if projection is None:
-                continue
-
-            # Apply filters
-            identifiers = table._table.identifiers()
-            for modifier in self.coupler.modifier_chain:
-                identifiers = modifier.process(table, identifiers)
-
-            # Determine the attributes
-            attributes = [self.datatree.getItem(x).name
-                for x in attribute_group]
-            attributes.insert(0, table._table._key) # add key for projections
-
-            # Get the attributes and ids for these identifiers
-            attribute_values = table._table.attributes_by_identifiers(
-                identifiers, attributes, False) # We don't want unique values
-
-            if isinstance(projection, IdentityProjection):
-                # Since the projection is Identity, we don't need to process it
-                for row_values in zip(*attribute_values):
-                    domain_id = row_values[0]
-                    if domain_id in aggregate_values:
-                        aggregate_values[domain_id].extend(row_values[1:])
-                    else:
-                        aggregate_values[domain_id] = list(row_values[1:])
-            else: # Other type of projection
-                # Find relevant projection per id
-                projection_memo = dict() # store projections
-                for table_id in set(attribute_values[0]): # unique ids
-                    domain_ids = projection.project(
-                        SubDomain.instantiate(table._table.subdomain(),
-                            [table_id]),
-                        group_by_table._table.subdomain())
-                    projection_memo[table_id] = domain_ids
-
-                # Collect attributes onto proper domain IDs
-                for row_values in zip(*attribute_values):
-                    domain_ids = projection_memo[row_values[0]]
-                    for domain_id in domain_ids:
-                        if domain_id in aggregate_values:
-                            aggregate_values[domain_id].extend(row_values[1:])
-                        else:
-                            aggregate_values[domain_id] = list(row_values[1:])
-
-        # Then get the IDs from the group by table that matter
-        # and associate them with these attributes
-        values = list()
-        for domain_id in ids[0]:
-            if int(domain_id) not in aggregate_values:
-                values.append(0)
-            else:
-                values.append(self.operator[attribute_aggregator](
-                    aggregate_values[int(domain_id)]))
-
-        return groups, [values]
-
-
     def aggregateDomain(self, domain_table, row_aggregator,
-        attribute_aggregator, domain_attributes = list(),
-        domain_aggregator = "mean"):
+        attribute_aggregator):
         """Gets results of the request, aggregated by the domain of
            the domain table.
 
@@ -693,35 +565,21 @@ class ModuleRequest(QObject):
                Aggregation operator for combining attributes (columns) for
                each row if multiple indices have been added to this Request.
 
-           domain_attributes
-               Optional list of attributes from the domain_table to fetch
-               along with non-filtered domain ID rows.
-
-           domain_aggregator
-               Aggregation operator for combining rows with the same ID but
-               potentially different domain_attriute values.
-
            Returns:
                ids
                   List of ids from the domain_table.
 
                values
-                   List of lists that go with the ids. The first list is the
-                   aggregated request. All additional lists are the
-                   requested domain_attributes
+                   List of values that go with the ids. 
         """
         if not self.preprocess():
-            return None, None
+            return  list(), list()
 
         # Get mapping of group_by_attributes to their subdomain ID
         # THIS IS PAINFULLY SLOW
 
         # This is where we store intermediate values
         aggregate_values = dict()
-
-        if len(domain_attributes) > 0:
-            get_domain_attributes = True
-            domain_values = None
 
         self.attribute_groups = self.sortIndicesByTable(self._indices)
 
@@ -746,13 +604,6 @@ class ModuleRequest(QObject):
             # Get the attributes and ids for these identifiers
             attribute_values = table._table.attributes_by_identifiers(
                 identifiers, attributes, False) # We don't want unique values
-
-            # Since we've filtered this table already, might as well get
-            # the domain attributes if we need them
-            if table is domain_table and get_domain_attributes:
-                domain_values = table._table.group_attributes_by_attributes(
-                    identifiers, [table['field']], domain_attributes,
-                    domain_aggregators)
 
             if isinstance(projection, IdentityProjection):
                 # Since the projection is Identity, we don't need to process it
@@ -785,31 +636,11 @@ class ModuleRequest(QObject):
         # and associate them with these attributes
         values = list()
         ids = list()
-        for domain_id, agge_values in aggregate_values:
+        for domain_id, agge_values in aggregate_values.iteritems():
             ids.append(domain_id)
-            values.append(self.operator[attribute_aggregator](
-                aggregate_values[int(domain_id)]))
+            values.append(self.operator[attribute_aggregator](agge_values))
 
-        return_values = list()
-        return_values.append(values)
-
-        # if we still haven't gotten the domain_attributes and we need them...
-        if get_domain_attributes:
-            if domain_values is None:
-                # Apply filters
-                identifiers = domain_table._table.identifiers()
-                for modifier in self.coupler.modifier_chain:
-                    identifiers = modifier.process(domain_table, identifiers)
-
-                domain_values \
-                    = domain_table._table.group_attributes_by_attributes(
-                    identifiers, [domain_table['field']], domain_attributes,
-                    domain_aggregators)
-
-            return_values.appen(domain_values)
-
-
-        return ids, return_values
+        return ids, values
 
 
     def getRows(self):

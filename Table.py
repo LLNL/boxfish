@@ -205,7 +205,27 @@ class Table(object):
 
        Right now we treat these attributes separately, but we could define
        perhaps a list of lists style such that we could aggregate multiple
-       columns and produce a single column.
+       columns and produce a single column. 
+
+       Parameters
+           identifiers
+               list of valid identifiers for this query
+
+           given_attrs
+               attributes to group by
+
+           desired_attrs
+               attributes to find
+
+           aggregator
+               for compressing multiple rows of desired_attrs
+
+       Returns
+           group_list
+              list of tuples of the groups
+
+           desired_list
+              list of desired attribute values
     """
     group_list = list()
     group_dict = dict()

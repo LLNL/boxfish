@@ -57,7 +57,7 @@ Later this may be made significantly simpler.::
     tables, runs, ids, attribute_names, data_lists \
       = self.requestGetRows("descriptive tag")
     
-    # Process data here ..
+    # Process data here ...
     
     self.presentDataSignal.emit(processed_data)
 
@@ -67,20 +67,12 @@ values will be determined by which indices were passed to
 ``requestAddIndices``. For now, any indices passed to ``requestAddIndices``
 clobber any existing ones.
 
-Note that ``requestGetRows(tag)`` returns the data columns associated with
-the passed indices, after applying any filters from modules up the Boxfish
-structure tree. Many modules will want the information from the passed indices
-associated with a particular table or domain. To do this, see the currently in
-flux ``requestGroupBy`` function. Note that to use this function, the module
-needs some way of determining in what table to find its domain information.
-This usually requires querying the meta-information of the run.
-
-Another thing to note is the ``emit`` at the end of ``presentData``. This is
-to notify any attached views that the data associated with the agent has
-changed and in this case pass along that data. This is done using
-``PySide/Qt``'s Signal/Slot mechanism. The agent may have as many as necessary
-that pass along any type and any number of objects, but they must be declared
-as class variables.::
+Note the ``emit`` at the end of ``presentData``. This is to notify any
+attached views that the data associated with the agent has changed and in
+this case pass along that data. This is done using ``PySide/Qt``'s
+Signal/Slot mechanism. The agent may have as many as necessary that pass
+along any type and any number of objects, but they must be declared as class
+variables.::
 
   class MyModuleAgent(ModuleAgent):
 
@@ -89,6 +81,53 @@ as class variables.::
   def __init__(self, parent, datatree):
     super(MyModuleAgent, self).__init__(parent, datatree)
 
+``requestGetRows(tag)`` returns the data columns associated with
+the passed indices, after applying any filters from modules up the Boxfish
+structure tree. Many modules will want the information from the passed indices
+associated with a particular table or domain. To do this we use the 
+``requestOnDomain`` function. Note that to use this function, the module
+needs some way of determining in what table to find its domain information.
+This usually requires querying the meta-information of the run.::
+
+  def addDataIndices(self, indexList):
+    self.requestAddIndices("descriptive tag", indexList)
+    self.getRunInfo(self.datatree.getItem(indexList[0]).getRun())
+    self.presentData()
+
+  def getRunInfo(self, run):
+    if run is not self.run:
+      self.run = run
+      
+      self.my_table = run.getTable(run["meta-info-key-for-table"])
+
+  def presentData(self):
+    entity_ids, values = self.requestOnDomain("descriptive tag",
+      domain_table = self.my_table,
+      row_aggregator = "mean", attribute_aggregator = "max")
+
+    # Process data here ...
+
+    self.presentDataSignal.emit(processed_data)
+
+The view may require more information than just the entity ids to present the
+data. This information may also be encoded in the meta information. For
+convenience, the ``TableItem`` has a function for creating forward and
+backward ``dict`` objects between the table's entity id and a set of its
+attributes.::
+
+  def getRunInfo(self, run):
+    if run is not self.run:
+      self.run = run
+      
+      self.my_table = run.getTable(run["meta-info-key-for-table"])
+      geometry_info = run["meta-info-key-for-geometry"]
+      self.id_to_geom, self.geom_to_id
+        = self.my_table.createIdAttributeMaps(geometry_info)
+
+Here the name of the table of interest is under ``meta-info-key-for-table``
+and a list of its geometry attributes for display is under
+``meta-info-key-for-geometry``. Using this information, two mappings are
+created betwen the two for later user. 
 
 Writing the View
 ----------------

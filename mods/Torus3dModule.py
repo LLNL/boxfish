@@ -8,8 +8,11 @@ import numpy as np
 import matplotlib.cm as cm
 
 class Torus3dAgent(ModuleAgent):
-    nodeUpdateSignal = Signal(list, list, list) # shape, coords, vals
-    linkUpdateSignal = Signal(list, list, list) # shape, coords, vals
+    # shape, ids, values, id->coords dict, coords->id dict
+    nodeUpdateSignal = Signal(list, list, list, dict, dict) 
+    linkUpdateSignal = Signal(list, list, list, dict, dict)
+
+    # rotation and translation
     transformUpdateSignal = Signal(np.ndarray, np.ndarray)
 
     def __init__(self, parent, datatree):
@@ -17,11 +20,13 @@ class Torus3dAgent(ModuleAgent):
 
         self.addRequest("nodes")
         self.addRequest("links")
-        self.coords = None
         self.coords_table = None
-        self.source_coords = None
-        self.destination_coords = None
+        self.node_coords_dict = dict()
+        self.coords_node_dict = dict()
         self.link_coords_table = None
+        self.link_coords_dict = dict()
+        self.coords_link_dict = dict()
+        self.run = None
         self.shape = [0, 0, 0]
         self.receiveModuleSceneSignal.connect(self.processModuleScene)
 
@@ -38,17 +43,30 @@ class Torus3dAgent(ModuleAgent):
         self.updateLinkValues()
 
     def registerRun(self, run):
-        hardware = run["hardware"]
-        self.coords = hardware["coords"]
-        self.coords_table = run.getTable(hardware["coords_table"])
-        self.shape = [hardware["dim"][coord] for coord in self.coords]
+        """Grab the hardware information from this run, verifying it is
+           the appropriate network structure for this module.
 
-        self.source_coords = [hardware["source_coords"][coord]
-            for coord in self.coords]
-        self.destination_coords = [hardware["destination_coords"][coord]
-            for coord in self.coords]
-        self.link_coords_table = run.getTable(hardware["link_coords_table"])
+           TODO: Actually verify.
+        """
+        if run is not self.run:
+            self.run = run
+            hardware = run["hardware"]
+            coords = hardware["coords"]
+            self.coords_table = run.getTable(hardware["coords_table"])
+            self.shape = [hardware["dim"][coord] for coord in coords]
 
+            self.node_coords_dict, self.coords_node_dict = \
+                self.coords_table.createIdAttributeMaps(coords)
+            
+
+            link_coords = [hardware["source_coords"][coord]
+                for coord in coords] 
+            link_coords.extend([hardware["destination_coords"][coord]
+                for coord in coords])
+            self.link_coords_table = run.getTable(hardware["link_coords_table"])
+            self.link_coords_dict, self.coords_link_dict = \
+                self.link_coords_table.createIdAttributeMaps(link_coords)
+                
 
     def requestUpdated(self, name):
         if name == "nodes":
@@ -57,23 +75,20 @@ class Torus3dAgent(ModuleAgent):
             self.updateLinkValues()
 
     def updateNodeValues(self):
-        if self.coords is None:
-            return
-        coordinates, attribute_values = self.requestGroupBy("nodes",
-            self.coords, self.coords_table, "mean", "mean")
-        if attribute_values is not None:
-            self.nodeUpdateSignal.emit(self.shape, coordinates, attribute_values[0])
+        node_ids, values = self.requestOnDomain("nodes",
+            domain_table = self.coords_table,
+            row_aggregator = "mean", attribute_aggregator = "mean")
+        self.nodeUpdateSignal.emit(self.shape, node_ids, values,
+            self.node_coords_dict, self.coords_node_dict)
 
 
     def updateLinkValues(self):
-        if self.source_coords is None or self.destination_coords is None:
-            return
-        coords = self.source_coords[:]
-        coords.extend(self.destination_coords)
-        coordinates, attribute_values = self.requestGroupBy("links",
-            coords, self.link_coords_table, "mean", "mean")
-        if attribute_values is not None:
-            self.linkUpdateSignal.emit(self.shape, coordinates, attribute_values[0])
+        link_ids, values = self.requestOnDomain("links",
+            domain_table = self.link_coords_table,
+            row_aggregator = "mean", attribute_aggregator = "mean")
+        self.linkUpdateSignal.emit(self.shape, link_ids, values,
+            self.link_coords_dict, self.coords_link_dict)
+
 
     @Slot(ModuleScene)
     def processModuleScene(self, module_scene):
@@ -172,21 +187,21 @@ class Torus3dViewColorModel(object):
         """
         return self.link_cmap(val)
 
-    @Slot(list, list)
-    def updateNodeData(self, shape, coords, vals):
+    @Slot(list, list, list, dict, dict)
+    def updateNodeData(self, shape, nodes, vals, node_coord, coord_node):
         if not vals:
             return
         self.shape = shape
 
         cval = cmap_range(vals)
-        for coord, val in zip(coords, vals):
-            x, y, z = coord
+        for node_id, val in zip(nodes, vals):
+            x, y, z = node_coord[node_id]
             self.node_colors[x, y, z] = self.map_node_color(cval(val))
 
         self._notifyListeners()
 
-    @Slot(list, list)
-    def updateLinkData(self, shape, coords, vals):
+    @Slot(list, list, list, dict, dict)
+    def updateLinkData(self, shape, links, vals, link_coord, coord_link):
         if not vals:
             return
         self.shape = shape
@@ -201,10 +216,11 @@ class Torus3dViewColorModel(object):
         avg_link_values = np.zeros(self._shape + [3, 1])
 
         cval = cmap_range(vals)
-        for coord, val in zip(coords, vals):
-            sx, sy, sz, tx, ty, tz = coord
-            start = np.array(coord[0:3])
-            end = np.array(coord[3:])
+        for link_id, val in zip(links, vals):
+            #sx, sy, sz, tx, ty, tz = coord
+            sx, sy, sz, tx, ty, tz = link_coord[link_id]
+            start = np.array(link_coord[link_id][0:3])
+            end = np.array(link_coord[link_id][3:])
 
             diff = end - start               # difference bt/w start and end
             axis = np.nonzero(diff)[0]       # axis where start and end differ
