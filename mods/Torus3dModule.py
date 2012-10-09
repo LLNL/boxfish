@@ -171,10 +171,6 @@ class Torus3dViewColorModel(object):
     def unregisterListener(self, listener):
         self.listeners.remove(listener)
 
-    def map_node_color(self, node_val):
-        """Turns a color value in [0,1] into a 4-tuple RGBA color"""
-        return self.node_cmap(cval(val))
-
     def map_node_color(self, val):
         """Turns a color value in [0,1] into a 4-tuple RGBA color.
            Used to map nodes.
