@@ -255,8 +255,10 @@ class FilterTab(QWidget):
         groupBox = QGroupBox("Clause Workspace")
         layout = QHBoxLayout(groupBox)
 
+        attributeCompleter = QCompleter(self.attributes)
+        attributeCompleter.setCompletionMode(QCompleter.InlineCompletion)
         self.dropAttribute = DropLineEdit(self, self.view.agent.datatree, "",
-            QCompleter(self.attributes))
+            attributeCompleter)
         self.dropRelation = DropTextLabel("__")
         self.dropValue = FilterValueLineEdit(groupBox,
             self.view.agent.datatree, self.dropAttribute)
