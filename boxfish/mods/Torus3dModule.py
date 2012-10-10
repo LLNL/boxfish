@@ -10,10 +10,16 @@ import TorusIcons
 
 class Torus3dAgent(ModuleAgent):
     """This is an agent for all 3D Torus based modules."""
+    
+    # shape, node->coords, coords->node, link->coords, coords->link
+    torusUpdateSignal   = Signal(list, dict, dict, dict, dict)
 
     # shape, ids, values, id->coords dict, coords->id dict
-    nodeUpdateSignal = Signal(list, list, list, dict, dict)
-    linkUpdateSignal = Signal(list, list, list, dict, dict)
+    nodeUpdateSignal = Signal(list, list)
+    linkUpdateSignal = Signal(list, list)
+
+    # node and link ID lists that are now highlighted
+    highlightUpdateSignal = Signal(list, list)
 
     # rotation and translation
     transformUpdateSignal = Signal(np.ndarray, np.ndarray)
@@ -52,9 +58,9 @@ class Torus3dAgent(ModuleAgent):
             hardware = run["hardware"]
             coords = hardware["coords"]
             self.coords_table = run.getTable(hardware["coords_table"])
-            self.shape = [hardware["dim"][coord] for coord in coords]
+            shape = [hardware["dim"][coord] for coord in coords]
 
-            self.node_coords_dict, self.coords_node_dict = \
+            node_coords_dict, coords_node_dict = \
                 self.coords_table.createIdAttributeMaps(coords)
 
 
@@ -63,8 +69,12 @@ class Torus3dAgent(ModuleAgent):
             link_coords.extend([hardware["destination_coords"][coord]
                 for coord in coords])
             self.link_coords_table = run.getTable(hardware["link_coords_table"])
-            self.link_coords_dict, self.coords_link_dict = \
+            link_coords_dict, coords_link_dict = \
                 self.link_coords_table.createIdAttributeMaps(link_coords)
+
+            self.torusUpdateSignal.emit(shape, 
+                node_coords_dict, coords_node_dict,
+                link_coords_dict, coords_link_dict)
 
 
     def requestUpdated(self, name):
@@ -74,19 +84,35 @@ class Torus3dAgent(ModuleAgent):
             self.updateLinkValues()
 
     def updateNodeValues(self):
+        """When the node-related request is updated, this re-grabs the
+           values associated with the node-ids and signals the change.
+        """
         node_ids, values = self.requestOnDomain("nodes",
             domain_table = self.coords_table,
             row_aggregator = "mean", attribute_aggregator = "mean")
-        self.nodeUpdateSignal.emit(self.shape, node_ids, values,
-            self.node_coords_dict, self.coords_node_dict)
+        self.nodeUpdateSignal.emit(node_ids, values)
 
 
     def updateLinkValues(self):
+        """When the link-related request is updated, this re-grabs the
+           values associated with the link-ids and signals the change.
+        """
         link_ids, values = self.requestOnDomain("links",
             domain_table = self.link_coords_table,
             row_aggregator = "mean", attribute_aggregator = "mean")
-        self.linkUpdateSignal.emit(self.shape, link_ids, values,
-            self.link_coords_dict, self.coords_link_dict)
+        self.linkUpdateSignal.emit(link_ids, values)
+
+    @Slot()
+    def processHighlights(self):
+        """When highlights have changed, projects them onto the domains
+           we care about and signals the changed local highlights.
+        """
+        if self.run is not None:
+            node_highlights = self.getHighlightIDs(self.coords_table, self.run)
+            link_highlights = self.getHighlightIDs(self.link_coords_table,
+                self.run)
+
+            self.highlightUpdateSignal.emit(node_highlights, link_highlights)
 
 
     @Slot(ModuleScene)
@@ -160,6 +186,15 @@ class Torus3dViewColorModel(object):
     # enforce that shape always looks like a tuple externally
     shape = property(lambda self: tuple(self._shape), setShape)
 
+    @Slot(list, dict, dict, dict, dict)
+    def updateTorus(self, shape, node_coord, coord_node, link_coord, coord_link):
+        """Updates the shape and id maps of this model to a new torus."""
+        self.shape = shape
+        self.node_to_coord = node_coord
+        self.coord_to_node = coord_node
+        self.link_to_coord = link_coord
+        self.coord_to_link = coord_link
+
     def _notifyListeners(self):
         for listener in self.listeners:
             listener()
@@ -182,24 +217,22 @@ class Torus3dViewColorModel(object):
         """
         return self.link_cmap(val)
 
-    @Slot(list, list, list, dict, dict)
-    def updateNodeData(self, shape, nodes, vals, node_coord, coord_node):
+    @Slot(list, list)
+    def updateNodeData(self, nodes, vals):
         if not vals:
             return
-        self.shape = shape
 
         cval = cmap_range(vals)
         for node_id, val in zip(nodes, vals):
-            x, y, z = node_coord[node_id]
+            x, y, z = self.node_to_coord[node_id]
             self.node_colors[x, y, z] = self.map_node_color(cval(val))
 
         self._notifyListeners()
 
-    @Slot(list, list, list, dict, dict)
-    def updateLinkData(self, shape, links, vals, link_coord, coord_link):
+    @Slot(list, list)
+    def updateLinkData(self, links, vals):
         if not vals:
             return
-        self.shape = shape
 
         # Make sure we have no more values than links
         num_values = len(vals)
@@ -213,9 +246,9 @@ class Torus3dViewColorModel(object):
         cval = cmap_range(vals)
         for link_id, val in zip(links, vals):
             #sx, sy, sz, tx, ty, tz = coord
-            sx, sy, sz, tx, ty, tz = link_coord[link_id]
-            start = np.array(link_coord[link_id][0:3])
-            end = np.array(link_coord[link_id][3:])
+            sx, sy, sz, tx, ty, tz = self.link_to_coord[link_id]
+            start = np.array(self.link_to_coord[link_id][0:3])
+            end = np.array(self.link_to_coord[link_id][3:])
 
             diff = end - start               # difference bt/w start and end
             axis = np.nonzero(diff)[0]       # axis where start and end differ
@@ -236,12 +269,24 @@ class Torus3dViewColorModel(object):
 
         self._notifyListeners()
 
+    @Slot(list, list)
+    def updateHighlights(self, node_ids, link_ids):
+        """Given a list of the node and link ids to be highlighted, changes
+           the alpha values accordingly and notifies listeners.
+
+           In the future, when this becomes DataModel, will probably just
+           update some property that the view will manipulate.
+        """
+        pass
+        #self._notifyListeners()
+
 
 class Torus3dView(ModuleView):
     """This is a base class for a rendering of a 3d torus.
        Subclasses need to define this method:
            createView(self)
-               Should return the widget that will display the scene in the view.
+               Must return a subclass of GLWidget that displays the scene
+               in the view.
 
        Subclasses should receive updates by registering for change updates
        with the color model.
@@ -252,16 +297,17 @@ class Torus3dView(ModuleView):
         self.colorModel = Torus3dViewColorModel()
         super(Torus3dView, self).__init__(parent, parent_view, title)
 
-        if self.agent:
-            self.agent.nodeUpdateSignal.connect(self.colorModel.updateNodeData)
-            self.agent.linkUpdateSignal.connect(self.colorModel.updateLinkData)
-            self.agent.transformUpdateSignal.connect(self.updateTransform)
+        self.agent.torusUpdateSignal.connect(self.colorModel.updateTorus)
+        self.agent.nodeUpdateSignal.connect(self.colorModel.updateNodeData)
+        self.agent.linkUpdateSignal.connect(self.colorModel.updateLinkData)
+        self.agent.highlightUpdateSignal.connect(self.colorModel.updateHighlights)
+        self.agent.transformUpdateSignal.connect(self.updateTransform)
 
-            self.createDragOverlay(["nodes", "links"],
-                ["Color Nodes", "Color Links"],
-                [QPixmap(":/nodes.png"), QPixmap(":/links.png")])
+        self.createDragOverlay(["nodes", "links"],
+            ["Color Nodes", "Color Links"],
+            [QPixmap(":/nodes.png"), QPixmap(":/links.png")])
 
-            self.view.transformChangeSignal.connect(self.transformChanged)
+        self.view.transformChangeSignal.connect(self.transformChanged)
 
     def transformChanged(self, rotation, translation):
         self.agent.module_scene.rotation = rotation
