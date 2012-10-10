@@ -218,6 +218,23 @@ class ModuleView(QMainWindow):
                     self.overlayDroppedData), i, 0, 1, 1)
                 layout.setRowStretch(i, 5)
 
+        # Add a Close button to deal with lack of cancel signal
+        # for drag/drop
+        class CloseLabel(QLabel):
+            
+            closeSignal = Signal()
+
+            def __init__(self):
+                super(CloseLabel, self).__init__("Close")
+
+            def mousePressEvent(self, e):
+                self.closeSignal.emit()
+
+        closeButton = CloseLabel()
+        closeButton.closeSignal.connect(self.killRogueOverlays)
+        layout.addWidget(closeButton, len(tags), 0, 1, 1)
+        layout.setRowStretch(len(tags), 0)
+
         self.overlay.setLayout(layout)
 
     def killRogueOverlays(self):

@@ -41,6 +41,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Boxfish")
         self.resize(1000, 800)
 
+        self.setAcceptDrops(True) # For Rogue overlay problem
 
     def makeControlFrame(self):
         """This does the GUI creation and layout for everything but
@@ -71,6 +72,29 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(self.sidesplitter)
         self.control_frame.setLayout(layout)
+
+    # The following drag/drop event handlers are to deal with the
+    # Rogue overlay problem. Not the most elegant solution but it
+    # seems to work.
+    def dragLeaveEvent(self, e):
+        self.filter_box.killRogueOverlays()
+        super(MainWindow, self).dragLeaveEvent(e)
+
+    def dragEnterEvent(self, e):
+        if isinstance(e.mimeData(), DataIndexMime):
+            e.accept()
+        else:
+           super(MainWindow, self).dragEnterEvent(e)
+
+    def dropEvent(self, e):
+        if isinstance(e.mimeData(), DataIndexMime):
+            self.filter_box.killRogueOverlays()
+            e.accept()
+        else:
+            super(MainWindow, self).dropEvent(e)
+
+    def mouseReleaseEvent(self, e):
+        print "release"
 
     def createMenus(self):
         """This defines the menu actions and shortcuts."""
@@ -109,7 +133,6 @@ class MainWindow(QMainWindow):
         sys.path = saved_syspath # Revert true sys.path
 
         modules = ModuleView.subclassList()
-        print modules
         return modules
 
 class TopAgent(ModuleAgent):
@@ -162,5 +185,3 @@ class ModuleListModel(QStringListModel):
         if role == Qt.DisplayRole:
             if section == 0:
                 return "Modules"
-
-
