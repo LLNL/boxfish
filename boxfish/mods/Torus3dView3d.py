@@ -70,6 +70,13 @@ class GLTorus3dView(GLWidget):
 
         super(GLTorus3dView, self).paintGL()
 
+    def initializeGL(self):
+        """We use transparency simply here, so we enable GL_BLEND."""
+        super(GLTorus3dView, self).initializeGL()
+
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
     def centerView(self):
         """ First we move the coordinate system by half the size of the total
             grid. This will allow us to draw boxes and links at (0,0,0),

@@ -329,11 +329,15 @@ class ModuleAgent(QObject):
             runItem = self.datatree.getRun(run)
             if runItem is None:
                 return
+        else:
+            runItem = run
 
         if not isinstance(table, TableItem):
             tableItem = runItem.getTable(table)
             if tableItem is None:
                 return
+        else:
+            tableItem = table
 
         tableDomain = tableItem._table.subdomain()
         highlights = SubDomain.instantiate(tableDomain)

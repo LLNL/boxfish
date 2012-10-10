@@ -38,6 +38,7 @@ class Torus3dAgent(ModuleAgent):
         self.run = None
         self.shape = [0, 0, 0]
         self.receiveModuleSceneSignal.connect(self.processModuleScene)
+        self.highlightSceneChangeSignal.connect(self.processHighlights)
 
     def registerNodeAttributes(self, indices):
         self.registerRun(self.datatree.getItem(indices[0]).getRun())
@@ -159,10 +160,10 @@ class Torus3dViewColorModel(object):
         def kwarg(name, default_value):
             setattr(self, name, keywords.get(name, default_value))
 
-        kwarg("default_node_color", (0.5, 0.5, 0.5, 0.2))
+        kwarg("default_node_color", (0.5, 0.5, 0.5, 1.0))
         kwarg("node_cmap", cm.get_cmap("jet"))
 
-        kwarg("default_link_color", (0.5, 0.5, 0.5, 0.2))
+        kwarg("default_link_color", (0.5, 0.5, 0.5, 1.0))
         kwarg("link_cmap", cm.get_cmap("jet"))
 
         self._shape = None
@@ -217,6 +218,27 @@ class Torus3dViewColorModel(object):
         """
         return self.link_cmap(val)
 
+    def set_all_alphas(self, alpha):
+        """Set all nodes and links to the same given alpha value."""
+        self.node_colors[:,:,:,3] = alpha
+        self.avg_link_colors[:,:,:,:,3] = alpha
+
+    def link_coord_to_index(self, coord):
+        """Given a 6 scalar link coordinate, returns the 4 scalar index
+           of that link in our block arrays and the link direction.
+        """
+        sx, sy, sz, tx, ty, tz = coord
+        start = np.array(coord[0:3])
+        end = np.array(coord[3:])
+
+        diff = end - start               # difference bt/w start and end
+        axis = np.nonzero(diff)[0]       # axis where start and end differ
+
+        if diff[axis] == 1 or diff[axis] < -1:   # positive direction link
+            return sx, sy, sz, axis, 1
+        elif diff[axis] == -1 or diff[axis] > 1: # negative direction link
+            return tx, ty, tz, axis, -1
+
     @Slot(list, list)
     def updateNodeData(self, nodes, vals):
         if not vals:
@@ -245,21 +267,15 @@ class Torus3dViewColorModel(object):
 
         cval = cmap_range(vals)
         for link_id, val in zip(links, vals):
-            #sx, sy, sz, tx, ty, tz = coord
-            sx, sy, sz, tx, ty, tz = self.link_to_coord[link_id]
-            start = np.array(self.link_to_coord[link_id][0:3])
-            end = np.array(self.link_to_coord[link_id][3:])
-
-            diff = end - start               # difference bt/w start and end
-            axis = np.nonzero(diff)[0]       # axis where start and end differ
-
+            x, y, z, axis, direction = self.link_coord_to_index(
+                self.link_to_coord[link_id])
+            
+            avg_link_values[x,y,z,axis] += val
             c = self.map_link_color(cval(val))
-            if diff[axis] == 1 or diff[axis] < -1:   # positive direction link
-                self.pos_link_colors[sx, sy, sz, axis] = c
-                avg_link_values[sx, sy, sz, axis] += val
-            elif diff[axis] == -1 or diff[axis] > 1: # negative direction link
-                self.neg_link_colors[tx, ty, tz, axis] = c
-                avg_link_values[tx, ty, tz, axis] += val
+            if direction > 0:
+                self.pos_link_colors[x,y,z,axis] = c
+            else:
+                self.neg_link_colors[x,y,z,axis] = c
 
         for index in np.ndindex(self.shape):
             x, y, z = index
@@ -277,8 +293,19 @@ class Torus3dViewColorModel(object):
            In the future, when this becomes DataModel, will probably just
            update some property that the view will manipulate.
         """
-        pass
-        #self._notifyListeners()
+        if node_ids or link_ids:
+            self.set_all_alphas(0.2)
+            for node in node_ids:
+                x, y, z = self.node_to_coord[node]
+                self.node_colors[x, y, z, 3] = 1.0
+            for link in link_ids:
+                x, y, z, axis, direction = self.link_coord_to_index(
+                    self.link_to_coord[link])
+                self.avg_link_colors[x,y,z,axis,3] = 1.0
+        else:
+            self.set_all_alphas(1.0)
+
+        self._notifyListeners()
 
 
 class Torus3dView(ModuleView):
