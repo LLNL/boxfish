@@ -146,13 +146,19 @@ class GLTorus2dView(GLWidget):
         if w_span != 0 and h_span != 0:
             spans = self.spans()
             aspect = self.width() / self.height()
-            if w_span > h_span:
-                fov = float(self.fov) * aspect * math.pi / 360.
-                dist = w_span / math.tan(fov) * 2
-            else:
-                fov = float(self.fov) * math.pi / 360.
-                dist = h_span / math.tan(fov) * 2
-            self.translation = [0, 0, -dist]
+            
+            # Check both distances instead of the one with the larger span
+            # as we don't know how aspect ratio will come into play
+
+            # Needed vertical distance
+            fovy = float(self.fov) * math.pi / 360.
+            disty = spans[h] / 2. / math.tan(fovy)
+
+            # Needed horizontal distance
+            fovx = float(self.fov) * aspect * math.pi / 360.
+            distx = spans[w] / 2. / math.tan(fovx)
+            
+            self.translation = [0, 0, -max(distx, disty)]
 
         # dirty display lists and update GL
         self.cubeList.update()
