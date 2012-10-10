@@ -54,7 +54,7 @@ class GLTorus3dView(GLWidget):
         # register with the new model
         self.colorModel = colorModel
         self.colorModel.registerListener(self.update)
-        self.update()
+        #self.update()
 
     def update(self):
         self.cubeList.update()

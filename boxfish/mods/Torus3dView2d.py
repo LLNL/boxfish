@@ -88,10 +88,13 @@ class GLTorus2dView(GLWidget):
     shape = property(fget = lambda self: self.colorModel.shape)
 
     def initializeGL(self):
-        """Turn up the ambient light for this view"""
+        """Turn up the ambient light for this view and enable simple
+           transparency."""
         super(GLTorus2dView, self).initializeGL()
         glLightfv(GL_LIGHT0, GL_AMBIENT,  [1.0, 1.0, 1.0, 1.0])
 
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
     def setColorModel(self, colorModel):
         # unregister with any old model
@@ -145,10 +148,10 @@ class GLTorus2dView(GLWidget):
         w_span, h_span = self.shape[w], self.shape[h]
         if w_span != 0 and h_span != 0:
             spans = self.spans()
-            aspect = self.width() / self.height()
+            aspect = self.width() / float(self.height())
             
             # Check both distances instead of the one with the larger span
-            # as we don't know how aspect ratio will come into play
+            # as we don't know how aspect ratio will come into play versus shape
 
             # Needed vertical distance
             fovy = float(self.fov) * math.pi / 360.
