@@ -84,6 +84,9 @@ class GLTorus2dView(GLWidget):
         self.colorModel = None
         self.setColorModel(colorModel)
 
+        # selection interface
+        self.right_drag = False
+
     # Convenience property for color model's shape
     shape = property(fget = lambda self: self.colorModel.shape)
 
@@ -298,3 +301,19 @@ class GLTorus2dView(GLWidget):
                     self.drawLinkQuad(start, end)
 
         glPopMatrix()
+
+    
+    def mousePressEvent(self, event):
+        """We keep track of right-click drags for picking."""
+        super(GLTorus2dView, self).mousePressEvent(event)
+
+        if event.button() == Qt.RightButton:
+            self.right_drag = True
+
+    def mouseReleaseEvent(self, event):
+        """We keep track of whether a drag occurred with right-click."""
+        super(GLTorus2dView, self).mouseReleaseEvent(event)
+
+        if self.right_drag:
+            self.right_drag = False
+

@@ -166,6 +166,7 @@ class GLTorus3dView(GLWidget):
         glViewport(0, 0, self.width(), self.height())
 
     def mousePressEvent(self, event):
+        """We capture right clicking for picking here."""
         super(GLTorus3dView, self).mousePressEvent(event)
 
         if event.button() == Qt.RightButton:

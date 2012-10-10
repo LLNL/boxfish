@@ -175,10 +175,10 @@ class Torus3dViewColorModel(object):
         def kwarg(name, default_value):
             setattr(self, name, keywords.get(name, default_value))
 
-        kwarg("default_node_color", (0.5, 0.5, 0.5, 1.0))
+        kwarg("default_node_color", (0.5, 0.5, 0.5, 0.2))
         kwarg("node_cmap", cm.get_cmap("jet"))
 
-        kwarg("default_link_color", (0.5, 0.5, 0.5, 1.0))
+        kwarg("default_link_color", (0.5, 0.5, 0.5, 0.2))
         kwarg("link_cmap", cm.get_cmap("jet"))
 
         self._shape = None
@@ -259,6 +259,8 @@ class Torus3dViewColorModel(object):
         if not vals:
             return
 
+        self.clearNodes() # when only some values are given
+
         cval = cmap_range(vals)
         for node_id, val in zip(nodes, vals):
             x, y, z = self.node_to_coord[node_id]
@@ -270,6 +272,8 @@ class Torus3dViewColorModel(object):
     def updateLinkData(self, links, vals):
         if not vals:
             return
+
+        self.clearLinks() # when only some values are given
 
         # Make sure we have no more values than links
         num_values = len(vals)
