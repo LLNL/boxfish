@@ -116,6 +116,21 @@ class Torus3dAgent(ModuleAgent):
             self.highlightUpdateSignal.emit(node_highlights, link_highlights)
 
 
+    # TODO: Change the parameters to an object rather than bunch of lists
+    def selectionChanged(self, highlight_ids):
+        tables = list()
+        runs = list()
+        id_lists = list()
+        for id_set in highlight_ids:
+            runs.append(self.run)
+            id_lists.append(id_set[1])
+            if id_set[0] == "nodes":
+                tables.append(self.coords_table)
+            elif id_set[0] == "links":
+                tables.append(self.link_coords_table)
+
+        self.setHighlights(tables, runs, id_lists)
+
     @Slot(ModuleScene)
     def processModuleScene(self, module_scene):
         if self.module_scene.module_name == module_scene.module_name:

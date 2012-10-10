@@ -1,11 +1,13 @@
 import numpy as np
+import operator
 
 from OpenGL.GL import *
+from OpenGL.GLU import *
 from OpenGL.GLUT import *
 from OpenGL.GLE import *
 
 from boxfish.ModuleView import *
-from boxfish.gl.GLWidget import GLWidget
+from boxfish.gl.GLWidget import GLWidget, set_perspective
 from boxfish.gl.glutils import *
 
 from GLModuleScene import *
@@ -162,4 +164,98 @@ class GLTorus3dView(GLWidget):
 
         glPopMatrix()
         glViewport(0, 0, self.width(), self.height())
+
+    def mousePressEvent(self, event):
+        super(GLTorus3dView, self).mousePressEvent(event)
+
+        if event.button() == Qt.RightButton:
+            self.parent.agent.selectionChanged([["nodes", self.doPick(event)]])
+
+    def doPick(self, event):
+        """Allow the user to pick nodes."""
+        # Adapted from Josh Levine's version in Boxfish 0.1
+        #steps:
+        #render the scene with labeled nodes
+        #find the color of the pixel @self.x, self.y
+        #map color back to id and return
+
+        #disable unneded
+        glDisable(GL_LIGHTING)
+        glDisable(GL_LIGHT0)
+        glDisable(GL_BLEND)
+
+        #set up the selection buffer
+        select_buf_size = reduce(operator.mul, self.colorModel.shape) + 10
+        glSelectBuffer(select_buf_size)
+
+        #switch to select mode
+        glRenderMode(GL_SELECT)
+
+        #initialize name stack
+        glInitNames()
+        glPushName(0)
+
+        #set up the pick matrix to draw a narrow view
+        viewport = glGetIntegerv(GL_VIEWPORT)
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        glLoadIdentity()
+        #this sets the size and location of the pick window
+        #changing the 1,1 will change sensitivity of the pick
+        gluPickMatrix(event.x(),(viewport[3]-event.y()),
+            1,1,viewport)
+        set_perspective(self.fov, self.width()/float(self.height()),
+            self.near_plane, self.far_plane)
+        #switch back to modelview and draw the scene
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+        glTranslatef(*self.translation[:3])
+        glMultMatrixd(self.rotation)
+
+        #let's draw some red boxes, color is inconsequential
+        box_size = self.box_size
+        glColor3f(1.0, 0.0, 0.0)
+
+        # Redo the drawing
+        glPushMatrix()
+        self.centerView()
+    
+        # And draw all the cubes
+        # color index variable
+        for node in np.ndindex(*self.colorModel.shape):
+            glLoadName(self.colorModel.coord_to_node[node])
+            glPushMatrix()
+            self.centerNode(node)
+            glutSolidCube(box_size)
+            glPopMatrix()
+      
+        glPopMatrix()
+
+        #pop projection matrix
+        glMatrixMode(GL_PROJECTION)
+        glPopMatrix()
+        glFlush()
+
+        #get the hit buffer
+        glMatrixMode(GL_MODELVIEW)
+        pick_buffer = glRenderMode(GL_RENDER)
+      
+        #this code finds the nearest hit.  
+        #Otherwise, populate hitlist with hit[2] for all
+        #pick_buffer has a 3-tuple of info, [near, far, name]
+        nearest = 4294967295
+        hitlist = []
+        for hit in pick_buffer :
+            if hit[0] < nearest :
+              nearest = hit[0]
+              hitlist = [hit[2][0]]
+
+        #go back to normal rendering
+        glEnable(GL_LIGHTING)
+        glEnable(GL_LIGHT0)
+        glPolygonMode(GL_FRONT_AND_BACK,GL_FILL)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        return hitlist
 

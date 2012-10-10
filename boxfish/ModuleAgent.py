@@ -361,18 +361,25 @@ class ModuleAgent(QObject):
         """Sets the highlight of this particular agent and announces the change.
 
            tables
-               A list of table names for the highlights
+               A list of table names or items for the highlights
 
            runs
-               A list of run names for the highlights
+               A list of run names or items for the highlights
 
            ids
                A list of lists of ids, one for each table, of the highlights.
         """
         highlight_sets = list()
         for table, run, ids in zip(tables, runs, ids):
-            runItem = self.datatree.getRun(run)
-            tableItem = runItem.getTable(table)
+            if isinstance(run, RunItem):
+                runItem = run
+            else:
+                runItem = self.datatree.getRun(run)
+
+            if isinstance(table, TableItem):
+                tableItem = table
+            else:
+                tableItem = runItem.getTable(table)
             domain = tableItem._table.subdomain()
 
             highlight_sets.append(HighlightSet(
