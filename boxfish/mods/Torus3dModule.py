@@ -9,6 +9,8 @@ from boxfish.ModuleView import *
 import TorusIcons
 
 class Torus3dAgent(ModuleAgent):
+    """This is an agent for all 3D Torus based modules."""
+
     # shape, ids, values, id->coords dict, coords->id dict
     nodeUpdateSignal = Signal(list, list, list, dict, dict)
     linkUpdateSignal = Signal(list, list, list, dict, dict)
@@ -32,16 +34,12 @@ class Torus3dAgent(ModuleAgent):
         self.receiveModuleSceneSignal.connect(self.processModuleScene)
 
     def registerNodeAttributes(self, indices):
-        # Determine Torus info from first index
         self.registerRun(self.datatree.getItem(indices[0]).getRun())
         self.requestAddIndices("nodes", indices)
-        self.updateNodeValues()
 
     def registerLinkAttributes(self, indices):
-        # Determine Torus info from first index
         self.registerRun(self.datatree.getItem(indices[0]).getRun())
         self.requestAddIndices("links", indices)
-        self.updateLinkValues()
 
     def registerRun(self, run):
         """Grab the hardware information from this run, verifying it is

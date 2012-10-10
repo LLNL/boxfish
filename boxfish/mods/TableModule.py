@@ -42,7 +42,7 @@ class TableAgent(ModuleAgent):
            associated them with the agent's Request.
         """
         self.requestAddIndices("table columns", indexList)
-        self.presentData()
+        #self.presentData()
 
     def requestUpdated(self, name):
         """This overloads the ModuleAgent function called when a Request

@@ -87,6 +87,7 @@ class ModuleAgent(QObject):
         coupler = FilterCoupler(name, self, None)
         self.requests[name] = ModuleRequest(self.datatree, name, coupler,
             subdomain)
+        self.requests[name].indicesChangedSignal.connect(self.requestUpdated)
         coupler.changeSignal.connect(self.requestedCouplerChanged)
         #Now send this new one to the parent
         self.addCouplerSignal.emit(coupler, self)
@@ -483,6 +484,8 @@ class ModuleRequest(QObject):
         'min' : min,
     }
 
+    indicesChangedSignal = Signal(str)
+
     def __init__(self, datatree, name, coupler, subdomain = None,
         indices = list()):
         """Construct a ModuleRequest object with the given name, coupler,
@@ -520,6 +523,7 @@ class ModuleRequest(QObject):
             self.attribute_scene.attributes = set()
         else:
             self.attribute_scene.attributes = self.attributeNameSet()
+        self.indicesChangedSignal.emit(self.name)
 
     def attributeNameSet(self):
         """Returns a set of all attribute names represented by this
