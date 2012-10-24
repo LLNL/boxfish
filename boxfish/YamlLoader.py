@@ -79,6 +79,11 @@ def load_table(filename):
     while input.readline().split()[0] != "...":
         continue
 
+    #print meta
+    #if 'encoding' in meta and meta['encoding'] == 'binary':
+    #    print "Trying ", dtype 
+    #    data = np.loads(input.read())
+    #else:
     data = np.loadtxt(input, dtype=np.dtype(dtype))
 
     return meta, data
@@ -87,11 +92,13 @@ if __name__ == '__main__':
     from sys import argv
 
     if len(argv) > 1:
-        meta, files = load_meta(argv[1])
-        for k, v in meta.iteritems():
-            print "metakey: ", k, "value: ", v
-        for f in files:
-            print f
+        meta, data = load_table(argv[1])
+        
+        #meta, files = load_meta(argv[1])
+        #for k, v in meta.iteritems():
+        #    print "metakey: ", k, "value: ", v
+        #for f in files:
+        #    print f
     else:
         meta, data = load_meta("bgpc_meta.yaml")
         for k, v in meta.iteritems():
