@@ -184,6 +184,9 @@ class Torus3dViewColorModel(object):
         self._shape = None
         self.shape = [0, 0, 0]
         self.listeners = set()
+        self.lowerBound = 0
+        self.upperBound = 1
+        self.delta = 0.05
 
     def clearNodes(self):
         self.node_colors = np.tile(self.default_node_color, self._shape + [1])
@@ -198,6 +201,27 @@ class Torus3dViewColorModel(object):
             self._shape = shape
             self.clearNodes()
             self.clearLinks()
+
+    def lowerLowerBound(self):
+        self.lowerBound = max(self.lowerBound-self.delta,0)
+        self.updateLinkColors()
+        print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
+
+    def raiseLowerBound(self):
+        self.lowerBound = min(self.lowerBound+self.delta,1)
+        self.updateLinkColors()
+        print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
+        
+    def lowerUpperBound(self):
+        self.upperBound = max(self.upperBound-self.delta,0)
+        self.updateLinkColors()
+        print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
+
+    def raiseUpperBound(self):
+        self.upperBound = min(self.upperBound+self.delta,1)
+        self.updateLinkColors()
+        print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
+        
 
     # enforce that shape always looks like a tuple externally
     shape = property(lambda self: tuple(self._shape), setShape)
@@ -231,7 +255,10 @@ class Torus3dViewColorModel(object):
         """Turns a color value in [0,1] into a 4-tuple RGBA color.
            Used to map links.
         """
-        return self.link_cmap(val)
+        if val < self.lowerBound-1e-8 or val > self.upperBound+1e8:
+            return [1,1,1,0]
+        else:
+            return self.link_cmap(val)
 
     def set_all_alphas(self, alpha):
         """Set all nodes and links to the same given alpha value."""
@@ -325,6 +352,13 @@ class Torus3dViewColorModel(object):
             self.set_all_alphas(1.0)
 
         self._notifyListeners()
+
+    def updateLinkColors(self):
+        """None of the data but the colormap has changed and thus we
+           need to update the display list
+        """
+        pass
+        
 
 
 class Torus3dView(ModuleView):
