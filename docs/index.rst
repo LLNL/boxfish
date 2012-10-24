@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Boxfish Developer Documentation
+Boxfish Documentation
 ================================
 
 .. image:: images/boxfish_logo.png
@@ -26,10 +26,11 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   overview
-   howtos
+   intro
+   tutorial
+   userguide
+   devguide
    boxfish
-
 
 Indices and tables
 ==================
