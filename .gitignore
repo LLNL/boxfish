@@ -3,3 +3,4 @@
 *.rst~
 *.sw*
 *.gitignore
+_build
