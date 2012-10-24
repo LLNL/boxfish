@@ -5,12 +5,11 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLE import *
 
-from boxfish.ModuleView import *
-from boxfish.gl.GLWidget import GLWidget
-from boxfish.gl.glutils import *
-
+from ModuleView import *
 from GLModuleScene import *
 from Torus3dModule import *
+from gl.GLWidget import GLWidget
+from gl.glutils import *
 
 
 @Module("3D Torus - 2D View", Torus3dAgent, GLModuleScene)
@@ -67,7 +66,7 @@ class GLTorus2dView(GLWidget):
         self.parent = parent
 
         self.box_size = 0.2    # Length of edge of each node cube
-        self.link_width = self.box_size   # Width of links in the view
+        self.link_width = 1   # Width of links in the view in pixels
 
         # Display lists for nodes and links
         self.cubeList = DisplayList(self.drawCubes)
@@ -96,6 +95,7 @@ class GLTorus2dView(GLWidget):
         super(GLTorus2dView, self).initializeGL()
         glLightfv(GL_LIGHT0, GL_AMBIENT,  [1.0, 1.0, 1.0, 1.0])
 
+        glClearColor(1,1,1,1)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
@@ -110,16 +110,44 @@ class GLTorus2dView(GLWidget):
 
         self.update()
 
+    def setAxis(self, a):
+        self.axis = a
+        self.update()
 
-    def keyAction(self, key):
-        axis_map = { int(Qt.Key_X) : 0,
-                     int(Qt.Key_Y) : 1,
-                     int(Qt.Key_Z) : 2 }
+    def increaseLinkWidth(self):
+        self.link_width += 1
+        self.update()
 
-        if key in axis_map:
-            self.axis = axis_map[key]
-            self.update()
+    def decreaseLinkWidth(self):
+        self.link_width -= 1
+        self.link_width = max(1,self.link_width)
+        self.update()
 
+#    def keyAction(self, key):
+#        axis_map = { int(Qt.Key_X) : lambda : self.setAxis(0),
+#                     int(Qt.Key_Y) : lambda : self.setAxis(1),
+#                     int(Qt.Key_Z) : lambda : self.setAxis(2)
+#                     int(Qt.Key_Z) : lambda : self.increaseLineWidth()
+#                     }
+#
+#        if key in axis_map:
+#            axis_map[key]()
+
+    def keyPressEvent(self, event):
+        key_map = { "x" : lambda :  self.setAxis(0),
+                    "y" : lambda :  self.setAxis(1),
+                    "z" : lambda :  self.setAxis(2),
+                    "+" : lambda :  self.increaseLinkWidth(),
+                    "-" : lambda :  self.decreaseLinkWidth(),
+                    "<" : lambda :  self.colorModel.lowerLowerBound(),
+                    ">" : lambda :  self.colorModel.raiseLowerBound(),
+                    "," : lambda :  self.colorModel.lowerUpperBound(),
+                    "." : lambda :  self.colorModel.raiseUpperBound(),
+                    }
+        if event.text() in key_map:
+            key_map[event.text()]()
+        else:
+            GLWidget.keyPressEvent(self,event)
 
     def width_height(self):
         """Get the dimensions that span width and height of screen"""
@@ -240,6 +268,13 @@ class GLTorus2dView(GLWidget):
         glePolyCylinder(cyl_points, None, self.link_width / 2.0)
 
     def drawLinkQuad(self, start, end):
+
+        glBegin(GL_LINES)
+        glVertex3fv(start)
+        glVertex3fv(end)
+        glEnd()
+
+        return
         # unit vector in direction start -> end
         dir = end - start
 
@@ -263,6 +298,7 @@ class GLTorus2dView(GLWidget):
 
     def drawLinks(self):
         glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,[1.0, 1.0, 1.0, 1.0])
+        glLineWidth(self.link_width)
         glPushMatrix()
         self.centerView()
 
