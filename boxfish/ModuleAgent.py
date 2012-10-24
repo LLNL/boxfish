@@ -115,7 +115,7 @@ class ModuleAgent(QObject):
         if name not in self.requests:
             raise ValueError("No request named " + name)
         self.requests[name].indices = indices
-    
+
     def requestOnDomain(self, name, domain_table, row_aggregator,
         attribute_aggregator):
         """Gets results of the request, aggregated by the domain of
@@ -354,7 +354,7 @@ class ModuleAgent(QObject):
                 hs.highlights.subdomain())
             if projection is not None:
                 highlights.extend(projection.project(hs.highlights, tableDomain))
-        
+
         return highlights
 
     def setHighlights(self, tables, runs, ids):
@@ -585,7 +585,7 @@ class ModuleRequest(QObject):
                   List of ids from the domain_table.
 
                values
-                   List of values that go with the ids. 
+                   List of values that go with the ids.
         """
         if not self.preprocess():
             return  list(), list()
@@ -712,3 +712,106 @@ class ModuleRequest(QObject):
             id_list.append(attribute_list[0])
 
         return table_list, run_list, id_list, headers, data_list
+
+    def generalizedGroupBy(self, desired_indices, desired_aggregator,
+        grouped_aggregator):
+        """Groups some function of desired_indices by some function of
+           the Request's indices.
+
+           desired_indices
+               An indexList
+
+           desired_aggregator
+               Function with which to aggregate the desired_attributes
+
+           grouped_aggregator
+               Function with which to aggregate the group by (our) indices
+
+
+            The returned ids refer to the domain of the first attribute in
+            this Request's indices.
+
+            Returns domain, ids, grouped_values, desired_values
+        """
+
+        # First we need to find all possible combinations of the group by
+        # indices. We take the first table given as the primary domain that
+        # we will group with. We then project all other tables onto that
+        # table. Then we have all possible values associated with IDs.
+        # Then we form Cartesian products of the attributes where each 
+        # product shares the same associated id. Finally we apply the
+        # grouped_aggregator to each of these to form the group-by groups.
+
+        # Break our indices into Tables
+        self.attribute_groups = self.sortIndicesByTable(self._indices)
+
+        domain_table = None
+        group_dict = dict()
+        for table, attribute_group in self.attribute_groups:
+            if domain_table is None: # First table is our domain table
+                domain_table = table
+            else:
+                # Determine if projection exists, if not, error
+                projection = domain_table.getRun().getProjection(
+                    domain_table._table.subdomain(),
+                    table._table.subdomain())
+                if projection is None:
+                    raise ValueError("Cannot combine grouped values, no"
+                        + " projection between " + str(domain_table.name)
+                        + " and " + str(table.name))
+
+            # Get attributes, starting with ID of interest
+            attributes = [self.datatree.getItem(x).name
+                for x in attribute_group]
+            attributes.insert(0, table['field'])
+
+            # Apply filters
+            identifiers = table._table.identifiers()
+            for modifier in self.coupler.modifier_chain:
+                identifiers = modifier.process(table, identifiers)
+
+            # Get values
+            attribute_list = table._table.attributes_by_identifiers(
+                identifiers, attributes, False)
+
+            # Add these values to the dict
+            # In the first table we add indiscriminately
+            if domain_table == table:
+                for row_values in zip(*attribute_values):
+                    domain_id = row_values[0]
+                    if domain_id in group_dict:
+                        if table not in group_dict[domain_id]:
+                            group_dict[domain_id][table] = list()
+                        group_dict[domain_id][table].append(row_values[1:])
+                    else:
+                        group_dict[domain_id] = dict()
+                        group_dict[domain_id][table] = list()
+                        group_dict[domain_id][table].append(row_values[1:])
+            # In the second table, we add only if the ID already exists
+            # and we delete any ID that is unmarked at the end of it.
+            # The reason is because we are crossing the IDs in all tables
+            # and if one Table does not map, that entire ID is going to
+            # cross to no values
+            else:
+                current_ids = group_dict.keys()
+                if isinstance(projection, IdentityProjection):
+                    # Since projection is identity, we can skip doing it
+                    for row_values in zip(*attribute_values):
+                        domain_id = row_values[0]
+                        if domain_id in group_dict:
+                            # Only add that which has an id already
+                            current_ids.remove(domain_id)
+                            if table not in group_dict[domain_id]:
+                                group_dict[domain_id][table] = list()
+                            group_dict[domain_id][table].append(row_values[1:])
+                    for domain_id in current_ids:
+                        # Delete the ones that didn't appear in this table
+                        del group_dict[domain_id]
+                else: # Other type of projection (ugh)
+                    pass
+
+
+        # Next we repeat the process for the desired_indices
+
+        # Then we project the desired_indices domain ids onto the 
+        # group_indices domain_ids.
