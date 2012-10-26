@@ -3,7 +3,7 @@ Download and Install
 
 Download
 --------
-Boxfish is available at: http://scalability.llnl.gov
+Boxfish is available on the `PAVE <https://scalability.llnl.gov/performance-analysis-through-visualization/software.php>`_ website
 
 Install
 --------
