@@ -27,7 +27,6 @@ Contents
    :maxdepth: 2
 
    intro
-   tutorial
    userguide
    devguide
    boxfish

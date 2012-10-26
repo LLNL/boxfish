@@ -3,8 +3,9 @@ Download and Install
 
 Download
 --------
-
+Boxfish is available at: http://scalability.llnl.gov
 
 Install
 --------
-Boxfish requires a Python installation (preferably 2.5 or later), Qt and numpy.
+Boxfish requires a Python installation (2.5+), Qt, numpy, matplotlib, PyYaml
+and PyOpenGL.
