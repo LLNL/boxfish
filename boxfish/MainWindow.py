@@ -127,10 +127,11 @@ class MainWindow(QMainWindow):
         modules = list()
 
         # Import the modules package
-        saved_syspath = sys.path[:] # Save true sys.path
-        sys.path.insert(0, os.path.dirname(__file__)) # Set sys.path to boxfish filedir
-        __import__("mods") # import!
-        sys.path = saved_syspath # Revert true sys.path
+        #saved_syspath = sys.path[:] # Save true sys.path
+        #sys.path.insert(0, os.path.dirname(__file__)) # Set sys.path to boxfish filedir
+        #__import__("mods") # import!
+        #sys.path = saved_syspath # Revert true sys.path
+        import mods
 
         modules = ModuleView.subclassList()
         return modules

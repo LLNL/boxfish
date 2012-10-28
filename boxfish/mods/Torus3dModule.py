@@ -1,16 +1,11 @@
-import sys
-import numpy as np
-import matplotlib.cm as cm
-
 from PySide.QtCore import *
 
-from boxfish.ModuleAgent import *
-from boxfish.ModuleView import *
+from GLModule import *
 import TorusIcons
 
-class Torus3dAgent(ModuleAgent):
+class Torus3dAgent(GLAgent):
     """This is an agent for all 3D Torus based modules."""
-    
+
     # shape, node->coords, coords->node, link->coords, coords->link
     torusUpdateSignal   = Signal(list, dict, dict, dict, dict)
 
@@ -20,9 +15,6 @@ class Torus3dAgent(ModuleAgent):
 
     # node and link ID lists that are now highlighted
     highlightUpdateSignal = Signal(list, list)
-
-    # rotation and translation
-    transformUpdateSignal = Signal(np.ndarray, np.ndarray)
 
     def __init__(self, parent, datatree):
         super(Torus3dAgent, self).__init__(parent, datatree)
@@ -37,7 +29,6 @@ class Torus3dAgent(ModuleAgent):
         self.coords_link_dict = dict()
         self.run = None
         self.shape = [0, 0, 0]
-        self.receiveModuleSceneSignal.connect(self.processModuleScene)
         self.highlightSceneChangeSignal.connect(self.processHighlights)
 
     def registerNodeAttributes(self, indices):
@@ -73,7 +64,7 @@ class Torus3dAgent(ModuleAgent):
             link_coords_dict, coords_link_dict = \
                 self.link_coords_table.createIdAttributeMaps(link_coords)
 
-            self.torusUpdateSignal.emit(shape, 
+            self.torusUpdateSignal.emit(shape,
                 node_coords_dict, coords_node_dict,
                 link_coords_dict, coords_link_dict)
 
@@ -130,13 +121,6 @@ class Torus3dAgent(ModuleAgent):
                 tables.append(self.link_coords_table)
 
         self.setHighlights(tables, runs, id_lists)
-
-    @Slot(ModuleScene)
-    def processModuleScene(self, module_scene):
-        if self.module_scene.module_name == module_scene.module_name:
-            self.module_scene = module_scene.copy()
-            self.transformUpdateSignal.emit(self.module_scene.rotation,
-                self.module_scene.translation)
 
 
 
@@ -211,7 +195,7 @@ class Torus3dViewColorModel(object):
         self.lowerBound = min(self.lowerBound+self.delta,1)
         self.updateLinkColors()
         print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
-        
+
     def lowerUpperBound(self):
         self.upperBound = max(self.upperBound-self.delta,0)
         self.updateLinkColors()
@@ -221,7 +205,7 @@ class Torus3dViewColorModel(object):
         self.upperBound = min(self.upperBound+self.delta,1)
         self.updateLinkColors()
         print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
-        
+
 
     # enforce that shape always looks like a tuple externally
     shape = property(lambda self: tuple(self._shape), setShape)
@@ -315,7 +299,7 @@ class Torus3dViewColorModel(object):
         for link_id, val in zip(links, vals):
             x, y, z, axis, direction = self.link_coord_to_index(
                 self.link_to_coord[link_id])
-            
+
             avg_link_values[x,y,z,axis] += val
             c = self.map_link_color(cval(val))
             if direction > 0:
@@ -358,10 +342,10 @@ class Torus3dViewColorModel(object):
            need to update the display list
         """
         pass
-        
 
 
-class Torus3dView(ModuleView):
+
+class Torus3dView(GLView):
     """This is a base class for a rendering of a 3d torus.
        Subclasses need to define this method:
            createView(self)
@@ -381,26 +365,14 @@ class Torus3dView(ModuleView):
         self.agent.nodeUpdateSignal.connect(self.colorModel.updateNodeData)
         self.agent.linkUpdateSignal.connect(self.colorModel.updateLinkData)
         self.agent.highlightUpdateSignal.connect(self.colorModel.updateHighlights)
-        self.agent.transformUpdateSignal.connect(self.updateTransform)
 
         self.createDragOverlay(["nodes", "links"],
             ["Color Nodes", "Color Links"],
             [QPixmap(":/nodes.png"), QPixmap(":/links.png")])
-
-        self.view.transformChangeSignal.connect(self.transformChanged)
-
-    def transformChanged(self, rotation, translation):
-        self.agent.module_scene.rotation = rotation
-        self.agent.module_scene.translation = translation
-        self.agent.module_scene.announceChange()
 
     def droppedData(self, index_list, tag):
         if tag == "nodes":
             self.agent.registerNodeAttributes(index_list)
         elif tag == "links":
             self.agent.registerLinkAttributes(index_list)
-
-    @Slot(np.ndarray, np.ndarray)
-    def updateTransform(self, rotation, translation):
-        self.view.set_transform(rotation, translation)
 

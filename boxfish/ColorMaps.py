@@ -1,4 +1,4 @@
-import matplotlib
+import matplotlib.colors
 import matplotlib.cm as cm
 
 boxfish_maps = dict()

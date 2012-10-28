@@ -5,11 +5,9 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLE import *
 
-from ModuleView import *
-from GLModuleScene import *
 from Torus3dModule import *
-from gl.GLWidget import GLWidget
-from gl.glutils import *
+from boxfish.gl.GLWidget import GLWidget
+from boxfish.gl.glutils import *
 
 
 @Module("3D Torus - 2D View", Torus3dAgent, GLModuleScene)
@@ -95,7 +93,6 @@ class GLTorus2dView(GLWidget):
         super(GLTorus2dView, self).initializeGL()
         glLightfv(GL_LIGHT0, GL_AMBIENT,  [1.0, 1.0, 1.0, 1.0])
 
-        glClearColor(1,1,1,1)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 

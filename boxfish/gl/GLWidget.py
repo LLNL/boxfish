@@ -17,7 +17,7 @@ from PySide.QtOpenGL import *
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 
-from gl.glutils import *
+from glutils import *
 
 class GLWidget(QGLWidget):
     """ This class implements basic support for interactive OpenGL application.  This includes support
@@ -55,6 +55,9 @@ class GLWidget(QGLWidget):
         kwarg("fov", 45.0) # Vertical field of view in degrees
         kwarg("far_plane", 1000.0)  # Far clipping plane
         kwarg("near_plane", 0.1)    # Near clipping plane
+
+        # contentious background color
+        kwarg("bg_color", [0.0, 0.0, 0.0, 1.0])
 
         self.translation = np.zeros(3)
         self.rotation = np.identity(4)
@@ -120,7 +123,7 @@ class GLWidget(QGLWidget):
 
     def initializeGL(self):
         glShadeModel(GL_SMOOTH)
-        glClearColor(0.0, 0.0, 0.0, 1.0)
+        glClearColor(*self.bg_color)
 
         glClearDepth(1.0)
         glDepthFunc(GL_LESS)
@@ -277,6 +280,12 @@ class GLWidget(QGLWidget):
             need_update = True
 
         if need_update:
+            self.updateGL()
+
+    def change_background_color(self, color):
+        if color is not None:
+            self.bg_color = color
+            glClearColor(*color)
             self.updateGL()
 
 def set_perspective(fovY, aspect, zNear, zFar):
