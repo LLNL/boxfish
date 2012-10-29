@@ -52,6 +52,8 @@ class GLView(ModuleView):
 
         self.view.transformChangeSignal.connect(self.transformChanged)
 
+        self.color_tab_type = GLColorTab
+
     def transformChanged(self, rotation, translation):
         self.agent.module_scene.rotation = rotation
         self.agent.module_scene.translation = translation
@@ -64,6 +66,11 @@ class GLView(ModuleView):
     @Slot(np.ndarray)
     def updateBGColor(self, color):
         self.view.change_background_color(color)
+
+    def buildTabDialog(self):
+        super(GLView, self).buildTabDialog()
+        self.tab_dialog.addTab(self.color_tab_type(self.tab_dialog,
+            self.agent), "Colors")
 
 
 class GLModuleScene(ModuleScene):
@@ -92,3 +99,17 @@ class GLModuleScene(ModuleScene):
                 else None,
             self.background_color.copy()
                 if self.background_color is not None else None)
+
+
+class GLColorTab(QWidget):
+    """This is the widget for changing color related information in
+       GL Views. The base takes care of GL background colors.
+    """
+
+    def __init__(self, parent, agent):
+        """Construct a GLColorTab with given parent (TabDialog) and
+           ModuleAgent.
+        """
+        super(GLColorTab, self).__init__(parent)
+
+        self.agent = agent

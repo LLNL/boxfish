@@ -1,6 +1,9 @@
 from PySide.QtCore import *
 
 from GLModule import *
+from boxfish.gl.GLWidget import GLWidget
+from boxfish.gl.glutils import *
+
 import TorusIcons
 
 class Torus3dAgent(GLAgent):
@@ -129,8 +132,8 @@ def cmap_range(vals):
     this will return a function that will normalize those values to
     something in [0..1] based on their range.
     """
-    min_val = min(vals)
-    max_val = max(vals)
+    min_val = np.min(vals)
+    max_val = np.max(vals)
     range = max_val - min_val
     if range <= sys.float_info.epsilon:
         range = 1.0
@@ -139,11 +142,11 @@ def cmap_range(vals):
     return evaluator
 
 
-class Torus3dViewColorModel(object):
-    """This class is designed to hold color data for a view of a 3d Torus.
+class Torus3dViewDataModel(object):
+    """This class is designed to hold data for a view of a 3d Torus.
        This is really where the raw data to be displayed lives; you might
        say that this is the torus "domain" itself.  Views of the torus
-       display the colors stored in this model.
+       display based on the data stored in this model.
 
        The data is stored in numpy arrays to make rendering fast and simple.
        Compare this to the way data is projected and passed to the view,
@@ -151,34 +154,26 @@ class Torus3dViewColorModel(object):
 
        Views can register listeners with this class to receive updates when
        things change.  This class can also allows multiple views to share the
-       same color model so that the same attributes can be viewed consistently.
-       Note that attribute consistency isn't implemented, but the color stuff
-       is factored into this class so that it can be shared.
+       same data model so that the same attributes can be viewed consistently.
     """
+    # Now color information is completely handled by the GLWidget. Maybe
+    # it would have been better to have created a separate color model
+    # to go with the data model.
+
     def __init__(self, **keywords):
-        def kwarg(name, default_value):
-            setattr(self, name, keywords.get(name, default_value))
-
-        kwarg("default_node_color", (0.5, 0.5, 0.5, 0.2))
-        kwarg("node_cmap", cm.get_cmap("jet"))
-
-        kwarg("default_link_color", (0.5, 0.5, 0.5, 0.2))
-        kwarg("link_cmap", cm.get_cmap("jet"))
-
+        self.listeners = set()
         self._shape = None
         self.shape = [0, 0, 0]
-        self.listeners = set()
-        self.lowerBound = 0
-        self.upperBound = 1
-        self.delta = 0.05
 
     def clearNodes(self):
-        self.node_colors = np.tile(self.default_node_color, self._shape + [1])
+        # The first is the actual value, the second is a flag
+        # indicating the validity of the data. 
+        self.node_values = np.tile(0.0, self._shape + [2])
 
     def clearLinks(self):
-        self.pos_link_colors = np.tile(self.default_link_color, self._shape + [3, 1])
-        self.neg_link_colors = np.tile(self.default_link_color, self._shape + [3, 1])
-        self.avg_link_colors = np.tile(self.default_link_color, self._shape + [3, 1])
+        self.pos_link_values = np.tile(0.0, self._shape + [3, 2])
+        self.neg_link_values = np.tile(0.0, self._shape + [3, 2])
+        self.avg_link_values = np.tile(0.0, self._shape + [3, 2])
 
     def setShape(self, shape):
         if self._shape != shape:
@@ -186,38 +181,17 @@ class Torus3dViewColorModel(object):
             self.clearNodes()
             self.clearLinks()
 
-    def lowerLowerBound(self):
-        self.lowerBound = max(self.lowerBound-self.delta,0)
-        self.updateLinkColors()
-        print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
-
-    def raiseLowerBound(self):
-        self.lowerBound = min(self.lowerBound+self.delta,1)
-        self.updateLinkColors()
-        print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
-
-    def lowerUpperBound(self):
-        self.upperBound = max(self.upperBound-self.delta,0)
-        self.updateLinkColors()
-        print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
-
-    def raiseUpperBound(self):
-        self.upperBound = min(self.upperBound+self.delta,1)
-        self.updateLinkColors()
-        print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
-
-
     # enforce that shape always looks like a tuple externally
     shape = property(lambda self: tuple(self._shape), setShape)
 
     @Slot(list, dict, dict, dict, dict)
     def updateTorus(self, shape, node_coord, coord_node, link_coord, coord_link):
         """Updates the shape and id maps of this model to a new torus."""
-        self.shape = shape
         self.node_to_coord = node_coord
         self.coord_to_node = coord_node
         self.link_to_coord = link_coord
         self.coord_to_link = coord_link
+        self.shape = shape
 
     def _notifyListeners(self):
         for listener in self.listeners:
@@ -228,26 +202,6 @@ class Torus3dViewColorModel(object):
 
     def unregisterListener(self, listener):
         self.listeners.remove(listener)
-
-    def map_node_color(self, val):
-        """Turns a color value in [0,1] into a 4-tuple RGBA color.
-           Used to map nodes.
-        """
-        return self.node_cmap(val)
-
-    def map_link_color(self, val):
-        """Turns a color value in [0,1] into a 4-tuple RGBA color.
-           Used to map links.
-        """
-        if val < self.lowerBound-1e-8 or val > self.upperBound+1e8:
-            return [1,1,1,0]
-        else:
-            return self.link_cmap(val)
-
-    def set_all_alphas(self, alpha):
-        """Set all nodes and links to the same given alpha value."""
-        self.node_colors[:,:,:,3] = alpha
-        self.avg_link_colors[:,:,:,:,3] = alpha
 
     def link_coord_to_index(self, coord):
         """Given a 6 scalar link coordinate, returns the 4 scalar index
@@ -275,7 +229,7 @@ class Torus3dViewColorModel(object):
         cval = cmap_range(vals)
         for node_id, val in zip(nodes, vals):
             x, y, z = self.node_to_coord[node_id]
-            self.node_colors[x, y, z] = self.map_node_color(cval(val))
+            self.node_values[x, y, z] = [cval(val), 1]
 
         self._notifyListeners()
 
@@ -301,47 +255,20 @@ class Torus3dViewColorModel(object):
                 self.link_to_coord[link_id])
 
             avg_link_values[x,y,z,axis] += val
-            c = self.map_link_color(cval(val))
+            c = cval(val)
             if direction > 0:
-                self.pos_link_colors[x,y,z,axis] = c
+                self.pos_link_values[x,y,z,axis] = [c, 1]
             else:
-                self.neg_link_colors[x,y,z,axis] = c
+                self.neg_link_values[x,y,z,axis] = [c, 1]
 
+        cval = cmap_range(avg_link_values)
         for index in np.ndindex(self.shape):
             x, y, z = index
             for axis in range(3):
                 color_val = cval(avg_link_values[x, y, z, axis])
-                self.avg_link_colors[x, y, z, axis] = self.map_link_color(color_val)
+                self.avg_link_values[x, y, z, axis] = [color_val, 1]
 
         self._notifyListeners()
-
-    @Slot(list, list)
-    def updateHighlights(self, node_ids, link_ids):
-        """Given a list of the node and link ids to be highlighted, changes
-           the alpha values accordingly and notifies listeners.
-
-           In the future, when this becomes DataModel, will probably just
-           update some property that the view will manipulate.
-        """
-        if node_ids or link_ids:
-            self.set_all_alphas(0.2)
-            for node in node_ids:
-                x, y, z = self.node_to_coord[node]
-                self.node_colors[x, y, z, 3] = 1.0
-            for link in link_ids:
-                x, y, z, axis, direction = self.link_coord_to_index(
-                    self.link_to_coord[link])
-                self.avg_link_colors[x,y,z,axis,3] = 1.0
-        else:
-            self.set_all_alphas(1.0)
-
-        self._notifyListeners()
-
-    def updateLinkColors(self):
-        """None of the data but the colormap has changed and thus we
-           need to update the display list
-        """
-        pass
 
 
 
@@ -358,13 +285,13 @@ class Torus3dView(GLView):
     def __init__(self, parent, parent_view = None, title = None):
         # Need to set this before the module initialization so that createView can use it.
         # TODO: not sure whether I like this order.  It's not very intuitive, but seems necessary.
-        self.colorModel = Torus3dViewColorModel()
+        self.dataModel = Torus3dViewDataModel()
         super(Torus3dView, self).__init__(parent, parent_view, title)
 
-        self.agent.torusUpdateSignal.connect(self.colorModel.updateTorus)
-        self.agent.nodeUpdateSignal.connect(self.colorModel.updateNodeData)
-        self.agent.linkUpdateSignal.connect(self.colorModel.updateLinkData)
-        self.agent.highlightUpdateSignal.connect(self.colorModel.updateHighlights)
+        self.agent.torusUpdateSignal.connect(self.dataModel.updateTorus)
+        self.agent.nodeUpdateSignal.connect(self.dataModel.updateNodeData)
+        self.agent.linkUpdateSignal.connect(self.dataModel.updateLinkData)
+        self.agent.highlightUpdateSignal.connect(self.view.updateHighlights)
 
         self.createDragOverlay(["nodes", "links"],
             ["Color Nodes", "Color Links"],
@@ -375,4 +302,170 @@ class Torus3dView(GLView):
             self.agent.registerNodeAttributes(index_list)
         elif tag == "links":
             self.agent.registerLinkAttributes(index_list)
+
+
+
+class Torus3dGLWidget(GLWidget):
+
+    nodeColorChangeSignal = Signal()
+    linkColorChangeSignal = Signal()
+
+    def __init__(self, parent, dataModel, rotation = True, **keywords):
+        super(TorusGLWidget, self).__init__(parent, rotation = rotation)
+
+        def kwarg(name, default_value):
+            setattr(self, name, keywords.get(name, default_value))
+
+        self.parent = parent
+        self.dataModel = None
+
+        self.box_size = 0.2
+
+        kwarg("default_node_color", (0.5, 0.5, 0.5, 0.2))
+        kwarg("node_cmap", cm.get_cmap("jet"))
+
+        kwarg("default_link_color", (0.5, 0.5, 0.5, 0.2))
+        kwarg("link_cmap", cm.get_cmap("jet"))
+
+
+        # Color map bound changing
+        self.delta = 0.05
+        self.lowerBound = 0
+        self.upperBound = 1
+
+        # Display lists for nodes and links
+        self.cubeList = DisplayList(self.drawCubes)
+        self.linkList = DisplayList(self.drawLinks)
+        self.nodeColorChangeSignal.connect(self.cubeList.update)
+        self.linkColorChangeSignal.connect(self.linkList.update)
+
+        # Directions in which coords are laid out on the axes
+        self.axis_directions = np.array([1, -1, -1])
+
+
+        self.setDataModel(dataModel)
+        self.clearNodes()
+        self.clearLinks()
+
+    def setDataModel(self, dataModel):
+        # unregister with any old model
+        if self.dataModel:
+            self.dataModel.unregisterListener(self.update)
+
+        # register with the new model
+        self.dataModel = dataModel
+        self.dataModel.registerListener(self.update)
+        #self.update()
+
+    def update(self):
+        self.updateCubeColors()
+        self.updateLinkColors()
+        self.updateGL()
+
+    def updateDrawing(self):
+        self.cubeList.update()
+        self.linkList.update()
+        self.updateGL()
+
+    def clearNodes(self):
+        self.node_colors = np.tile(self.default_node_color,
+            list(self.dataModel.shape) + [1])
+
+    def clearLinks(self):
+        self.avg_link_colors = np.tile(self.default_link_color,
+            list(self.dataModel.shape) + [3, 1])
+
+    def updateCubeColors(self):
+        self.clearNodes()
+        for node in np.ndindex(*self.dataModel.shape):
+            self.node_colors[node] = self.map_node_color(
+                self.dataModel.node_values[node][0]) \
+                if (self.dataModel.node_values[node][1] \
+                > sys.float_info.epsilon) else self.default_node_color
+        self.nodeColorChangeSignal.emit()
+
+    def updateLinkColors(self):
+        self.clearLinks()
+        for node in np.ndindex(*self.dataModel.shape):
+            for dim in range(3):
+                self.avg_link_colors[node][dim] = self.map_link_color(
+                    self.dataModel.avg_link_values[node][dim][0]) \
+                    if (self.dataModel.avg_link_values[node][dim][1] \
+                    > sys.float_info.epsilon) else self.default_link_color
+        self.linkColorChangeSignal.emit()
+
+    def map_node_color(self, val):
+        """Turns a color value in [0,1] into a 4-tuple RGBA color.
+           Used to map nodes.
+        """
+        return self.node_cmap(val)
+
+    def map_link_color(self, val):
+        """Turns a color value in [0,1] into a 4-tuple RGBA color.
+           Used to map links.
+        """
+        if val < self.lowerBound-1e-8 or val > self.upperBound+1e-8:
+            return [1,1,1,0]
+        else:
+            return self.link_cmap(val)
+
+    def set_all_alphas(self, alpha):
+        """Set all nodes and links to the same given alpha value."""
+        self.node_colors[:,:,:,3] = alpha
+        self.avg_link_colors[:,:,:,:,3] = alpha
+
+    @Slot(list, list)
+    def updateHighlights(self, node_ids, link_ids):
+        """Given a list of the node and link ids to be highlighted, changes
+           the alpha values accordingly and notifies listeners.
+
+           In the future, when this becomes DataModel, will probably just
+           update some property that the view will manipulate.
+        """
+        if node_ids or link_ids: # Alpha based on appearance in these lists
+            self.set_all_alphas(0.2)
+            for node in node_ids:
+                x, y, z = self.dataModel.node_to_coord[node]
+                self.node_colors[x, y, z, 3] = 1.0
+            for link in link_ids:
+                x, y, z, axis, direction = self.dataModel.link_coord_to_index(
+                    self.dataModel.link_to_coord[link])
+                self.avg_link_colors[x,y,z,axis,3] = 1.0
+        else: # Alpha based on data-present value in dataModel
+            for node in np.ndindex(*self.dataModel.shape):
+                self.node_colors[node][3] = 1.0 \
+                    if self.dataModel.node_values[node][1] > 0 else 0.2
+                vals = self.dataModel.avg_link_values[node]
+                for dim in range(3):
+                    self.avg_link_colors[node][dim][3] = 1.0 \
+                        if (vals[dim][1] > 0) else 0.2
+
+        self.updateDrawing()
+
+
+    # Stuff for Timo's bound changing, move into Torus
+    def lowerLowerBound(self):
+        self.lowerBound = max(self.lowerBound-self.delta,0)
+        self.updateLinkColors()
+        self.updateGL()
+        print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
+
+    def raiseLowerBound(self):
+        self.lowerBound = min(self.lowerBound+self.delta,1)
+        self.updateLinkColors()
+        self.updateGL()
+        print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
+
+    def lowerUpperBound(self):
+        self.upperBound = max(self.upperBound-self.delta,0)
+        self.updateLinkColors()
+        self.updateGL()
+        print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
+
+    def raiseUpperBound(self):
+        self.upperBound = min(self.upperBound+self.delta,1)
+        self.updateLinkColors()
+        self.updateGL()
+        print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
+
 

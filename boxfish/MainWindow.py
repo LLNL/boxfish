@@ -93,8 +93,10 @@ class MainWindow(QMainWindow):
         else:
             super(MainWindow, self).dropEvent(e)
 
-    def mouseReleaseEvent(self, e):
-        print "release"
+    # Unfortunate attempts to determine how to deal with drag overlay
+    # persistance problem
+    #def mouseReleaseEvent(self, e):
+    #    print "release"
 
     def createMenus(self):
         """This defines the menu actions and shortcuts."""
