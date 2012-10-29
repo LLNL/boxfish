@@ -311,7 +311,7 @@ class Torus3dGLWidget(GLWidget):
     linkColorChangeSignal = Signal()
 
     def __init__(self, parent, dataModel, rotation = True, **keywords):
-        super(TorusGLWidget, self).__init__(parent, rotation = rotation)
+        super(Torus3dGLWidget, self).__init__(parent, rotation = rotation)
 
         def kwarg(name, default_value):
             setattr(self, name, keywords.get(name, default_value))
