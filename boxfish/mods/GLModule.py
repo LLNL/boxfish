@@ -28,11 +28,14 @@ class GLAgent(ModuleAgent):
             self.module_scene = module_scene.copy()
             self.transformUpdateSignal.emit(self.module_scene.rotation,
                 self.module_scene.translation)
-        if self.module_scene.background_color \
-            != module_scene.background_color:
+        if (self.module_scene.background_color is not None
+            and module_scene.background_color is not None
+            and (self.module_scene.background_color
+            == module_scene.background_color).all()) \
+            or self.module_scene.background_color != module_scene.background_color:
             self.module_scene.background_color \
                 = module_scene.background_color
-            self.bgColorUpdateSignal(self.module_scene.background_color)
+            self.bgColorUpdateSignal.emit(self.module_scene.background_color)
 
 
 class GLView(ModuleView):
@@ -70,7 +73,7 @@ class GLView(ModuleView):
     def buildTabDialog(self):
         super(GLView, self).buildTabDialog()
         self.tab_dialog.addTab(self.color_tab_type(self.tab_dialog,
-            self.agent), "Colors")
+            self), "Colors")
 
 
 class GLModuleScene(ModuleScene):
@@ -106,10 +109,74 @@ class GLColorTab(QWidget):
        GL Views. The base takes care of GL background colors.
     """
 
-    def __init__(self, parent, agent):
+    def __init__(self, parent, view):
         """Construct a GLColorTab with given parent (TabDialog) and
            ModuleAgent.
         """
         super(GLColorTab, self).__init__(parent)
 
-        self.agent = agent
+        self.view = view
+
+        self.layout = QVBoxLayout()
+        self.layout.setAlignment(Qt.AlignCenter)
+
+        self.createContent()
+
+        self.setLayout(self.layout)
+
+    def createContent(self):
+        self.layout.addWidget(self.buildBGColorWidget())
+        
+
+    def gl_to_rgb(self, color):
+        if color is None:
+            return [0, 0, 0, 0]
+
+        return [int(255 * x) for x in color]
+
+    def rgbString(self, color):
+        return "rgb(" + str(color[0]) + "," + str(color[1]) + ","\
+            + str(color[2]) + ")"
+
+    def buildBGColorWidget(self):
+        widget = QWidget()
+        layout = QHBoxLayout()
+        label = QLabel("Background Color")
+        self.bgColorBox = ClickFrame(self, QFrame.Panel | QFrame.Sunken)
+        self.bgColorBox.setLineWidth(0)
+        self.bgColorBox.setMinimumHeight(12)
+        self.bgColorBox.setMinimumWidth(36)
+        self.bgColorBox.clicked.connect(self.bgColorChange)
+
+        self.bgcolor = self.gl_to_rgb(self.view.agent.module_scene.background_color)
+        self.bgColorBox.setStyleSheet("QFrame { background-color: "\
+            + self.rgbString(self.bgcolor) + " }")
+
+        layout.addWidget(label)
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(self.bgColorBox)
+
+        widget.setLayout(layout)
+        return widget
+
+    def bgColorChange(self):
+        color = QColorDialog.getColor(QColor(*self.bgcolor), self)
+
+        self.bgcolor = [color.red(), color.green(), color.blue(), self.bgcolor[3]]
+        self.bgColorBox.setStyleSheet("QFrame { background-color: "\
+            + self.rgbString(self.bgcolor) + " }")
+        self.view.agent.module_scene.background_color = np.array(
+            [x / 255.0 for x in self.bgcolor])
+        self.view.agent.module_scene.announceChange()
+
+        # Normally we shouldn't have to do this but when I try opening the 
+        # TabDialog with show() which gives back control, unfortunate things
+        # can happen, so I use .exec_() which halts processing events
+        # outside the dialog, so I force this color change here
+        # Sadly this appears to only solve the problem for modules created
+        # after this one. Will need to fix some other time...
+        self.view.updateBGColor(self.view.agent.module_scene.background_color)
+        
+        QApplication.processEvents()
+
+

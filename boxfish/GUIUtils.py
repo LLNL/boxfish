@@ -216,3 +216,14 @@ class DropPanel(QWidget):
             self.handler(indexList, self.tag)
         else:
             super(DropPanel, self).dropEvent(event)
+
+class ClickFrame(QFrame):
+    """Frame that sends a signal on click."""
+
+    clicked = Signal()
+
+    def __init__(self, parent = None, flags = 0):
+        super(ClickFrame, self).__init__(parent, flags)
+
+    def mousePressEvent(self, event):
+        self.clicked.emit()

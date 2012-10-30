@@ -381,7 +381,7 @@ class ModuleView(QMainWindow):
         """
         if self.enable_tab_dialog:
             self.buildTabDialog()
-            self.tab_dialog.show()
+            self.tab_dialog.exec_()
 
 
 class BFDockWidget(QDockWidget):

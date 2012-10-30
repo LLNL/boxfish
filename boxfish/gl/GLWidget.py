@@ -175,6 +175,9 @@ class GLWidget(QGLWidget):
     def paintGL(self):
         glFlush()
 
+    def mouseDoubleClickEvent(self, event):
+        self.parent.mouseDoubleClickEvent(event)
+
     def mousePressEvent(self, event):
         """Maps the click location to the sphere and records this in lastPos.  Also records that
            dragging has begun.
