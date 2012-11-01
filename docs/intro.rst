@@ -8,4 +8,5 @@ Boxfish is available on the `PAVE <https://scalability.llnl.gov/performance-anal
 Install
 --------
 Boxfish requires a Python installation (2.5+), Qt, numpy, matplotlib, PyYaml
-and PyOpenGL.
+and PyOpenGL. To build the documentation, you need
+`Sphinx<http://sphinx-doc.org>`_.
