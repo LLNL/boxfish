@@ -27,6 +27,8 @@ class PlotterAgent(ModuleAgent):
         self.addRequest("x")
         self.addRequest("y")
 
+        self.highlightSceneChangeSignal.connect(self.processHighlights)
+
     def setXData(self, indexList):
         self.requestAddIndices("x", indexList)
 
@@ -49,6 +51,14 @@ class PlotterAgent(ModuleAgent):
         if self.table:
             self.setHighlights([self.table], [self.table.getRun()], [ids])
 
+    @Slot()
+    def processHighlights(self):
+        if not self.table:
+            return
+
+        self.highlightUpdateSignal.emit(self.getHighlightIDs(self.table,
+            self.table.getRun()))
+
 @Module("Plotter", PlotterAgent)
 class PlotterView(ModuleView):
 
@@ -57,7 +67,9 @@ class PlotterView(ModuleView):
 
         self.ids = None
         self.agent.plotUpdateSignal.connect(self.plotData)
+        self.agent.highlightUpdateSignal.connect(self.plotter.setHighlights)
         self.plotter.selectionChangedSignal.connect(self.agent.selectionChanged)
+
 
     def createView(self):
         view = QWidget()
@@ -195,34 +207,42 @@ class PlotterWidget(QWidget):
         self.canvas.draw()
 
     def onPick(self, event):
-        old_selection = list(self.selected)
-        self.selected = np.array(event.ind)
+        selected = np.array(event.ind)
 
         mouseevent = event.mouseevent
-        xt = self.xs[self.selected]
-        yt = self.ys[self.selected]
+        xt = self.xs[selected]
+        yt = self.ys[selected]
         d = np.array((xt - mouseevent.xdata)**2 + (yt-mouseevent.ydata)**2)
-        thepoint = self.selected[d.argmin()]
-        self.selected = []
-        self.selected.append(thepoint)
+        thepoint = selected[d.argmin()]
+        selected = []
+        selected.append(thepoint)
+
+        self.selectionChangedSignal.emit(selected)
+
+    @Slot(list)
+    def setHighlights(self, ids):
+        old_selection = list(self.selected)
+        self.selected = ids
+        if ids is None:
+            self.selected = []
 
         if (old_selection == self.selected and old_selection != [])\
             or self.selected != []:
+
             if self.selected != []: # Color new selection
-                self.highlighted = self.axes.plot(self.xs[self.selected[0]],
-                    self.ys[self.selected[0]], 'or')[0]
+                for indx in self.selected:
+                    self.highlighted = self.axes.plot(self.xs[indx],
+                        self.ys[indx], 'or')[0]
             if old_selection == self.selected: # Turn off existing selection
                 self.selected = []
             if old_selection != []: # Do not color old selection
-                self.axes.plot(self.xs[old_selection[0]],
-                    self.ys[old_selection[0]], 'ob', picker = 3)
+                for indx in old_selection:
+                    self.axes.plot(self.xs[indx], self.ys[indx],
+                        'ob', picker = 3)
 
             self.canvas.draw()
-
-            self.selectionChangedSignal.emit(self.selected)
-
-        #self.plotData(self.xs, self.ys)
-
+            return True
+        return False
 
 
 
