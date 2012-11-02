@@ -17,11 +17,13 @@ from boxfish.ModuleView import *
 
 class PlotterAgent(ModuleAgent):
 
+    plotUpdateSignal = Signal(list, list, list) # ids, x, y
+    highlightUpdateSignal = Signal(list)
+
     def __init__(self, parent, datatree):
         super(PlotterAgent, self).__init__(parent, datatree)
 
-        self.x_columns = list()
-        self.y_columns = list()
+        self.table = None
         self.addRequest("x")
         self.addRequest("y")
 
@@ -31,13 +33,31 @@ class PlotterAgent(ModuleAgent):
     def setYData(self, indexList):
         self.requestAddIndices("y", indexList)
 
+    def requestUpdated(self, tag):
+        self.presentData()
+
+    def presentData(self):
+        if not self.requests['x'].indices or not self.requests['y'].indices:
+            return
+
+        self.table, self.ids, xs, ys = self.requests['x'].generalizedGroupBy(
+            self.requests['y'].indices, "sum", "sum")
+        self.plotUpdateSignal.emit(self.ids, xs, ys)
+
+    @Slot(list)
+    def selectionChanged(self, ids):
+        if self.table:
+            self.setHighlights([self.table], [self.table.getRun()], [ids])
+
 @Module("Plotter", PlotterAgent)
 class PlotterView(ModuleView):
 
     def __init__(self, parent, parent_view = None, title = None):
         super(PlotterView, self).__init__(parent, parent_view, title)
 
-        self.selected = []
+        self.ids = None
+        self.agent.plotUpdateSignal.connect(self.plotData)
+        self.plotter.selectionChangedSignal.connect(self.agent.selectionChanged)
 
     def createView(self):
         view = QWidget()
@@ -48,40 +68,30 @@ class PlotterView(ModuleView):
         self.viewarea.setWidgetResizable(True)
         self.viewarea.setMinimumSize(300,300)
 
-        # TODO: Use panels to make the attrs flush with the first label
-        # and/or change this entirely so we drop into parts of the
-        # MPL window.
-        self.xlabel = QLabel("X: ")
-        self.ylabel = QLabel("Y: ")
-        self.xattrs = QLabel("")
-        self.yattrs = QLabel("")
-
-        self.xattrs.setWordWrap(True)
-        self.yattrs.setWordWrap(True)
-
         layout = QGridLayout()
-        layout.addWidget(self.xlabel, 0, 0, 1, 1)
-        layout.addWidget(self.xattrs, 0, 1, 1, 1)
-        layout.addWidget(self.ylabel, 1, 0, 1, 1)
-        layout.addWidget(self.yattrs, 1, 1, 1, 1)
-        layout.addWidget(self.viewarea, 2, 0, 1, 2)
-        layout.setRowStretch(2, 10)
+        layout.addWidget(self.viewarea, 0, 0, 1, 2)
+        layout.setRowStretch(0, 10)
         layout.setContentsMargins(0, 0, 0, 0)
         view.setLayout(layout)
 
         return view
+
+    @Slot(list, list, list)
+    def plotData(self, ids, xs, ys):
+        self.ids = ids
+        self.plotter.plotData(xs, ys)
 
     def droppedData(self, indexList):
         # We assume generally dropped data is Y data
         self.droppedYData(indexList)
 
     def droppedXData(self, indexList):
+        self.plotter.setXLabel(self.buildAttributeString(indexList))
         self.agent.setXData(indexList)
-        self.xattrs.setText(self.buildAttributeString(indexList))
 
     def droppedYData(self, indexList):
+        self.plotter.setYLabel(self.buildAttributeString(indexList))
         self.agent.setYData(indexList)
-        self.yattrs.setText(self.buildAttributeString(indexList))
 
     def buildAttributeString(self, indexList):
         mytext = ""
@@ -111,6 +121,7 @@ class PlotterView(ModuleView):
             axes_corner = self.plotter.axes.transAxes.transform((0,0))
 
             event.accept()
+            self.propagateKillRogueOverlayMessage()
             if drop_point.x() > axes_corner[0] \
                 and self.height() - drop_point.y() < axes_corner[1]:
                 self.droppedXData(event.mimeData().getDataIndices())
@@ -122,9 +133,14 @@ class PlotterView(ModuleView):
 
 class PlotterWidget(QWidget):
 
+    selectionChangedSignal = Signal(list)
+
     def __init__(self, parent=None):
         super(PlotterWidget, self).__init__(parent)
 
+        self.selected = []
+        self.ylabel = ""
+        self.xlabel = ""
         self.fig = Figure(figsize=(300,300), dpi=72, facecolor=(1,1,1), \
             edgecolor=(0,0,0))
 
@@ -149,20 +165,33 @@ class PlotterWidget(QWidget):
         self.setLayout(vbox)
 
         # Test
-        self.axes.plot([1,2,3,4,5],[1,2,3,4,5], 'ob')
+        self.axes.plot(range(6),range(6), 'ob')
         self.axes.set_title("Drag attributes to change graph.")
         self.axes.set_xlabel("Drag here to set x axis.")
         self.axes.set_ylabel("Drag here to set y axis.")
-        print "Drawing"
+        print "Drawing plot..."
         self.canvas.draw() # Why does this take so long on 4726 iMac?
 
+    def setXLabel(self, label):
+        self.xlabel = label
+        self.axes.set_xlabel(label)
+        self.canvas.draw()
 
-    def plotData(self, ids, vals):
+    def setYLabel(self, label):
+        self.ylabel = label
+        self.axes.set_ylabel(label)
+        self.canvas.draw()
+
+    def plotData(self, xs, ys):
         self.axes.clear()
-        self.axes.plot(ids, vals, 'ob', picker=3)
+        self.axes.set_xlabel(self.xlabel)
+        self.axes.set_ylabel(self.ylabel)
+        self.xs = np.array(xs)
+        self.ys = np.array(ys)
+        self.axes.plot(xs, ys, 'ob', picker=3)
         if np.alen(self.selected) > 0:
-            self.highlighted = self.axes.plot(ids[self.selected[0]], \
-                vals[self.selcted[0]], 'or')[0]
+            self.highlighted = self.axes.plot(self.xs[self.selected[0]],
+                self.ys[self.selected[0]], 'or')[0]
         self.canvas.draw()
 
     def onPick(self, event):
@@ -170,24 +199,30 @@ class PlotterWidget(QWidget):
         self.selected = np.array(event.ind)
 
         mouseevent = event.mouseevent
-        xt = self.ids[self.selected]
-        yt = self.traffic[self.selected]
+        xt = self.xs[self.selected]
+        yt = self.ys[self.selected]
         d = np.array((xt - mouseevent.xdata)**2 + (yt-mouseevent.ydata)**2)
         thepoint = self.selected[d.argmin()]
         self.selected = []
         self.selected.append(thepoint)
 
-        if old_selection == self.selected and old_selection != []:
-            self.selected = []
-            # HIGHLIGHT_CHANGE
-            # alert agent about this - need SceneGraph done
+        if (old_selection == self.selected and old_selection != [])\
+            or self.selected != []:
+            if self.selected != []: # Color new selection
+                self.highlighted = self.axes.plot(self.xs[self.selected[0]],
+                    self.ys[self.selected[0]], 'or')[0]
+            if old_selection == self.selected: # Turn off existing selection
+                self.selected = []
+            if old_selection != []: # Do not color old selection
+                self.axes.plot(self.xs[old_selection[0]],
+                    self.ys[old_selection[0]], 'ob', picker = 3)
 
-        self.plotData(self.ids, self.traffic, True)
+            self.canvas.draw()
 
-        if self.selected != []:
-            # HIGHLIGHT_CHANGE
-            # alert agent about this -- need SceneGraph done
-            pass
+            self.selectionChangedSignal.emit(self.selected)
+
+        #self.plotData(self.xs, self.ys)
+
 
 
 

@@ -511,11 +511,6 @@ class ModuleRequest(QObject):
         self.subdomain = subdomain
         self._indices = indices
 
-        if self.subdomain:
-            self.subdomain_scene = SubdomainScene(self.subdomain)
-        else:
-            self.subdomain_scene = None
-
         if self._indices is None:
             self.attribute_scene = AttributeScene(set())
         else:
@@ -629,7 +624,11 @@ class ModuleRequest(QObject):
                     else:
                         aggregate_values[domain_id] = list(row_values[1:])
             else: # Other type of projection
-                # Find relevant projection per id
+                # Find relevant projection per id. Each id may appear in 
+                # in multiple rows, so we build this on the unique set of
+                # ids to minimize calculated projections. Then we use 
+                # the built dict to put the rest of the row values in 
+                # the proper place
                 projection_memo = dict() # store projections
                 for table_id in set(attribute_values[0]): # unique ids
                     domain_ids = projection.project(
@@ -713,18 +712,18 @@ class ModuleRequest(QObject):
 
         return table_list, run_list, id_list, headers, data_list
 
-    def generalizedGroupBy(self, desired_indices, desired_aggregator,
-        grouped_aggregator):
+    def generalizedGroupBy(self, desired_indices, desired_operator,
+        group_operator):
         """Groups some function of desired_indices by some function of
            the Request's indices.
 
            desired_indices
                An indexList
 
-           desired_aggregator
+           desired_operator
                Function with which to aggregate the desired_attributes
 
-           grouped_aggregator
+           grouped_operator
                Function with which to aggregate the group by (our) indices
 
 
@@ -733,21 +732,159 @@ class ModuleRequest(QObject):
 
             Returns domain, ids, grouped_values, desired_values
         """
+        # CAUTION: Note that this is aggregating by IDs. That means if there
+        # are multiple rows per ID in one table that is being used, it
+        # could be that the desired value that is matched up with some of
+        # the group values isn't what you would think logically. For
+        # example, suppose there is just one table with columns id, A, B, C:
+        # id A B C
+        #  0 1 1 0
+        #  0 2 2 1
+        #  1 3 3 0
+        #  1 4 4 1
+        # If we have group value B and desired value A, the points we would
+        # get would be:
+        # group desired
+        #     1       1
+        #     1       2
+        #     2       1
+        #     2       2
+        #     3       3
+        #     3       4
+        #     4       3
+        #     4       4
+        # This is because there is a projection going through the id field.
+        # In the future, when we have a buffer query language, we may be
+        # able to yield:
+        # group desired
+        #     1       1
+        #     2       2
+        #     3       3
+        #     4       4
 
+        # APPROACH
         # First we need to find all possible combinations of the group by
         # indices. We take the first table given as the primary domain that
         # we will group with. We then project all other tables onto that
         # table. Then we have all possible values associated with IDs.
         # Then we form Cartesian products of the attributes where each 
         # product shares the same associated id. Finally we apply the
-        # grouped_aggregator to each of these to form the group-by groups.
+        # grouped_operator to each of these to form the group-by groups.
 
+        # group by aggregator dict
+        group_dict, group_table = self.projectToFirstTable(self._indices)
+
+        # Next we repeat the process for the desired_indices
+        desired_dict, desired_table = self.projectToFirstTable(desired_indices)
+
+        # Now we do the Cartesian product on each group_dict[domain_id]
+        # At this point, group_dict[domain_id] is a dict table->row_values
+        # By the end of this operation, each domain_id should be associated
+        # with a list of products. Each product is a list of lists of 
+        # row_values, one for each table.
+        group_cart = self.cartesianCompress(group_dict, group_operator)
+        desired_cart = self.cartesianCompress(desired_dict, desired_operator)
+
+        # Then we project the desired_indices domain ids onto the 
+        # group_indices domain_ids.
+        projection = group_table.getRun().getProjection(
+            group_table._table.subdomain(), desired_table._table.subdomain())
+        if projection is None:
+            raise ValueError("Cannont combine grouped values, no projection"
+                + " between " + str(group_table.name) + " and "
+                + str(desired_table.name))
+
+        import itertools
+        ids = list()
+        group_values = list()
+        desired_values = list()
+        if isinstance(projection, IdentityProjection):
+            for desired_id, d_values in desired_cart.items():
+                g_values = group_cart[desired_id]
+                cart_product = itertools.product(d_values, g_values)
+                for d, g in cart_product:
+                    ids.append(desired_id)
+                    desired_values.append(d)
+                    group_values.append(g)
+        else:
+            for desired_id, d_values in desired_cart.items():
+                group_ids = projection.project(
+                    SubDomain.instantiate(desired_table._table.subdomain(),
+                        [desired_id]),
+                    group_table._table.subdomain())
+                for group_id in group_ids:
+                    g_values = group_cart[group_id]
+                    cart_product = itertools.product(d_values, g_values)
+                    for d, g in cart_product:
+                        ids.append(group_id)
+                        desired_values.append(d)
+                        group_values.append(g)
+
+        return group_table, ids, group_values, desired_values
+
+
+    def cartesianCompress(self, cart_dict, operator):
+        """Takes a dict of the type returned from projectToFirstTable and
+           compresses it to:
+
+               first_table_id -> list of values
+
+           where each value in the list of values represents the operator
+           applied to a product from the Cartesian product of the lists
+           in the cart_dict.
+
+           Example: cart_dict[0][t1] = [[0, 1], [2, 3]]
+                    cart_dict[0][t2] = [[1, 1, 1], [2, 2, 2]]
+
+                    return_dict[0] = unique[ operator([0, 1], [1, 1, 1]),
+                                             operator([0, 1], [2, 2, 2]),
+                                             operator([2, 3], [1, 1, 1]),
+                                             operator([2, 3], [2, 2, 2]) ]
+        """
+
+        return_dict = dict()
+
+        import itertools
+        for key in cart_dict: # id
+            values = list() # Aggregated values
+            tables = list()  # Participating Tables
+            counts = list()  # How many rows saved for each table
+            for table in cart_dict[key]:
+                #table_list.append(cart_dict[key][table])
+                tables.append(table)
+                counts.append(range(len(cart_dict[key][table])))
+
+            #value_tuples = itertools.product(*table_list)
+            indices = itertools.product(*counts)
+            for index_set in indices:
+                vals_to_combine = list()
+                for i, index in enumerate(list(index_set)):
+                    vals_to_combine.extend(cart_dict[key][tables[i]][index])
+
+                values.append(self.operator[operator](vals_to_combine))
+
+            return_dict[key] = list(set(values))
+
+        return return_dict
+
+
+    def projectToFirstTable(self, indices):
+        """Gets the data from a set of indicies and and projects that
+           data onto the ids of the first table represented in those
+           indices.
+
+           This is returned as a dict of dict of lists of lists:
+               first_table_id -> dict_of_all_tables -> list of lists of
+                                                       returned row values
+
+           Also returns the first_table corresponding to the first_table_ids
+        """
         # Break our indices into Tables
-        self.attribute_groups = self.sortIndicesByTable(self._indices)
+        attribute_groups = self.sortIndicesByTable(indices)
 
         domain_table = None
         group_dict = dict()
-        for table, attribute_group in self.attribute_groups:
+        for table, attribute_group in attribute_groups:
             if domain_table is None: # First table is our domain table
                 domain_table = table
             else:
@@ -771,7 +908,7 @@ class ModuleRequest(QObject):
                 identifiers = modifier.process(table, identifiers)
 
             # Get values
-            attribute_list = table._table.attributes_by_identifiers(
+            attribute_values = table._table.attributes_by_identifiers(
                 identifiers, attributes, False)
 
             # Add these values to the dict
@@ -808,10 +945,30 @@ class ModuleRequest(QObject):
                         # Delete the ones that didn't appear in this table
                         del group_dict[domain_id]
                 else: # Other type of projection (ugh)
-                    pass
+                    # Find relevant projection per id. Each id may appear in 
+                    # in multiple rows, so we build this on the unique set of
+                    # ids to minimize calculated projections. Then we use 
+                    # the built dict to put the rest of the row values in 
+                    # the proper place
+                    projection_memo = dict() # store projections
+                    for table_id in set(*attribute_values[0]):
+                        domain_ids = projection.project(
+                            Subdomain.instantiate(table._table.subdomain(),
+                                [table_id]), domain_table._table.subdomain())
+                        projection_memo[table_id] = domain_ids
 
+                    for row_values in zip(*attribute_values):
+                        domain_ids = projection_memo[row_values[0]]
+                        for domain_id in domain_ids:
+                            if domain_id in group_dict:
+                                current_ids.remove(domain_id)
+                                if table not in group_dict[domain_id]:
+                                    group_dict[domain_id][table] = list()
+                                group_dict[domain_id][table].append(
+                                    row_values[1:])
 
-        # Next we repeat the process for the desired_indices
+                    for domain_id in current_ids:
+                        # Delete the ones that didn't appear in this table
+                        del group_dict[domain_id]
 
-        # Then we project the desired_indices domain ids onto the 
-        # group_indices domain_ids.
+        return group_dict, domain_table
