@@ -36,6 +36,7 @@ class TableAgent(ModuleAgent):
         self.runs = None
 
         self.highlightSceneChangeSignal.connect(self.processHighlights)
+        self.apply_attribute_scenes = False # This modules doesn't use these
 
     def addDataIndices(self, indexList):
         """This function handles an added list of DataTree indices by

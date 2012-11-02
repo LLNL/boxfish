@@ -1,3 +1,4 @@
+import sys
 import matplotlib.colors
 import matplotlib.cm as cm
 
@@ -72,3 +73,48 @@ def mapNames():
         map_names.append(mpl_map)
     map_names.extend(boxfish_maps.keys())
     return map_names
+
+class ColorMap(object):
+    """This class wraps colormaps for extended options on how colors are
+       computed from the existing colormaps.
+
+       Note that all colormaps in here are normalized on [0.0, 1.0].
+    """
+
+    def __init__(self, base_color_map = getMap('gist_earth_r'),
+        color_step = 0, step_size = 0.1):
+        self.color_map = base_color_map
+
+        # If color_step is not 0, we sample the color bar at each
+        # of the n steps and assign all values as one of those steps,
+        # modding by the step_size
+        self.color_step = color_step
+        self._step_size = step_size
+
+    @property
+    def step_size(self):
+        return self._step_size
+
+    @step_size.setter
+    def step_size(self, size):
+        if size <= sys.float_info.epsilon:
+            self._step_size = 1
+        else:
+            self._step_size = size
+
+    def __equals__(self, other):
+        if self.color_map != other.color_map:
+            return False
+        if self.color_step != other.color_step:
+            return False
+        if self.step_size != other.step_size:
+            return False
+
+        return True
+
+    def getColor(self, value):
+        if self.color_step == 0:
+            return self.color_map(value)
+        else:
+            stepped_value = round(value / self.step_size) % self.color_step
+            return self.color_map(1.0 / self.color_step * stepped_value)

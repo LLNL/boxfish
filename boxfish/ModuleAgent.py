@@ -22,6 +22,7 @@ class ModuleAgent(QObject):
     sceneChangedSignal         = Signal(Scene, object) # my scene info changed
     receiveModuleSceneSignal   = Signal(ModuleScene) # we receive scene info
     highlightSceneChangeSignal = Signal()
+    attributeSceneUpdateSignal = Signal()
     requestScenesSignal        = Signal(QObject)
 
     def __init__(self, parent, datatree = None):
@@ -36,7 +37,6 @@ class ModuleAgent(QObject):
         super(ModuleAgent,self).__init__(parent)
 
         self.datatree = datatree
-        self.attribute_scenes = dict()
 
         self.children = list()
 
@@ -61,9 +61,17 @@ class ModuleAgent(QObject):
         self.apply_highlights = True
         self._propagate_highlights = False
         self.highlights = HighlightScene() # Local highlights
+        self._highlights_ref = HighlightScene() # Ref highlights for subtree
 
-        # Reference highlights for subtree
-        self._highlights_ref = HighlightScene()
+        # Attribute Scene information - we need to keep track of all of these
+        # possible combinations. Since there can be so many of these, we do
+        # not keep all valid ones even when no one is using. Instead, every
+        # time we have a change in attributes, we search the subtree that
+        # matters and clear out the ones we are no longer using.
+        self.attribute_scenes_dict = dict()
+        self.apply_attribute_scenes = True
+        self._propagate_attribute_scenes = True
+
 
 
     # factory method for subclasses
@@ -87,8 +95,15 @@ class ModuleAgent(QObject):
         coupler = FilterCoupler(name, self, None)
         self.requests[name] = ModuleRequest(self.datatree, name, coupler,
             subdomain)
+
+        # Connect signals
         self.requests[name].indicesChangedSignal.connect(self.requestUpdated)
+        self.requests[name].attributesChangedSignal.connect(
+            self.requestAttributesChanged)
+        self.requests[name].attributeSceneChangedSignal.connect(
+            self.sceneChanged)
         coupler.changeSignal.connect(self.requestedCouplerChanged)
+
         #Now send this new one to the parent
         self.addCouplerSignal.emit(coupler, self)
 
@@ -254,6 +269,9 @@ class ModuleAgent(QObject):
                 child.receiveSceneFromParent(scene)
         if self.propagate_highlights:
             child.receiveSceneFromParent(self._highlights_ref)
+        if self.propagate_attribute_scenes:
+            for key, scene in self.attribute_scenes_dict.iteritems():
+                child.receiveSceneFromParent(scene)
 
     def refreshSceneInformation(self):
         """This function is called to poll the parent agent for any
@@ -416,9 +434,101 @@ class ModuleAgent(QObject):
         self._module_scene = module_scene
         self._module_scene.causeChangeSignal.connect(self.sceneChanged)
 
+
+    @property
+    def propagate_attribute_scenes(self):
+        """True if this Agent propagates attribute scenes to its
+           children.
+        """
+        return self._propagate_attribute_scenes
+
+    # TODO: Factor this for all scenes by putting these values into
+    # a dict keyed by the type of policy
+    @propagate_attribute_scenes.setter
+    def propagate_attribute_scenes(self, policy):
+        # You can only turn off (policy is False) if your parent is
+        # also False. 
+        if policy or self.parent().propagate_attribute_scenes == policy:
+            self._propagate_attribute_scenes = policy
+        if policy: # Push policy on to all children
+            for child in self.children:
+                child.propagate_attribute_scenes = policy
+
+    @Slot(Scene, QObject)
+    def requestAttributesChanged(self, scene, request):
+        """When the attribute set of a request changes, it should take the
+           existing scene information. If no scene information is found, it
+           should add itself to the scene dict for this hierarchy.
+        """
+        if scene.attributes in self.attribute_scenes_dict:
+            request.receiveAttributeScene(
+                self.attribute_scenes_dict[scene.attributes])
+        else:
+            self.sceneChanged(scene)
+
+    def unionRanges(self, attributes):
+        """Finds the union of all ranges of AttributeScenes with the given
+           attributes that exist in this subtree.
+        """
+        range_list = self.getRanges(attributes)
+
+        min_range = range_list[0][0]
+        max_range = range_list[0][1]
+        for r in range_list:
+            min_range = r[0] if r[0] < min_range else min_range
+            max_range = r[1] if r[1] > max_range else max_range
+
+        return (min_range, max_range)
+
+    def getRanges(self, attributes):
+        """Creates a list of all ranges of AttributeScenes with the given
+           attributes that exist in this subtree.
+        """
+        range_list = list()
+
+        for child in self.children:
+            range_list.extend(child.unionRanges(attributes))
+
+        for request in self.requests.values():
+            if request.scene.attributes == attributes:
+                range_list.append(request.scene.total_range)
+
+        return range_list
+
+    def cleanAttributeScenes(self):
+        """Remove all entries from the attribute scenes store that are no
+           longer found in the subtree.
+        """
+        if not self.propagate_attribute_scenes:
+            return
+
+        attribute_sets = self.currentAttributes()
+        self.pruneAttributeScenes(attribute_sets)
+
+
+    def pruneAttributeScenes(self, valid_sets):
+        """Remove all attribute scenes from the store that are not in valid_set
+           from the entire subtree.
+        """
+        for child in self.children:
+            child.pruneAttributeScenes(valid_sets)
+
+        for attribute_set in self.attribute_scenes_dict:
+            if attribute_set not in valid_sets:
+                del self.attribute_scenes_dict[attribute_set]
+
+    def currentAttributes(self):
+        """Returns a list of all active attribute sets in this subtree."""
+        attribute_sets = set()
+        for child in self.children:
+            attribute_sets = attribute_sets.union(child.currentAttributes())
+
+        for request in self.requests.values():
+            attribute_sets.add(request.scene.attributes)
+
     @Slot(Scene)
     def sceneChanged(self, scene):
-        """Signals as ModuleScene in this subtree has changed."""
+        """Signals a Scene in this subtree has changed."""
         self.sceneChangedSignal.emit(scene.copy(), self)
 
     # Slot(Scene, ModuleAgent) decorator after class definition
@@ -444,6 +554,24 @@ class ModuleAgent(QObject):
                 self.sceneChangedSignal.emit(scene, self)
             else: # Not propagating, just give back to child
                 source_agent.receiveSceneFromParent(scene)
+        elif isinstance(scene, AttributeScene):
+            if self.propagate_attribute_scenes:
+                # Continue to propagate up
+                self.sceneChangedSignal.emit(scene, self)
+            else: # Not propagating up anymore
+                # Since this is an attribute scene, we need to calculate the 
+                # range of all such attribute scenes in the source_agent's
+                # subtree. We cannot simply union this one and the existing one
+                # because the existing one may have been based on what the one 
+                # we received used to be.
+                range_union = source_agent.unionRanges(scene.attributes)
+                scene.total_range = range_union
+
+                # Give back to child
+                source_agent.receiveSceneFromParent(scene)
+
+                # Now that that has finished, clean up attribute dictionary
+                self.cleanAttributeScenes()
 
     def receiveSceneFromParent(self, scene):
         """When a Scene is received from the parent, the Agent propagates
@@ -470,6 +598,17 @@ class ModuleAgent(QObject):
             if self.apply_module_scenes \
                 and isinstance(scene, type(self.module_scene)):
                 self.receiveModuleSceneSignal.emit(scene)
+        elif isinstance(scene, AttributeScene):
+            # Add/update to scene dict
+            self.attribute_scenes_dict[scene.attributes] = scene
+
+            # Determine how to handle this
+            if self.apply_attribute_scenes:
+                changes = False
+                for request in self.requests.values():
+                    changes = changes or request.receiveAttributeScene(scene)
+                if changes: # If any of these caused a change, alert the module
+                    self.attributeSceneUpdateSignal.emit()
 
 
 
@@ -496,6 +635,8 @@ class ModuleRequest(QObject):
     }
 
     indicesChangedSignal = Signal(str)
+    attributesChangedSignal = Signal(frozenset, QObject)
+    attributeSceneChangedSignal = Signal(AttributeScene)
 
     def __init__(self, datatree, name, coupler, subdomain = None,
         indices = list()):
@@ -512,10 +653,10 @@ class ModuleRequest(QObject):
         self._indices = indices
 
         if self._indices is None:
-            self.attribute_scene = AttributeScene(set())
+            self.scene = AttributeScene(frozenset())
         else:
-            self.attribute_scene = AttributeScene(self.attributeNameSet())
-
+            self.scene = AttributeScene(self.attributeNameSet())
+        self.scene.causeChangeSignal.connect(self.sceneChanged)
 
     @property
     def indices(self):
@@ -526,9 +667,12 @@ class ModuleRequest(QObject):
     def indices(self, indices):
         self._indices = indices
         if self._indices is None or len(self._indices) > 0:
-            self.attribute_scene.attributes = set()
+            self.scene.attributes = set()
         else:
-            self.attribute_scene.attributes = self.attributeNameSet()
+            new_set = self.attributeNameSet()
+            if self.scene.attributes != new_set:
+                self.scene.attributes = new_set
+                self.attributesChangedSignal.emit(new_set, self)
         self.indicesChangedSignal.emit(self.name)
 
     def attributeNameSet(self):
@@ -538,7 +682,29 @@ class ModuleRequest(QObject):
         attribute_set = set()
         for index in self._indices:
             attribute_set.add(self.datatree.getItem(index).name)
-        return attribute_set
+        return frozenset(attribute_set)
+
+    def receiveAttributeScene(self, scene):
+        """Process received scene. If the received scene has the same set
+           of attributes and is different than the existing one, the
+           ModuleRequest's scene will copy it and return True. Otherwise,
+           this function returns False.
+        """
+        if self.scene.attributes != scene.attributes: # Does not apply
+            return False
+
+        if self.scene == scene: # No change
+            return False
+
+        self.scene.causeChangeSignal.disconnect(self.sceneChanged)
+        self.scene = scene.copy()
+        self.scene.causeChangeSignal.connect(self.sceneChanged)
+        return True
+
+    @Slot(Scene)
+    def sceneChanged(self, scene):
+        """Propagate signal that this request's attribute scene has changed."""
+        self.attributeSceneChangedSignal.emit(scene)
 
     def sortIndicesByTable(self, indexList):
         """Creates an iterator of passed indices grouped by the tableItems
@@ -550,14 +716,12 @@ class ModuleRequest(QObject):
 
         return attribute_groups
 
-
     def preprocess(self):
         """Verifies that this ModuleRequest can be fulfilled.
         """
         if self._indices is None or len(self._indices) <= 0:
             return False
         return True
-
 
     def aggregateDomain(self, domain_table, row_aggregator,
         attribute_aggregator):

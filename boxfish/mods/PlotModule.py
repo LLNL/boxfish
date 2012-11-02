@@ -28,6 +28,7 @@ class PlotterAgent(ModuleAgent):
         self.addRequest("y")
 
         self.highlightSceneChangeSignal.connect(self.processHighlights)
+        self.apply_attribute_scenes = False # We don't do anything with these
 
     def setXData(self, indexList):
         self.requestAddIndices("x", indexList)

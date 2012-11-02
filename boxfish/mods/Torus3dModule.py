@@ -33,6 +33,7 @@ class Torus3dAgent(GLAgent):
         self.run = None
         self.shape = [0, 0, 0]
         self.highlightSceneChangeSignal.connect(self.processHighlights)
+        self.attributeSceneUpdateSignal.connect(self.processAttributeScenes)
 
     def registerNodeAttributes(self, indices):
         self.registerRun(self.datatree.getItem(indices[0]).getRun())
@@ -125,7 +126,9 @@ class Torus3dAgent(GLAgent):
 
         self.setHighlights(tables, runs, id_lists)
 
-
+    @Slot()
+    def processAttributeScenes(self):
+        pass
 
 def cmap_range(vals):
     """Use to normalize ranges for color maps.  Given an set of values,
