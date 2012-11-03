@@ -227,3 +227,17 @@ class ClickFrame(QFrame):
 
     def mousePressEvent(self, event):
         self.clicked.emit()
+
+class ClickLabel(QLabel):
+    """Label that sends a signal on click."""
+
+    clicked = Signal()
+
+    def __init__(self, parent = None, flags = 0):
+        super(ClickLabel, self).__init__(parent, flags)
+
+    def mousePressEvent(self, event):
+        self.clicked.emit()
+
+
+

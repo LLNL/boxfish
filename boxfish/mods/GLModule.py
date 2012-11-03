@@ -126,7 +126,7 @@ class GLColorTab(QWidget):
 
     def createContent(self):
         self.layout.addWidget(self.buildBGColorWidget())
-        
+
 
     def gl_to_rgb(self, color):
         if color is None:
@@ -176,7 +176,7 @@ class GLColorTab(QWidget):
         # Sadly this appears to only solve the problem for modules created
         # after this one. Will need to fix some other time...
         self.view.updateBGColor(self.view.agent.module_scene.background_color)
-        
+
         QApplication.processEvents()
 
 

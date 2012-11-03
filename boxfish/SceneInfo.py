@@ -82,7 +82,7 @@ class AttributeScene(Scene):
     """
 
     def __init__(self, attributes,
-        color_map = ColorMap(), total_range = (0.0, 1.0)):
+        color_map = ColorMap(), total_range = (0.0, 0.0)):
         """Construct an AttributeScene pertaining to the given attributes,
            with the given colormap and color range.
         """
@@ -112,8 +112,8 @@ class AttributeScene(Scene):
         return True
 
     def copy(self):
-        return AttributeScene(self.attributes.copy(), self.color_map.copy(),
-            self.total_range.copy())
+        return AttributeScene(frozenset(self.attributes.copy()),
+            self.color_map.copy(), (self.total_range[0], self.total_range[1]))
 
 
 class ModuleScene(Scene):

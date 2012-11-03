@@ -2,6 +2,11 @@ import sys
 import matplotlib.colors
 import matplotlib.cm as cm
 
+from PySide.QtCore import Slot,Signal,QObject,Qt
+from PySide.QtGui import QWidget,QLabel,QPixmap,QLineEdit,QHBoxLayout,qRgba,\
+    QImage,QVBoxLayout,QComboBox,QCheckBox,QSpacerItem,QIntValidator
+
+# maybe instead of separate we should use register_cmap()
 boxfish_maps = dict()
 
 #HOWTO Make another colormap
@@ -64,15 +69,10 @@ def getMap(colormap):
     else:
         return cm.get_cmap(colormap)
 
-def mapNames():
-    """Returns a list of colormap names including both matplotlib colormaps
-       and custom ones.
-    """
-    map_names = []
-    for mpl_map in cm.datad:
-        map_names.append(mpl_map)
-    map_names.extend(boxfish_maps.keys())
-    return map_names
+map_names = []
+for mpl_map in cm.datad:
+    map_names.append(mpl_map)
+map_names.extend(boxfish_maps.keys())
 
 class ColorMap(object):
     """This class wraps colormaps for extended options on how colors are
@@ -81,9 +81,11 @@ class ColorMap(object):
        Note that all colormaps in here are normalized on [0.0, 1.0].
     """
 
-    def __init__(self, base_color_map = getMap('gist_earth_r'),
+    def __init__(self, base_color_map = 'jet',
         color_step = 0, step_size = 0.1):
-        self.color_map = base_color_map
+        super(ColorMap, self).__init__()
+        self.color_map = getMap(base_color_map)
+        self.color_map_name = base_color_map
 
         # If color_step is not 0, we sample the color bar at each
         # of the n steps and assign all values as one of those steps,
@@ -112,9 +114,142 @@ class ColorMap(object):
 
         return True
 
+    def copy(self):
+        return ColorMap(self.color_map_name, self.color_step, self.step_size)
+
     def getColor(self, value):
         if self.color_step == 0:
             return self.color_map(value)
         else:
             stepped_value = round(value / self.step_size) % self.color_step
             return self.color_map(1.0 / self.color_step * stepped_value)
+
+class ColorBarImage(QImage):
+    """Pixmap representing the color bar."""
+
+    def __init__(self, color_map, width, height):
+        super(ColorBarImage, self).__init__(width, height,
+            QImage.Format_ARGB32_Premultiplied)
+
+        # QFrame-like border
+        for w in range(width):
+            self.setPixel(w, 0, qRgba(255, 255, 255, 255))
+            self.setPixel(w, height - 1, qRgba(0, 0, 0, 255))
+        for h in range(height):
+            self.setPixel(0, h, qRgba(0, 0, 0, 255))
+            self.setPixel(width - 1, h, qRgba(255, 255, 255, 255))
+
+        pixel_value = 1.0 / width
+        for w in range(width-2):
+            color_np = color_map(w * pixel_value)
+            color_rgba = qRgba(*[round(255 * x) for x in color_np])
+            for h in range(height-2):
+                self.setPixel(w + 1, h + 1, color_rgba)
+
+
+class ColorMapWidget(QWidget):
+    """Interface for changing ColorMap information.
+
+       This widget was designed for use with the tab dialog. It can be used by
+       itself or it can be used as part of a bigger color tab.
+    """
+
+    changeSignal = Signal(ColorMap, str)
+
+    def __init__(self, parent, initial_map, tag):
+        super(ColorMapWidget, self).__init__(parent)
+        self.color_map = initial_map.color_map
+        self.color_map_name = initial_map.color_map_name
+        self.color_step = initial_map.color_step
+        self.step_size = initial_map.step_size
+        self.tag = tag
+
+        self.color_map_label = "Color Map"
+        self.color_step_label = "Cycle Color Map"
+        self.number_steps_label = "Colors"
+
+        self.color_step_tooltip = "Use the given number of evenly spaced " \
+            + " colors from the map and assign to discrete values in cycled " \
+            + " sequence."
+
+        layout = QVBoxLayout()
+
+        layout.addWidget(self.buildColorBarControl())
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(self.buildColorStepsControl())
+
+        self.setLayout(layout)
+
+    def buildColorBarControl(self):
+        widget = QWidget()
+        layout = QHBoxLayout()
+
+        label = QLabel(self.color_map_label)
+        self.colorbar = QLabel(self)
+        self.colorbar.setPixmap(QPixmap.fromImage(ColorBarImage(
+            self.color_map, 180, 12)))
+
+        self.mapCombo = QComboBox(self)
+        self.mapCombo.addItems(map_names)
+        self.mapCombo.setCurrentIndex(map_names.index(self.color_map_name))
+        self.mapCombo.currentIndexChanged.connect(self.colorbarChange)
+
+        layout.addWidget(label)
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(self.mapCombo)
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(self.colorbar)
+
+        widget.setLayout(layout)
+        return widget
+
+    @Slot(int)
+    def colorbarChange(self, ind):
+        indx = self.mapCombo.currentIndex()
+        self.color_map_name = map_names[indx]
+        self.color_map = getMap(self.color_map_name)
+        self.colorbar.setPixmap(QPixmap.fromImage(ColorBarImage(
+            self.color_map, 180, 12)))
+        self.changeSignal.emit(ColorMap(self.color_map_name, self.color_step,
+            self.step_size), self.tag)
+
+    def buildColorStepsControl(self):
+        widget = QWidget()
+        layout = QHBoxLayout()
+
+        self.stepBox = QCheckBox(self.color_step_label)
+        self.stepBox.stateChanged.connect(self.colorstepsChange)
+
+        self.stepEdit = QLineEdit("8", self)
+        # Setting max to sys.maxint in the validator causes an overflow! D:
+        self.stepEdit.setValidator(QIntValidator(1, 65536, self.stepEdit))
+        self.stepEdit.setEnabled(False)
+        self.stepEdit.editingFinished.connect(self.colorstepsChange)
+
+        if self.color_step > 0:
+            self.stepBox.setCheckState(Qt.Checked)
+            self.stepEdit.setEnabled(True)
+
+        layout.addWidget(self.stepBox)
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(QLabel("with"))
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(self.stepEdit)
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(QLabel(self.number_steps_label))
+
+        widget.setLayout(layout)
+        return widget
+
+
+    def colorstepsChange(self):
+        if self.stepBox.checkState() == Qt.Checked:
+            self.stepEdit.setEnabled(True)
+            self.color_step = int(self.stepEdit.text())
+            self.changeSignal.emit(ColorMap(self.color_map_name,
+                self.color_step, self.step_size), self.tag)
+        else:
+            self.stepEdit.setEnabled(False)
+            self.color_step = 0
+            self.changeSignal.emit(ColorMap(self.color_map_name,
+                self.color_step, self.step_size), self.tag)

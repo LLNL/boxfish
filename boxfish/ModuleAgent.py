@@ -70,7 +70,7 @@ class ModuleAgent(QObject):
         # matters and clear out the ones we are no longer using.
         self.attribute_scenes_dict = dict()
         self.apply_attribute_scenes = True
-        self._propagate_attribute_scenes = True
+        self._propagate_attribute_scenes = False
 
 
 
@@ -121,6 +121,10 @@ class ModuleAgent(QObject):
         """
         request = self.requests[coupler.name]
         self.requestUpdated(coupler.name)
+
+    def requestScene(self, tag):
+        """Returns the attribute scene from the request denoted by tag."""
+        return self.requests[tag].scene
 
     # TODO: Maybe instead of having next few functions we should
     # move the functionality out of ModuleRequest and over here,
@@ -466,6 +470,9 @@ class ModuleAgent(QObject):
         else:
             self.sceneChanged(scene)
 
+    # TODO: While this does recalculate the attribute ranges for the 
+    # scene's new attributes, it must be retriggered for the attributes
+    # that got replaced too...
     def unionRanges(self, attributes):
         """Finds the union of all ranges of AttributeScenes with the given
            attributes that exist in this subtree.

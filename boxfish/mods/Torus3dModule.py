@@ -5,6 +5,7 @@ from boxfish.gl.GLWidget import GLWidget
 from boxfish.gl.glutils import *
 
 import TorusIcons
+from boxfish.ColorMaps import ColorMap, ColorMapWidget
 
 class Torus3dAgent(GLAgent):
     """This is an agent for all 3D Torus based modules."""
@@ -18,6 +19,9 @@ class Torus3dAgent(GLAgent):
 
     # node and link ID lists that are now highlighted
     highlightUpdateSignal = Signal(list, list)
+
+    # node colormap and range, link colormap and range
+    nodelinkSceneUpdateSignal = Signal(ColorMap, tuple, ColorMap, tuple)
 
     def __init__(self, parent, datatree):
         super(Torus3dAgent, self).__init__(parent, datatree)
@@ -128,7 +132,12 @@ class Torus3dAgent(GLAgent):
 
     @Slot()
     def processAttributeScenes(self):
-        pass
+        nodeScene = self.requestScene("nodes")
+        linkScene = self.requestScene("links")
+        self.nodelinkSceneUpdateSignal.emit(
+            nodeScene.color_map, nodeScene.total_range,
+            linkScene.color_map, linkScene.total_range)
+
 
 def cmap_range(vals):
     """Use to normalize ranges for color maps.  Given an set of values,
@@ -143,6 +152,11 @@ def cmap_range(vals):
     def evaluator(val):
         return (val - min_val) / range
     return evaluator
+
+def range_tuple(vals):
+    min_val = np.min(vals)
+    max_val = np.max(vals)
+    return (min_val, max_val)
 
 
 class Torus3dViewDataModel(object):
@@ -167,6 +181,10 @@ class Torus3dViewDataModel(object):
         self.listeners = set()
         self._shape = None
         self.shape = [0, 0, 0]
+        self.node_range = (0,0)
+        self.pos_link_range = (0,0)
+        self.neg_link_range = (0,0)
+        self.avg_link_range = (0,0)
 
     def clearNodes(self):
         # The first is the actual value, the second is a flag
@@ -229,6 +247,7 @@ class Torus3dViewDataModel(object):
 
         self.clearNodes() # when only some values are given
 
+        self.node_range = range_tuple(vals)
         cval = cmap_range(vals)
         for node_id, val in zip(nodes, vals):
             x, y, z = self.node_to_coord[node_id]
@@ -252,6 +271,8 @@ class Torus3dViewDataModel(object):
 
         avg_link_values = np.zeros(self._shape + [3, 1])
 
+        self.pos_link_range = range_tuple(vals)
+        self.neg_link_range = self.pos_link_range
         cval = cmap_range(vals)
         for link_id, val in zip(links, vals):
             x, y, z, axis, direction = self.link_coord_to_index(
@@ -264,6 +285,7 @@ class Torus3dViewDataModel(object):
             else:
                 self.neg_link_values[x,y,z,axis] = [c, 1]
 
+        self.avg_link_range = range_tuple(avg_link_values)
         cval = cmap_range(avg_link_values)
         for index in np.ndindex(self.shape):
             x, y, z = index
@@ -295,10 +317,13 @@ class Torus3dView(GLView):
         self.agent.nodeUpdateSignal.connect(self.dataModel.updateNodeData)
         self.agent.linkUpdateSignal.connect(self.dataModel.updateLinkData)
         self.agent.highlightUpdateSignal.connect(self.view.updateHighlights)
+        self.agent.nodelinkSceneUpdateSignal.connect(self.view.updateScene)
 
         self.createDragOverlay(["nodes", "links"],
             ["Color Nodes", "Color Links"],
             [QPixmap(":/nodes.png"), QPixmap(":/links.png")])
+
+        self.color_tab_type = Torus3dColorTab
 
     def droppedData(self, index_list, tag):
         if tag == "nodes":
@@ -325,10 +350,10 @@ class Torus3dGLWidget(GLWidget):
         self.box_size = 0.2
 
         kwarg("default_node_color", (0.5, 0.5, 0.5, 0.2))
-        kwarg("node_cmap", cm.get_cmap("jet"))
+        kwarg("node_cmap", self.parent.agent.requestScene("nodes").color_map)
 
         kwarg("default_link_color", (0.5, 0.5, 0.5, 0.2))
-        kwarg("link_cmap", cm.get_cmap("jet"))
+        kwarg("link_cmap", self.parent.agent.requestScene("links").color_map)
 
 
         # Color map bound changing
@@ -401,7 +426,7 @@ class Torus3dGLWidget(GLWidget):
         """Turns a color value in [0,1] into a 4-tuple RGBA color.
            Used to map nodes.
         """
-        return self.node_cmap(val)
+        return self.node_cmap.getColor(val)
 
     def map_link_color(self, val):
         """Turns a color value in [0,1] into a 4-tuple RGBA color.
@@ -410,7 +435,7 @@ class Torus3dGLWidget(GLWidget):
         if val < self.lowerBound-1e-8 or val > self.upperBound+1e-8:
             return [1,1,1,0]
         else:
-            return self.link_cmap(val)
+            return self.link_cmap.getColor(val)
 
     def set_all_alphas(self, alpha):
         """Set all nodes and links to the same given alpha value."""
@@ -445,6 +470,13 @@ class Torus3dGLWidget(GLWidget):
 
         self.updateDrawing()
 
+    @Slot(ColorMap, tuple, ColorMap, tuple)
+    def updateScene(self, node_cmap, node_range, link_cmap, link_range):
+        self.node_cmap = node_cmap
+        self.link_cmap = link_cmap
+        self.update()
+        # TODO: deal with the ranges, will have to move them into the 
+        # dataModel
 
     # Stuff for Timo's bound changing, move into Torus
     def lowerLowerBound(self):
@@ -472,3 +504,35 @@ class Torus3dGLWidget(GLWidget):
         print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
 
 
+class Torus3dColorTab(GLColorTab):
+
+    def __init__(self, parent, view):
+        super(Torus3dColorTab, self).__init__(parent, view)
+
+    def createContent(self):
+        super(Torus3dColorTab, self).createContent()
+
+        self.layout.addSpacerItem(QSpacerItem(5,5))
+        self.layout.addWidget(self.buildColorMapWidget("Node Colors",
+            self.colorMapChanged, "nodes"))
+        self.layout.addSpacerItem(QSpacerItem(5,5))
+        self.layout.addWidget(self.buildColorMapWidget("Link Colors",
+            self.colorMapChanged, "links"))
+
+    @Slot(ColorMap, str)
+    def colorMapChanged(self, color_map, tag):
+        scene = self.view.agent.requestScene(tag)
+        scene.color_map = color_map
+        scene.announceChange()
+
+    def buildColorMapWidget(self, title, fxn, tag):
+        color_map = self.view.agent.requestScene(tag).color_map
+
+        groupBox = QGroupBox(title, self)
+        layout = QVBoxLayout()
+        color_widget = ColorMapWidget(self, color_map, tag)
+        color_widget.changeSignal.connect(fxn)
+
+        layout.addWidget(color_widget)
+        groupBox.setLayout(layout)
+        return groupBox
