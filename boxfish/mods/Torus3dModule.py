@@ -523,6 +523,7 @@ class Torus3dColorTab(GLColorTab):
     def colorMapChanged(self, color_map, tag):
         scene = self.view.agent.requestScene(tag)
         scene.color_map = color_map
+        scene.processed = False
         scene.announceChange()
 
     def buildColorMapWidget(self, title, fxn, tag):

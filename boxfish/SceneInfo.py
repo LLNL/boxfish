@@ -101,15 +101,27 @@ class AttributeScene(Scene):
         # (the union plus any contained holes)
         self.total_range = total_range
 
-    def __equals__(self, other):
+        # Determines whether this scene still needs processing by its host
+        # Right now this is sort of a hack to make things update
+        # through the colormap changer but not through the attribute
+        # changer. This should be named/accessed better in the future
+        # and/or taken care of automatically
+        self.processed = True
+
+    def __eq__(self, other):
         if self.attributes != other.attributes:
             return False
         if self.color_map != other.color_map:
             return False
         if self.total_range != other.total_range:
             return False
+        if self.processed != other.processed:
+            return False
 
         return True
+
+    def __ne__(self, other):
+        return not self == other
 
     def copy(self):
         return AttributeScene(frozenset(self.attributes.copy()),

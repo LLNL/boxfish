@@ -73,6 +73,7 @@ map_names = []
 for mpl_map in cm.datad:
     map_names.append(mpl_map)
 map_names.extend(boxfish_maps.keys())
+map_names.sort()
 
 class ColorMap(object):
     """This class wraps colormaps for extended options on how colors are
@@ -104,8 +105,8 @@ class ColorMap(object):
         else:
             self._step_size = size
 
-    def __equals__(self, other):
-        if self.color_map != other.color_map:
+    def __eq__(self, other):
+        if self.color_map_name != other.color_map_name:
             return False
         if self.color_step != other.color_step:
             return False
@@ -113,6 +114,9 @@ class ColorMap(object):
             return False
 
         return True
+
+    def __ne__(self, other):
+        return not self == other
 
     def copy(self):
         return ColorMap(self.color_map_name, self.color_step, self.step_size)

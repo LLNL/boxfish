@@ -596,6 +596,8 @@ class SceneTab(QWidget): #FIXME I'm Ugly.
         self.layout.addWidget(self.buildHighlightGroupBox())
         self.layout.addItem(QSpacerItem(5,5))
         self.layout.addWidget(self.buildModuleGroupBox())
+        self.layout.addItem(QSpacerItem(5,5))
+        self.layout.addWidget(self.buildAttributeGroupBox())
 
         self.setLayout(self.layout)
 
@@ -681,6 +683,47 @@ class SceneTab(QWidget): #FIXME I'm Ugly.
            Agent.
         """
         self.agent.apply_module_scenes = self.module_applyScene.isChecked()
+
+
+    def buildAttributeGroupBox(self):
+        """Layout/construct the AttributeScene UI for this tab."""
+        groupBox = QGroupBox("Attribute Policy (Colors)")
+        layout = QVBoxLayout()
+
+        # agent.propagate_attribute_scenes
+        self.attr_propagate = QCheckBox("Propagate attribute scene "
+            + "information (e.g. color maps) to other modules.")
+        self.attr_propagate.setChecked(self.agent.propagate_attribute_scenes)
+        self.attr_propagate.stateChanged.connect(self.attrPropagateChanged)
+        # We only allow this change if the parent does not propagate
+        if self.agent.parent().propagate_attribute_scenes:
+            self.attr_propagate.setDisabled(True)
+
+        # agent.apply_attribute_scenes
+        self.attr_applyScene = QCheckBox("Apply attribute scene information "
+            + "from other modules.")
+        self.attr_applyScene.setChecked(self.agent.apply_attribute_scenes)
+        self.attr_applyScene.stateChanged.connect(self.attrApplyChanged)
+
+        layout.addWidget(self.attr_applyScene)
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(self.attr_propagate)
+        groupBox.setLayout(layout)
+        return groupBox
+
+
+    def attrPropagateChanged(self):
+        """Called when AttributeScene propagtion is changed to update the
+           Agent.
+        """
+        self.agent.propagate_attribute_scenes = self.attr_propagate.isChecked()
+
+
+    def attrApplyChanged(self):
+        """Called when AttributeScene application is changed to update the
+           Agent.
+        """
+        self.agent.apply_attribute_scenes = self.attr_applyScene.isChecked()
 
 
 class OverlayDialog(QDialog):

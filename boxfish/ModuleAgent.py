@@ -113,6 +113,7 @@ class ModuleAgent(QObject):
         """
         pass
 
+
     @Slot(FilterCoupler)
     def requestedCouplerChanged(self, coupler):
         """Called whenever a FilterCoupler associated with a request
@@ -122,9 +123,11 @@ class ModuleAgent(QObject):
         request = self.requests[coupler.name]
         self.requestUpdated(coupler.name)
 
+
     def requestScene(self, tag):
         """Returns the attribute scene from the request denoted by tag."""
         return self.requests[tag].scene
+
 
     # TODO: Maybe instead of having next few functions we should
     # move the functionality out of ModuleRequest and over here,
@@ -134,6 +137,7 @@ class ModuleAgent(QObject):
         if name not in self.requests:
             raise ValueError("No request named " + name)
         self.requests[name].indices = indices
+
 
     def requestOnDomain(self, name, domain_table, row_aggregator,
         attribute_aggregator):
@@ -494,7 +498,7 @@ class ModuleAgent(QObject):
         range_list = list()
 
         for child in self.children:
-            range_list.extend(child.unionRanges(attributes))
+            range_list.extend(child.getRanges(attributes))
 
         for request in self.requests.values():
             if request.scene.attributes == attributes:
@@ -613,7 +617,7 @@ class ModuleAgent(QObject):
             if self.apply_attribute_scenes:
                 changes = False
                 for request in self.requests.values():
-                    changes = changes or request.receiveAttributeScene(scene)
+                    changes = request.receiveAttributeScene(scene) or changes
                 if changes: # If any of these caused a change, alert the module
                     self.attributeSceneUpdateSignal.emit()
 
@@ -673,13 +677,13 @@ class ModuleRequest(QObject):
     @indices.setter
     def indices(self, indices):
         self._indices = indices
-        if self._indices is None or len(self._indices) > 0:
+        if self._indices is None or len(self._indices) == 0:
             self.scene.attributes = set()
         else:
             new_set = self.attributeNameSet()
             if self.scene.attributes != new_set:
                 self.scene.attributes = new_set
-                self.attributesChangedSignal.emit(new_set, self)
+                self.attributesChangedSignal.emit(self.scene, self)
         self.indicesChangedSignal.emit(self.name)
 
     def attributeNameSet(self):
@@ -706,6 +710,12 @@ class ModuleRequest(QObject):
         self.scene.causeChangeSignal.disconnect(self.sceneChanged)
         self.scene = scene.copy()
         self.scene.causeChangeSignal.connect(self.sceneChanged)
+
+        if self.scene.attributes == frozenset([]):
+            # We've accepted the scene info but since we don't have any
+            # attributes, we don't trigger a re-draw
+            return False
+
         return True
 
     @Slot(Scene)

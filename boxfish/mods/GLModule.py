@@ -88,12 +88,15 @@ class GLModuleScene(ModuleScene):
         self.translation = translation
         self.background_color = background_color
 
-    def __equals__(self, other):
+    def __eq__(self, other):
         if self.rotation == other.rotation \
             and self.translation == other.translation \
             and self.background_color == other.background_color:
             return True
         return False
+
+    def __ne__(self, other):
+        return not self == other
 
     def copy(self):
         return GLModuleScene(self.agent_type, self.module_name,
