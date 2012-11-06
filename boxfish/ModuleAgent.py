@@ -994,12 +994,13 @@ class ModuleRequest(QObject):
                         [desired_id]),
                     group_table._table.subdomain())
                 for group_id in group_ids:
-                    g_values = group_cart[group_id]
-                    cart_product = itertools.product(d_values, g_values)
-                    for d, g in cart_product:
-                        ids.append(group_id)
-                        desired_values.append(d)
-                        group_values.append(g)
+                    if group_id in group_cart:
+                        g_values = group_cart[group_id]
+                        cart_product = itertools.product(d_values, g_values)
+                        for d, g in cart_product:
+                            ids.append(group_id)
+                            desired_values.append(d)
+                            group_values.append(g)
 
         return group_table, ids, group_values, desired_values
 

@@ -50,15 +50,19 @@ class PlotterAgent(ModuleAgent):
     @Slot(list)
     def selectionChanged(self, ids):
         if self.table:
-            self.setHighlights([self.table], [self.table.getRun()], [ids])
+            self.setHighlights([self.table], [self.table.getRun()], [[self.ids[x] for x in ids]])
 
     @Slot()
     def processHighlights(self):
         if not self.table:
             return
 
-        self.highlightUpdateSignal.emit(self.getHighlightIDs(self.table,
-            self.table.getRun()))
+        domain_indices = self.getHighlightIDs(self.table, self.table.getRun())
+        highlight_indices = []
+        for i, indx in enumerate(self.ids):
+            if indx in domain_indices:
+                highlight_indices.append(i)
+        self.highlightUpdateSignal.emit(highlight_indices)
 
 @Module("Plotter", PlotterAgent)
 class PlotterView(ModuleView):
@@ -230,7 +234,7 @@ class PlotterWidget(QWidget):
         if (old_selection == self.selected and old_selection != [])\
             or self.selected != []:
 
-            if self.selected != []: # Color new selection
+            if self.selected != [] and old_selection != self.selected: # Color new selection
                 for indx in self.selected:
                     self.highlighted = self.axes.plot(self.xs[indx],
                         self.ys[indx], 'or')[0]

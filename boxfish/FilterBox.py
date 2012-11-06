@@ -352,5 +352,7 @@ class FilterValueLineEdit(QLineEdit):
             values = self.datatree.getAttributeValues(
                 self.watchLineEdit.text())
             self.setCompleter(None)
-            self.setCompleter(QCompleter(values))
+            new_completer = QCompleter(values)
+            new_completer.setCompletionMode(QCompleter.InlineCompletion)
+            self.setCompleter(new_completer)
 

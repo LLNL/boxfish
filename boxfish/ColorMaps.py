@@ -82,7 +82,7 @@ class ColorMap(object):
        Note that all colormaps in here are normalized on [0.0, 1.0].
     """
 
-    def __init__(self, base_color_map = 'gnuplot2',
+    def __init__(self, base_color_map = 'PuOr_r',
         color_step = 0, step_size = 0.1):
         super(ColorMap, self).__init__()
         self.color_map = getMap(base_color_map)
