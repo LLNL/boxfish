@@ -1,21 +1,15 @@
 import sys
 import numpy as np
-import matplotlib.cm as cm
 
 from PySide.QtCore import *
 from OpenGL.GLUT import *
 
-from boxfish.ModuleAgent import *
-from boxfish.ModuleView import *
+from boxfish.mods.GLModule import *
 from boxfish.gl.GLWidget import GLWidget
 
-from Torus3dModule import *
-from GLModuleScene import *
 
-
-class PatchAgent(ModuleAgent):
+class PatchAgent(GLAgent):
     patchUpdateSignal = Signal(list,list)
-    transformUpdateSignal = Signal(np.ndarray, np.ndarray)
 
     def __init__(self, parent, datatree):
         super(PatchAgent, self).__init__(parent, datatree)
@@ -26,7 +20,6 @@ class PatchAgent(ModuleAgent):
         self.sizes = None
         self.table = None
 
-        self.receiveModuleSceneSignal.connect(self.processModuleScene)
 
     def registerPatchAttributes(self, indices):
         # Determine Torus info from first index
@@ -56,16 +49,9 @@ class PatchAgent(ModuleAgent):
         if attribute_values is not None:
             self.patchUpdateSignal.emit(patch_info, attribute_values[0])
 
-    @Slot(ModuleScene)
-    def processModuleScene(self, module_scene):
-        if self.module_scene.module_name == module_scene.module_name:
-            self.module_scene.rotation = module_scene.rotation
-            self.module_scene.translation = module_scene.translation
-            self.transformUpdateSignal.emit(self.module_scene.rotation,
-                self.module_scene.translation)
 
 @Module("3D Patch View", PatchAgent, GLModuleScene)
-class PatchView3d(ModuleView):
+class PatchView3d(GLView):
 
     def __init__(self, parent, parent_view = None, title = None):
         super(PatchView3d, self).__init__(parent, parent_view, title)

@@ -6,11 +6,9 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 from OpenGL.GLE import *
 
-from boxfish.ModuleView import *
 from boxfish.gl.GLWidget import GLWidget, set_perspective
 from boxfish.gl.glutils import *
 
-from GLModuleScene import *
 from Torus3dModule import *
 
 @Module("3D Torus - 3D View", Torus3dAgent, GLModuleScene)
@@ -21,47 +19,20 @@ class Torus3dView3d(Torus3dView):
         super(Torus3dView3d, self).__init__(parent, parent_view, title)
 
     def createView(self):
-        return GLTorus3dView(self, self.colorModel)
+        return GLTorus3dView(self, self.dataModel)
 
 
-class GLTorus3dView(GLWidget):
-    def __init__(self, parent, colorModel):
-        super(GLTorus3dView, self).__init__(parent)
-        self.parent = parent
-        self.colorModel = None
+class GLTorus3dView(Torus3dGLWidget):
+    def __init__(self, parent, dataModel):
+        super(GLTorus3dView, self).__init__(parent, dataModel)
 
         self.seam = [0, 0, 0]  # Offsets for seam of the torus
-        self.box_size = 0.2    # Length of edge of each node cube
         self.link_radius = self.box_size * .1   # Radius of link cylinders
-
-        # Display lists for nodes and links
-        self.cubeList = DisplayList(self.drawCubes)
-        self.linkList = DisplayList(self.drawLinks)
 
         # Display list and settings for the axis
         self.axisLength = 0.3
         self.axisList = DisplayList(self.drawAxis)
 
-        # Directions in which coords are laid out on the axes
-        self.axis_directions = np.array([1, -1, -1])
-
-        # Now go ahead and update things.
-        self.setColorModel(colorModel)
-
-    def setColorModel(self, colorModel):
-        # unregister with any old model
-        if self.colorModel:
-            self.colorMode.unregisterListener(self.update)
-
-        # register with the new model
-        self.colorModel = colorModel
-        self.colorModel.registerListener(self.update)
-        #self.update()
-
-    def update(self):
-        self.cubeList.update()
-        self.linkList.update()
-        self.updateGL()
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -85,13 +56,13 @@ class GLTorus3dView(GLWidget):
             (1,0,0),... etc. but they will appear centered around the global
             origin.
         """
-        spans = np.array(self.colorModel.shape, float)
+        spans = np.array(self.dataModel.shape, float)
         half_spans = (spans - 1) / -2 * self.axis_directions
         glTranslatef(*half_spans)
 
     def centerNode(self, node):
         """Translate view to coords where we want to render the node (x,y,z)"""
-        node = (np.array(node, int) + self.seam) % self.colorModel.shape
+        node = (np.array(node, int) + self.seam) % self.dataModel.shape
         node *= self.axis_directions
         glTranslatef(*node)
 
@@ -99,11 +70,11 @@ class GLTorus3dView(GLWidget):
         glPushMatrix()
         self.centerView()
 
-        for node in np.ndindex(*self.colorModel.shape):
-            # draw a colored cube with its center at (0,0,0)
+        for node in np.ndindex(*self.dataModel.shape):
+            # draw a dataed cube with its center at (0,0,0)
             glPushMatrix()
             self.centerNode(node)
-            glColor4f(*self.colorModel.node_colors[node])
+            glColor4f(*self.node_colors[node])
             glutSolidCube(self.box_size)
             glPopMatrix()
 
@@ -121,10 +92,10 @@ class GLTorus3dView(GLWidget):
                          [(0, -2, 0), (0, -1, 0), (0, 0, 0), (0, 1, 0)],
                          [(0, 0, -2), (0, 0, -1), (0, 0, 0), (0, 0, 1)]]
 
-        for node in np.ndindex(*self.colorModel.shape):
+        for node in np.ndindex(*self.dataModel.shape):
             glPushMatrix()
             self.centerNode(node)
-            colors = self.colorModel.avg_link_colors[node]
+            colors = self.avg_link_colors[node]
 
             # Draw links for each dim as poly cylinders
             for dim in range(3):
@@ -186,7 +157,7 @@ class GLTorus3dView(GLWidget):
         glDisable(GL_BLEND)
 
         #set up the selection buffer
-        select_buf_size = reduce(operator.mul, self.colorModel.shape) + 10
+        select_buf_size = reduce(operator.mul, self.dataModel.shape) + 10
         glSelectBuffer(select_buf_size)
 
         #switch to select mode
@@ -220,16 +191,16 @@ class GLTorus3dView(GLWidget):
         # Redo the drawing
         glPushMatrix()
         self.centerView()
-    
+
         # And draw all the cubes
         # color index variable
-        for node in np.ndindex(*self.colorModel.shape):
-            glLoadName(self.colorModel.coord_to_node[node])
+        for node in np.ndindex(*self.dataModel.shape):
+            glLoadName(self.dataModel.coord_to_node[node])
             glPushMatrix()
             self.centerNode(node)
             glutSolidCube(box_size)
             glPopMatrix()
-      
+
         glPopMatrix()
 
         #pop projection matrix
@@ -240,7 +211,7 @@ class GLTorus3dView(GLWidget):
         #get the hit buffer
         glMatrixMode(GL_MODELVIEW)
         pick_buffer = glRenderMode(GL_RENDER)
-      
+
         #this code finds the nearest hit.  
         #Otherwise, populate hitlist with hit[2] for all
         #pick_buffer has a 3-tuple of info, [near, far, name]
@@ -258,5 +229,6 @@ class GLTorus3dView(GLWidget):
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
+        print hitlist
         return hitlist
 

@@ -218,7 +218,7 @@ class ModuleView(QMainWindow):
                     self.overlayDroppedData), i, 0, 1, 1)
                 layout.setRowStretch(i, 5)
 
-        # Add a Close button to deal with lack of cancel signal
+        # Add a Close button to deal with lack of cancel signal 
         # for drag/drop
         class CloseLabel(QLabel):
             
@@ -226,6 +226,8 @@ class ModuleView(QMainWindow):
 
             def __init__(self):
                 super(CloseLabel, self).__init__("Close")
+
+                self.setStyleSheet("QLabel { color : white; }")
 
             def mousePressEvent(self, e):
                 self.closeSignal.emit()
@@ -381,7 +383,7 @@ class ModuleView(QMainWindow):
         """
         if self.enable_tab_dialog:
             self.buildTabDialog()
-            self.tab_dialog.show()
+            self.tab_dialog.exec_()
 
 
 class BFDockWidget(QDockWidget):
@@ -596,6 +598,8 @@ class SceneTab(QWidget): #FIXME I'm Ugly.
         self.layout.addWidget(self.buildHighlightGroupBox())
         self.layout.addItem(QSpacerItem(5,5))
         self.layout.addWidget(self.buildModuleGroupBox())
+        self.layout.addItem(QSpacerItem(5,5))
+        self.layout.addWidget(self.buildAttributeGroupBox())
 
         self.setLayout(self.layout)
 
@@ -683,6 +687,47 @@ class SceneTab(QWidget): #FIXME I'm Ugly.
         self.agent.apply_module_scenes = self.module_applyScene.isChecked()
 
 
+    def buildAttributeGroupBox(self):
+        """Layout/construct the AttributeScene UI for this tab."""
+        groupBox = QGroupBox("Attribute Policy (Colors)")
+        layout = QVBoxLayout()
+
+        # agent.propagate_attribute_scenes
+        self.attr_propagate = QCheckBox("Propagate attribute scene "
+            + "information (e.g. color maps) to other modules.")
+        self.attr_propagate.setChecked(self.agent.propagate_attribute_scenes)
+        self.attr_propagate.stateChanged.connect(self.attrPropagateChanged)
+        # We only allow this change if the parent does not propagate
+        if self.agent.parent().propagate_attribute_scenes:
+            self.attr_propagate.setDisabled(True)
+
+        # agent.apply_attribute_scenes
+        self.attr_applyScene = QCheckBox("Apply attribute scene information "
+            + "from other modules.")
+        self.attr_applyScene.setChecked(self.agent.apply_attribute_scenes)
+        self.attr_applyScene.stateChanged.connect(self.attrApplyChanged)
+
+        layout.addWidget(self.attr_applyScene)
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(self.attr_propagate)
+        groupBox.setLayout(layout)
+        return groupBox
+
+
+    def attrPropagateChanged(self):
+        """Called when AttributeScene propagtion is changed to update the
+           Agent.
+        """
+        self.agent.propagate_attribute_scenes = self.attr_propagate.isChecked()
+
+
+    def attrApplyChanged(self):
+        """Called when AttributeScene application is changed to update the
+           Agent.
+        """
+        self.agent.apply_attribute_scenes = self.attr_applyScene.isChecked()
+
+
 class OverlayDialog(QDialog):
     """The OverlayDialog is a semitransparent window that is drawn over
        a module to allow the user to associate their drag/drop operations
@@ -697,7 +742,7 @@ class OverlayDialog(QDialog):
 
         self.setAcceptDrops(True)
 
-        #self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_TranslucentBackground)
         bgcolor = self.palette().color(QPalette.Background)
         self.setPalette(QColor(bgcolor.red(), bgcolor.green(), bgcolor.blue(),
             0)) # alpha
@@ -744,8 +789,9 @@ class OverlayFrame(QFrame):
         roundness = 10
         rect = self.rect()
         bgcolor = self.palette().color(QPalette.Background)
-        alpha_bgcolor = QColor(bgcolor.red(), bgcolor.green(),
-            bgcolor.blue(), 150)
+        alpha_bgcolor = QColor(50, 50, 50, 150)
+        #alpha_bgcolor = QColor(bgcolor.red(), bgcolor.green(),
+        #    bgcolor.blue(), 150)
 
         painter = QPainter()
         painter.begin(self)

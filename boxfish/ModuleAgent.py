@@ -22,6 +22,7 @@ class ModuleAgent(QObject):
     sceneChangedSignal         = Signal(Scene, object) # my scene info changed
     receiveModuleSceneSignal   = Signal(ModuleScene) # we receive scene info
     highlightSceneChangeSignal = Signal()
+    attributeSceneUpdateSignal = Signal()
     requestScenesSignal        = Signal(QObject)
 
     def __init__(self, parent, datatree = None):
@@ -36,7 +37,6 @@ class ModuleAgent(QObject):
         super(ModuleAgent,self).__init__(parent)
 
         self.datatree = datatree
-        self.attribute_scenes = dict()
 
         self.children = list()
 
@@ -61,9 +61,17 @@ class ModuleAgent(QObject):
         self.apply_highlights = True
         self._propagate_highlights = False
         self.highlights = HighlightScene() # Local highlights
+        self._highlights_ref = HighlightScene() # Ref highlights for subtree
 
-        # Reference highlights for subtree
-        self._highlights_ref = HighlightScene()
+        # Attribute Scene information - we need to keep track of all of these
+        # possible combinations. Since there can be so many of these, we do
+        # not keep all valid ones even when no one is using. Instead, every
+        # time we have a change in attributes, we search the subtree that
+        # matters and clear out the ones we are no longer using.
+        self.attribute_scenes_dict = dict()
+        self.apply_attribute_scenes = True
+        self._propagate_attribute_scenes = False
+
 
 
     # factory method for subclasses
@@ -87,8 +95,15 @@ class ModuleAgent(QObject):
         coupler = FilterCoupler(name, self, None)
         self.requests[name] = ModuleRequest(self.datatree, name, coupler,
             subdomain)
+
+        # Connect signals
         self.requests[name].indicesChangedSignal.connect(self.requestUpdated)
+        self.requests[name].attributesChangedSignal.connect(
+            self.requestAttributesChanged)
+        self.requests[name].attributeSceneChangedSignal.connect(
+            self.sceneChanged)
         coupler.changeSignal.connect(self.requestedCouplerChanged)
+
         #Now send this new one to the parent
         self.addCouplerSignal.emit(coupler, self)
 
@@ -97,6 +112,7 @@ class ModuleAgent(QObject):
            updated. Subclasses should override this to handle the update.
         """
         pass
+
 
     @Slot(FilterCoupler)
     def requestedCouplerChanged(self, coupler):
@@ -107,6 +123,12 @@ class ModuleAgent(QObject):
         request = self.requests[coupler.name]
         self.requestUpdated(coupler.name)
 
+
+    def requestScene(self, tag):
+        """Returns the attribute scene from the request denoted by tag."""
+        return self.requests[tag].scene
+
+
     # TODO: Maybe instead of having next few functions we should
     # move the functionality out of ModuleRequest and over here,
     # leaving the request to just hold the coupler and the indices
@@ -115,7 +137,8 @@ class ModuleAgent(QObject):
         if name not in self.requests:
             raise ValueError("No request named " + name)
         self.requests[name].indices = indices
-    
+
+
     def requestOnDomain(self, name, domain_table, row_aggregator,
         attribute_aggregator):
         """Gets results of the request, aggregated by the domain of
@@ -254,6 +277,9 @@ class ModuleAgent(QObject):
                 child.receiveSceneFromParent(scene)
         if self.propagate_highlights:
             child.receiveSceneFromParent(self._highlights_ref)
+        if self.propagate_attribute_scenes:
+            for key, scene in self.attribute_scenes_dict.iteritems():
+                child.receiveSceneFromParent(scene)
 
     def refreshSceneInformation(self):
         """This function is called to poll the parent agent for any
@@ -354,7 +380,7 @@ class ModuleAgent(QObject):
                 hs.highlights.subdomain())
             if projection is not None:
                 highlights.extend(projection.project(hs.highlights, tableDomain))
-        
+
         return highlights
 
     def setHighlights(self, tables, runs, ids):
@@ -416,9 +442,104 @@ class ModuleAgent(QObject):
         self._module_scene = module_scene
         self._module_scene.causeChangeSignal.connect(self.sceneChanged)
 
+
+    @property
+    def propagate_attribute_scenes(self):
+        """True if this Agent propagates attribute scenes to its
+           children.
+        """
+        return self._propagate_attribute_scenes
+
+    # TODO: Factor this for all scenes by putting these values into
+    # a dict keyed by the type of policy
+    @propagate_attribute_scenes.setter
+    def propagate_attribute_scenes(self, policy):
+        # You can only turn off (policy is False) if your parent is
+        # also False. 
+        if policy or self.parent().propagate_attribute_scenes == policy:
+            self._propagate_attribute_scenes = policy
+        if policy: # Push policy on to all children
+            for child in self.children:
+                child.propagate_attribute_scenes = policy
+
+    @Slot(Scene, QObject)
+    def requestAttributesChanged(self, scene, request):
+        """When the attribute set of a request changes, it should take the
+           existing scene information. If no scene information is found, it
+           should add itself to the scene dict for this hierarchy.
+        """
+        if scene.attributes in self.attribute_scenes_dict:
+            request.receiveAttributeScene(
+                self.attribute_scenes_dict[scene.attributes])
+        else:
+            self.sceneChanged(scene)
+
+    # TODO: While this does recalculate the attribute ranges for the 
+    # scene's new attributes, it must be retriggered for the attributes
+    # that got replaced too...
+    def unionRanges(self, attributes):
+        """Finds the union of all ranges of AttributeScenes with the given
+           attributes that exist in this subtree.
+        """
+        range_list = self.getRanges(attributes)
+
+        min_range = range_list[0][0]
+        max_range = range_list[0][1]
+        for r in range_list:
+            min_range = r[0] if r[0] < min_range else min_range
+            max_range = r[1] if r[1] > max_range else max_range
+
+        return (min_range, max_range)
+
+    def getRanges(self, attributes):
+        """Creates a list of all ranges of AttributeScenes with the given
+           attributes that exist in this subtree.
+        """
+        range_list = list()
+
+        for child in self.children:
+            range_list.extend(child.getRanges(attributes))
+
+        for request in self.requests.values():
+            if request.scene.attributes == attributes:
+                range_list.append(request.scene.total_range)
+
+        return range_list
+
+    def cleanAttributeScenes(self):
+        """Remove all entries from the attribute scenes store that are no
+           longer found in the subtree.
+        """
+        if not self.propagate_attribute_scenes:
+            return
+
+        attribute_sets = self.currentAttributes()
+        self.pruneAttributeScenes(attribute_sets)
+
+
+    def pruneAttributeScenes(self, valid_sets):
+        """Remove all attribute scenes from the store that are not in valid_set
+           from the entire subtree.
+        """
+        for child in self.children:
+            child.pruneAttributeScenes(valid_sets)
+
+        for attribute_set in self.attribute_scenes_dict:
+            if attribute_set not in valid_sets:
+                del self.attribute_scenes_dict[attribute_set]
+
+    def currentAttributes(self):
+        """Returns a list of all active attribute sets in this subtree."""
+        attribute_sets = set()
+        for child in self.children:
+            attribute_sets = attribute_sets.union(child.currentAttributes())
+
+        for request in self.requests.values():
+            attribute_sets.add(request.scene.attributes)
+
     @Slot(Scene)
     def sceneChanged(self, scene):
-        """Signals as ModuleScene in this subtree has changed."""
+        """Signals a Scene in this subtree has changed."""
         self.sceneChangedSignal.emit(scene.copy(), self)
 
     # Slot(Scene, ModuleAgent) decorator after class definition
@@ -444,6 +565,24 @@ class ModuleAgent(QObject):
                 self.sceneChangedSignal.emit(scene, self)
             else: # Not propagating, just give back to child
                 source_agent.receiveSceneFromParent(scene)
+        elif isinstance(scene, AttributeScene):
+            if self.propagate_attribute_scenes:
+                # Continue to propagate up
+                self.sceneChangedSignal.emit(scene, self)
+            else: # Not propagating up anymore
+                # Since this is an attribute scene, we need to calculate the 
+                # range of all such attribute scenes in the source_agent's
+                # subtree. We cannot simply union this one and the existing one
+                # because the existing one may have been based on what the one 
+                # we received used to be.
+                range_union = source_agent.unionRanges(scene.attributes)
+                scene.total_range = range_union
+
+                # Give back to child
+                source_agent.receiveSceneFromParent(scene)
+
+                # Now that that has finished, clean up attribute dictionary
+                self.cleanAttributeScenes()
 
     def receiveSceneFromParent(self, scene):
         """When a Scene is received from the parent, the Agent propagates
@@ -470,6 +609,17 @@ class ModuleAgent(QObject):
             if self.apply_module_scenes \
                 and isinstance(scene, type(self.module_scene)):
                 self.receiveModuleSceneSignal.emit(scene)
+        elif isinstance(scene, AttributeScene):
+            # Add/update to scene dict
+            self.attribute_scenes_dict[scene.attributes] = scene
+
+            # Determine how to handle this
+            if self.apply_attribute_scenes:
+                changes = False
+                for request in self.requests.values():
+                    changes = request.receiveAttributeScene(scene) or changes
+                if changes: # If any of these caused a change, alert the module
+                    self.attributeSceneUpdateSignal.emit()
 
 
 
@@ -496,6 +646,8 @@ class ModuleRequest(QObject):
     }
 
     indicesChangedSignal = Signal(str)
+    attributesChangedSignal = Signal(frozenset, QObject)
+    attributeSceneChangedSignal = Signal(AttributeScene)
 
     def __init__(self, datatree, name, coupler, subdomain = None,
         indices = list()):
@@ -511,16 +663,11 @@ class ModuleRequest(QObject):
         self.subdomain = subdomain
         self._indices = indices
 
-        if self.subdomain:
-            self.subdomain_scene = SubdomainScene(self.subdomain)
-        else:
-            self.subdomain_scene = None
-
         if self._indices is None:
-            self.attribute_scene = AttributeScene(set())
+            self.scene = AttributeScene(frozenset())
         else:
-            self.attribute_scene = AttributeScene(self.attributeNameSet())
-
+            self.scene = AttributeScene(self.attributeNameSet())
+        self.scene.causeChangeSignal.connect(self.sceneChanged)
 
     @property
     def indices(self):
@@ -530,10 +677,13 @@ class ModuleRequest(QObject):
     @indices.setter
     def indices(self, indices):
         self._indices = indices
-        if self._indices is None or len(self._indices) > 0:
-            self.attribute_scene.attributes = set()
+        if self._indices is None or len(self._indices) == 0:
+            self.scene.attributes = set()
         else:
-            self.attribute_scene.attributes = self.attributeNameSet()
+            new_set = self.attributeNameSet()
+            if self.scene.attributes != new_set:
+                self.scene.attributes = new_set
+                self.attributesChangedSignal.emit(self.scene, self)
         self.indicesChangedSignal.emit(self.name)
 
     def attributeNameSet(self):
@@ -543,7 +693,35 @@ class ModuleRequest(QObject):
         attribute_set = set()
         for index in self._indices:
             attribute_set.add(self.datatree.getItem(index).name)
-        return attribute_set
+        return frozenset(attribute_set)
+
+    def receiveAttributeScene(self, scene):
+        """Process received scene. If the received scene has the same set
+           of attributes and is different than the existing one, the
+           ModuleRequest's scene will copy it and return True. Otherwise,
+           this function returns False.
+        """
+        if self.scene.attributes != scene.attributes: # Does not apply
+            return False
+
+        if self.scene == scene: # No change
+            return False
+
+        self.scene.causeChangeSignal.disconnect(self.sceneChanged)
+        self.scene = scene.copy()
+        self.scene.causeChangeSignal.connect(self.sceneChanged)
+
+        if self.scene.attributes == frozenset([]):
+            # We've accepted the scene info but since we don't have any
+            # attributes, we don't trigger a re-draw
+            return False
+
+        return True
+
+    @Slot(Scene)
+    def sceneChanged(self, scene):
+        """Propagate signal that this request's attribute scene has changed."""
+        self.attributeSceneChangedSignal.emit(scene)
 
     def sortIndicesByTable(self, indexList):
         """Creates an iterator of passed indices grouped by the tableItems
@@ -555,14 +733,12 @@ class ModuleRequest(QObject):
 
         return attribute_groups
 
-
     def preprocess(self):
         """Verifies that this ModuleRequest can be fulfilled.
         """
         if self._indices is None or len(self._indices) <= 0:
             return False
         return True
-
 
     def aggregateDomain(self, domain_table, row_aggregator,
         attribute_aggregator):
@@ -585,7 +761,7 @@ class ModuleRequest(QObject):
                   List of ids from the domain_table.
 
                values
-                   List of values that go with the ids. 
+                   List of values that go with the ids.
         """
         if not self.preprocess():
             return  list(), list()
@@ -629,7 +805,11 @@ class ModuleRequest(QObject):
                     else:
                         aggregate_values[domain_id] = list(row_values[1:])
             else: # Other type of projection
-                # Find relevant projection per id
+                # Find relevant projection per id. Each id may appear in 
+                # in multiple rows, so we build this on the unique set of
+                # ids to minimize calculated projections. Then we use 
+                # the built dict to put the rest of the row values in 
+                # the proper place
                 projection_memo = dict() # store projections
                 for table_id in set(attribute_values[0]): # unique ids
                     domain_ids = projection.project(
@@ -712,3 +892,265 @@ class ModuleRequest(QObject):
             id_list.append(attribute_list[0])
 
         return table_list, run_list, id_list, headers, data_list
+
+    def generalizedGroupBy(self, desired_indices, desired_operator,
+        group_operator):
+        """Groups some function of desired_indices by some function of
+           the Request's indices.
+
+           desired_indices
+               An indexList
+
+           desired_operator
+               Function with which to aggregate the desired_attributes
+
+           grouped_operator
+               Function with which to aggregate the group by (our) indices
+
+
+            The returned ids refer to the domain of the first attribute in
+            this Request's indices.
+
+            Returns domain, ids, grouped_values, desired_values
+        """
+        # CAUTION: Note that this is aggregating by IDs. That means if there
+        # are multiple rows per ID in one table that is being used, it
+        # could be that the desired value that is matched up with some of
+        # the group values isn't what you would think logically. For
+        # example, suppose there is just one table with columns id, A, B, C:
+        # id A B C
+        #  0 1 1 0
+        #  0 2 2 1
+        #  1 3 3 0
+        #  1 4 4 1
+        # If we have group value B and desired value A, the points we would
+        # get would be:
+        # group desired
+        #     1       1
+        #     1       2
+        #     2       1
+        #     2       2
+        #     3       3
+        #     3       4
+        #     4       3
+        #     4       4
+        # This is because there is a projection going through the id field.
+        # In the future, when we have a buffer query language, we may be
+        # able to yield:
+        # group desired
+        #     1       1
+        #     2       2
+        #     3       3
+        #     4       4
+
+        # APPROACH
+        # First we need to find all possible combinations of the group by
+        # indices. We take the first table given as the primary domain that
+        # we will group with. We then project all other tables onto that
+        # table. Then we have all possible values associated with IDs.
+        # Then we form Cartesian products of the attributes where each 
+        # product shares the same associated id. Finally we apply the
+        # grouped_operator to each of these to form the group-by groups.
+
+        # group by aggregator dict
+        group_dict, group_table = self.projectToFirstTable(self._indices)
+
+        # Next we repeat the process for the desired_indices
+        desired_dict, desired_table = self.projectToFirstTable(desired_indices)
+
+        # Now we do the Cartesian product on each group_dict[domain_id]
+        # At this point, group_dict[domain_id] is a dict table->row_values
+        # By the end of this operation, each domain_id should be associated
+        # with a list of products. Each product is a list of lists of 
+        # row_values, one for each table.
+        group_cart = self.cartesianCompress(group_dict, group_operator)
+        desired_cart = self.cartesianCompress(desired_dict, desired_operator)
+
+        # Then we project the desired_indices domain ids onto the 
+        # group_indices domain_ids.
+        projection = group_table.getRun().getProjection(
+            group_table._table.subdomain(), desired_table._table.subdomain())
+        if projection is None:
+            raise ValueError("Cannont combine grouped values, no projection"
+                + " between " + str(group_table.name) + " and "
+                + str(desired_table.name))
+
+        import itertools
+        ids = list()
+        group_values = list()
+        desired_values = list()
+        if isinstance(projection, IdentityProjection):
+            for desired_id, d_values in desired_cart.items():
+                g_values = group_cart[desired_id]
+                cart_product = itertools.product(d_values, g_values)
+                for d, g in cart_product:
+                    ids.append(desired_id)
+                    desired_values.append(d)
+                    group_values.append(g)
+        else:
+            for desired_id, d_values in desired_cart.items():
+                group_ids = projection.project(
+                    SubDomain.instantiate(desired_table._table.subdomain(),
+                        [desired_id]),
+                    group_table._table.subdomain())
+                for group_id in group_ids:
+                    if group_id in group_cart:
+                        g_values = group_cart[group_id]
+                        cart_product = itertools.product(d_values, g_values)
+                        for d, g in cart_product:
+                            ids.append(group_id)
+                            desired_values.append(d)
+                            group_values.append(g)
+
+        return group_table, ids, group_values, desired_values
+
+
+    def cartesianCompress(self, cart_dict, operator):
+        """Takes a dict of the type returned from projectToFirstTable and
+           compresses it to:
+
+               first_table_id -> list of values
+
+           where each value in the list of values represents the operator
+           applied to a product from the Cartesian product of the lists
+           in the cart_dict.
+
+           Example: cart_dict[0][t1] = [[0, 1], [2, 3]]
+                    cart_dict[0][t2] = [[1, 1, 1], [2, 2, 2]]
+
+                    return_dict[0] = unique[ operator([0, 1], [1, 1, 1]),
+                                             operator([0, 1], [2, 2, 2]),
+                                             operator([2, 3], [1, 1, 1]),
+                                             operator([2, 3], [2, 2, 2]) ]
+        """
+
+        return_dict = dict()
+
+        import itertools
+        for key in cart_dict: # id
+            values = list() # Aggregated values
+            tables = list()  # Participating Tables
+            counts = list()  # How many rows saved for each table
+            for table in cart_dict[key]:
+                #table_list.append(cart_dict[key][table])
+                tables.append(table)
+                counts.append(range(len(cart_dict[key][table])))
+
+            #value_tuples = itertools.product(*table_list)
+            indices = itertools.product(*counts)
+            for index_set in indices:
+                vals_to_combine = list()
+                for i, index in enumerate(list(index_set)):
+                    vals_to_combine.extend(cart_dict[key][tables[i]][index])
+
+                values.append(self.operator[operator](vals_to_combine))
+
+            return_dict[key] = list(set(values))
+
+        return return_dict
+
+
+    def projectToFirstTable(self, indices):
+        """Gets the data from a set of indicies and and projects that
+           data onto the ids of the first table represented in those
+           indices.
+
+           This is returned as a dict of dict of lists of lists:
+               first_table_id -> dict_of_all_tables -> list of lists of
+                                                       returned row values
+
+           Also returns the first_table corresponding to the first_table_ids
+        """
+        # Break our indices into Tables
+        attribute_groups = self.sortIndicesByTable(indices)
+
+        domain_table = None
+        group_dict = dict()
+        for table, attribute_group in attribute_groups:
+            if domain_table is None: # First table is our domain table
+                domain_table = table
+            else:
+                # Determine if projection exists, if not, error
+                projection = domain_table.getRun().getProjection(
+                    domain_table._table.subdomain(),
+                    table._table.subdomain())
+                if projection is None:
+                    raise ValueError("Cannot combine grouped values, no"
+                        + " projection between " + str(domain_table.name)
+                        + " and " + str(table.name))
+
+            # Get attributes, starting with ID of interest
+            attributes = [self.datatree.getItem(x).name
+                for x in attribute_group]
+            attributes.insert(0, table['field'])
+
+            # Apply filters
+            identifiers = table._table.identifiers()
+            for modifier in self.coupler.modifier_chain:
+                identifiers = modifier.process(table, identifiers)
+
+            # Get values
+            attribute_values = table._table.attributes_by_identifiers(
+                identifiers, attributes, False)
+
+            # Add these values to the dict
+            # In the first table we add indiscriminately
+            if domain_table == table:
+                for row_values in zip(*attribute_values):
+                    domain_id = row_values[0]
+                    if domain_id in group_dict:
+                        if table not in group_dict[domain_id]:
+                            group_dict[domain_id][table] = list()
+                        group_dict[domain_id][table].append(row_values[1:])
+                    else:
+                        group_dict[domain_id] = dict()
+                        group_dict[domain_id][table] = list()
+                        group_dict[domain_id][table].append(row_values[1:])
+            # In the second table, we add only if the ID already exists
+            # and we delete any ID that is unmarked at the end of it.
+            # The reason is because we are crossing the IDs in all tables
+            # and if one Table does not map, that entire ID is going to
+            # cross to no values
+            else:
+                current_ids = group_dict.keys()
+                if isinstance(projection, IdentityProjection):
+                    # Since projection is identity, we can skip doing it
+                    for row_values in zip(*attribute_values):
+                        domain_id = row_values[0]
+                        if domain_id in group_dict:
+                            # Only add that which has an id already
+                            current_ids.remove(domain_id)
+                            if table not in group_dict[domain_id]:
+                                group_dict[domain_id][table] = list()
+                            group_dict[domain_id][table].append(row_values[1:])
+                    for domain_id in current_ids:
+                        # Delete the ones that didn't appear in this table
+                        del group_dict[domain_id]
+                else: # Other type of projection (ugh)
+                    # Find relevant projection per id. Each id may appear in 
+                    # in multiple rows, so we build this on the unique set of
+                    # ids to minimize calculated projections. Then we use 
+                    # the built dict to put the rest of the row values in 
+                    # the proper place
+                    projection_memo = dict() # store projections
+                    for table_id in set(*attribute_values[0]):
+                        domain_ids = projection.project(
+                            Subdomain.instantiate(table._table.subdomain(),
+                                [table_id]), domain_table._table.subdomain())
+                        projection_memo[table_id] = domain_ids
+
+                    for row_values in zip(*attribute_values):
+                        domain_ids = projection_memo[row_values[0]]
+                        for domain_id in domain_ids:
+                            if domain_id in group_dict:
+                                current_ids.remove(domain_id)
+                                if table not in group_dict[domain_id]:
+                                    group_dict[domain_id][table] = list()
+                                group_dict[domain_id][table].append(
+                                    row_values[1:])
+
+                    for domain_id in current_ids:
+                        # Delete the ones that didn't appear in this table
+                        del group_dict[domain_id]
+
+        return group_dict, domain_table

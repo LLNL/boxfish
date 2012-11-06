@@ -1,4 +1,5 @@
 import ColorMaps
+from ColorMaps import ColorMap
 from PySide.QtCore import Slot,Signal,QObject
 
 class Scene(QObject):
@@ -81,17 +82,50 @@ class AttributeScene(Scene):
     """
 
     def __init__(self, attributes,
-        color_map = ColorMaps.getMap('gist_eart_r'),
-        color_range = (0.0, 0.0)):
+        color_map = ColorMap(), total_range = (0.0, 0.0)):
         """Construct an AttributeScene pertaining to the given attributes,
            with the given colormap and color range.
         """
         super(AttributeScene, self).__init__()
 
-        self.attributes = attributes # Needs to identify combination of attrs
-        self.color_map = color_map # Move to something completely general?
-        self.color_range = color_range
+        self.attributes = attributes
+        # Needs to identify combination of attrs, but for now we will
+        # just use a set and go by that. Eventually we will need to 
+        # consider the whole expression
 
+        self.color_map = color_map # Move to something completely general?
+
+        # The total range of all attributes being grouped in this fashion
+        # Individual findings may have smaller ranges, this is the 
+        # min of all of those to the max of all of those 
+        # (the union plus any contained holes)
+        self.total_range = total_range
+
+        # Determines whether this scene still needs processing by its host
+        # Right now this is sort of a hack to make things update
+        # through the colormap changer but not through the attribute
+        # changer. This should be named/accessed better in the future
+        # and/or taken care of automatically
+        self.processed = True
+
+    def __eq__(self, other):
+        if self.attributes != other.attributes:
+            return False
+        if self.color_map != other.color_map:
+            return False
+        if self.total_range != other.total_range:
+            return False
+        if self.processed != other.processed:
+            return False
+
+        return True
+
+    def __ne__(self, other):
+        return not self == other
+
+    def copy(self):
+        return AttributeScene(frozenset(self.attributes.copy()),
+            self.color_map.copy(), (self.total_range[0], self.total_range[1]))
 
 
 class ModuleScene(Scene):

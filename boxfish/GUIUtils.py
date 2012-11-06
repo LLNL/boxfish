@@ -194,7 +194,9 @@ class DropPanel(QWidget):
             label.setPixmap(icon)
             layout.addWidget(label)
             layout.addSpacing(5)
-        layout.addWidget(QLabel(text))
+        textlabel = QLabel(text)
+        textlabel.setStyleSheet("QLabel { color : white; }");
+        layout.addWidget(textlabel)
 
     def dragEnterEvent(self, event):
         """Accepts DataIndexMime data."""
@@ -216,3 +218,28 @@ class DropPanel(QWidget):
             self.handler(indexList, self.tag)
         else:
             super(DropPanel, self).dropEvent(event)
+
+class ClickFrame(QFrame):
+    """Frame that sends a signal on click."""
+
+    clicked = Signal()
+
+    def __init__(self, parent = None, flags = 0):
+        super(ClickFrame, self).__init__(parent, flags)
+
+    def mousePressEvent(self, event):
+        self.clicked.emit()
+
+class ClickLabel(QLabel):
+    """Label that sends a signal on click."""
+
+    clicked = Signal()
+
+    def __init__(self, parent = None, flags = 0):
+        super(ClickLabel, self).__init__(parent, flags)
+
+    def mousePressEvent(self, event):
+        self.clicked.emit()
+
+
+

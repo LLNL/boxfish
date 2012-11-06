@@ -5,11 +5,9 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLE import *
 
-from ModuleView import *
-from GLModuleScene import *
 from Torus3dModule import *
-from gl.GLWidget import GLWidget
-from gl.glutils import *
+from boxfish.gl.GLWidget import GLWidget
+from boxfish.gl.glutils import *
 
 
 @Module("3D Torus - 2D View", Torus3dAgent, GLModuleScene)
@@ -21,7 +19,7 @@ class Torus3dView2d(Torus3dView):
         super(Torus3dView2d, self).__init__(parent, parent_view, title)
 
     def createView(self):
-        return GLTorus2dView(self, self.colorModel)
+        return GLTorus2dView(self, self.dataModel)
 
 
 def cylinder(node, shape, axis):
@@ -60,34 +58,21 @@ def shift(point, axis, amount):
     return tuple(p)
 
 
-class GLTorus2dView(GLWidget):
-    def __init__(self, parent, colorModel):
-        super(GLTorus2dView, self).__init__(parent, rotation=False)
-        self.parent = parent
+class GLTorus2dView(Torus3dGLWidget):
+    def __init__(self, parent, dataModel):
+        super(GLTorus2dView, self).__init__(parent, dataModel, rotation=False)
 
-        self.box_size = 0.2    # Length of edge of each node cube
-        self.link_width = 1   # Width of links in the view in pixels
-
-        # Display lists for nodes and links
-        self.cubeList = DisplayList(self.drawCubes)
-        self.linkList = DisplayList(self.drawLinks)
+        self.link_width = 2   # Width of links in the view in pixels
 
         self.axis = 2           # Which axis the display should look down (default Z)
         self.gap = 2            # Spacing between successive cylinders
         self.pack_factor = 3.5  # How close to pack boxes (1.5 is .5 box space)
 
-        # Directions in which coords are laid out on the axes
-        self.axis_directions = np.array([1, -1, -1])
-
-        # Now go ahead and update things.
-        self.colorModel = None
-        self.setColorModel(colorModel)
-
         # selection interface
         self.right_drag = False
 
     # Convenience property for color model's shape
-    shape = property(fget = lambda self: self.colorModel.shape)
+    shape = property(fget = lambda self: self.dataModel.shape)
 
     def initializeGL(self):
         """Turn up the ambient light for this view and enable simple
@@ -95,33 +80,33 @@ class GLTorus2dView(GLWidget):
         super(GLTorus2dView, self).initializeGL()
         glLightfv(GL_LIGHT0, GL_AMBIENT,  [1.0, 1.0, 1.0, 1.0])
 
-        glClearColor(1,1,1,1)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-    def setColorModel(self, colorModel):
-        # unregister with any old model
-        if self.colorModel:
-            self.colorMode.unregisterListener(self.update)
+        glLineWidth(self.link_width)
 
-        # register with the new model
-        self.colorModel = colorModel
-        self.colorModel.registerListener(self.update)
+    def update(self):
+        super(GLTorus2dView, self).update()
 
-        self.update()
+        # We really want this only to happen when the shape changes but
+        # we have no way of checking this right now. May need to add
+        # another signal to the data model
+        self.updateAxis()
 
     def setAxis(self, a):
         self.axis = a
-        self.update()
+        self.updateAxis()
 
     def increaseLinkWidth(self):
         self.link_width += 1
-        self.update()
+        glLineWidth(self.link_width)
+        self.updateGL()
 
     def decreaseLinkWidth(self):
         self.link_width -= 1
         self.link_width = max(1,self.link_width)
-        self.update()
+        glLineWidth(self.link_width)
+        self.updateGL()
 
 #    def keyAction(self, key):
 #        axis_map = { int(Qt.Key_X) : lambda : self.setAxis(0),
@@ -139,10 +124,10 @@ class GLTorus2dView(GLWidget):
                     "z" : lambda :  self.setAxis(2),
                     "+" : lambda :  self.increaseLinkWidth(),
                     "-" : lambda :  self.decreaseLinkWidth(),
-                    "<" : lambda :  self.colorModel.lowerLowerBound(),
-                    ">" : lambda :  self.colorModel.raiseLowerBound(),
-                    "," : lambda :  self.colorModel.lowerUpperBound(),
-                    "." : lambda :  self.colorModel.raiseUpperBound(),
+                    "<" : lambda :  self.lowerLowerBound(),
+                    ">" : lambda :  self.raiseLowerBound(),
+                    "," : lambda :  self.lowerUpperBound(),
+                    "." : lambda :  self.raiseUpperBound(),
                     }
         if event.text() in key_map:
             key_map[event.text()]()
@@ -162,8 +147,7 @@ class GLTorus2dView(GLWidget):
             return b * (self.shape[self.axis] + self.gap) * (d+2)
         return [span(d) for d in self.shape]
 
-
-    def update(self):
+    def updateAxis(self):
         # Rotate so that the camera is looking the correct direction
         # for the 2d view's axis
         glLoadIdentity()
@@ -180,7 +164,7 @@ class GLTorus2dView(GLWidget):
         if w_span != 0 and h_span != 0:
             spans = self.spans()
             aspect = self.width() / float(self.height())
-            
+
             # Check both distances instead of the one with the larger span
             # as we don't know how aspect ratio will come into play versus shape
 
@@ -191,14 +175,10 @@ class GLTorus2dView(GLWidget):
             # Needed horizontal distance
             fovx = float(self.fov) * aspect * math.pi / 360.
             distx = spans[w] / 2. / math.tan(fovx)
-            
+
             self.translation = [0, 0, -max(distx, disty)]
 
-        # dirty display lists and update GL
-        self.cubeList.update()
-        self.linkList.update()
-        self.updateGL()
-
+        self.updateDrawing()
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -248,7 +228,7 @@ class GLTorus2dView(GLWidget):
             glTranslatef(*node)
 
             # Draw cube with node color from the model
-            glColor4f(*self.colorModel.node_colors[x,y,z])
+            glColor4f(*self.node_colors[x,y,z])
             glutSolidCube(self.box_size)
 
             glPopMatrix()
@@ -298,14 +278,13 @@ class GLTorus2dView(GLWidget):
 
     def drawLinks(self):
         glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,[1.0, 1.0, 1.0, 1.0])
-        glLineWidth(self.link_width)
         glPushMatrix()
         self.centerView()
 
         shape, axis = self.shape, self.axis
 
         for start_node in np.ndindex(*shape):
-            colors = self.colorModel.avg_link_colors[start_node]
+            colors = self.avg_link_colors[start_node]
 
             start_cyl = cylinder(start_node, shape, axis)
             start = np.array(self.map2d(start_node))
@@ -338,7 +317,7 @@ class GLTorus2dView(GLWidget):
 
         glPopMatrix()
 
-    
+
     def mousePressEvent(self, event):
         """We keep track of right-click drags for picking."""
         super(GLTorus2dView, self).mousePressEvent(event)
