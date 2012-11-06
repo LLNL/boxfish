@@ -194,7 +194,9 @@ class DropPanel(QWidget):
             label.setPixmap(icon)
             layout.addWidget(label)
             layout.addSpacing(5)
-        layout.addWidget(QLabel(text))
+        textlabel = QLabel(text)
+        textlabel.setStyleSheet("QLabel { color : white; }");
+        layout.addWidget(textlabel)
 
     def dragEnterEvent(self, event):
         """Accepts DataIndexMime data."""

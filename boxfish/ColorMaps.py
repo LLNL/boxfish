@@ -82,7 +82,7 @@ class ColorMap(object):
        Note that all colormaps in here are normalized on [0.0, 1.0].
     """
 
-    def __init__(self, base_color_map = 'jet',
+    def __init__(self, base_color_map = 'gnuplot2',
         color_step = 0, step_size = 0.1):
         super(ColorMap, self).__init__()
         self.color_map = getMap(base_color_map)
@@ -121,9 +121,12 @@ class ColorMap(object):
     def copy(self):
         return ColorMap(self.color_map_name, self.color_step, self.step_size)
 
-    def getColor(self, value):
+    def getColor(self, value, preempt_range = 0):
         if self.color_step == 0:
             return self.color_map(value)
+        elif preempt_range != 0: # Fix until I change the way ranges/dataModel is handled AGAIN.
+            stepped_value = round(value * preempt_range) % self.color_step
+            return self.color_map(1.0 / self.color_step * stepped_value)
         else:
             stepped_value = round(value / self.step_size) % self.color_step
             return self.color_map(1.0 / self.color_step * stepped_value)

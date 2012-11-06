@@ -57,7 +57,7 @@ class GLWidget(QGLWidget):
         kwarg("near_plane", 0.1)    # Near clipping plane
 
         # contentious background color
-        kwarg("bg_color", [0.0, 0.0, 0.0, 1.0])
+        kwarg("bg_color", [.94, .94, .94, 1.0])
 
         self.translation = np.zeros(3)
         self.rotation = np.identity(4)
@@ -149,7 +149,7 @@ class GLWidget(QGLWidget):
         glEnable(GL_LIGHT0)
         glEnable(GL_COLOR_MATERIAL)
         glEnable(GL_LINE_SMOOTH)
-        glEnable(GL_POLYGON_SMOOTH)
+        #glEnable(GL_POLYGON_SMOOTH)
 
     def resizeGL(self, width, height):
         if (height == 0):

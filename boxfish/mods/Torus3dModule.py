@@ -349,10 +349,10 @@ class Torus3dGLWidget(GLWidget):
 
         self.box_size = 0.2
 
-        kwarg("default_node_color", (0.5, 0.5, 0.5, 0.2))
+        kwarg("default_node_color", (0.2, 0.2, 0.2, 0.3))
         kwarg("node_cmap", self.parent.agent.requestScene("nodes").color_map)
 
-        kwarg("default_link_color", (0.5, 0.5, 0.5, 0.2))
+        kwarg("default_link_color", (0.2, 0.2, 0.2, 0.3))
         kwarg("link_cmap", self.parent.agent.requestScene("links").color_map)
 
 
@@ -405,37 +405,39 @@ class Torus3dGLWidget(GLWidget):
 
     def updateCubeColors(self):
         self.clearNodes()
+        node_range = self.dataModel.node_range[1] - self.dataModel.node_range[0]
         for node in np.ndindex(*self.dataModel.shape):
             self.node_colors[node] = self.map_node_color(
-                self.dataModel.node_values[node][0]) \
+                self.dataModel.node_values[node][0], node_range) \
                 if (self.dataModel.node_values[node][1] \
                 > sys.float_info.epsilon) else self.default_node_color
         self.nodeColorChangeSignal.emit()
 
     def updateLinkColors(self):
         self.clearLinks()
+        link_range = self.dataModel.avg_link_range[1] - self.dataModel.avg_link_range[0]
         for node in np.ndindex(*self.dataModel.shape):
             for dim in range(3):
                 self.avg_link_colors[node][dim] = self.map_link_color(
-                    self.dataModel.avg_link_values[node][dim][0]) \
+                    self.dataModel.avg_link_values[node][dim][0], link_range) \
                     if (self.dataModel.avg_link_values[node][dim][1] \
                     > sys.float_info.epsilon) else self.default_link_color
         self.linkColorChangeSignal.emit()
 
-    def map_node_color(self, val):
+    def map_node_color(self, val, preempt_range = 0):
         """Turns a color value in [0,1] into a 4-tuple RGBA color.
            Used to map nodes.
         """
-        return self.node_cmap.getColor(val)
+        return self.node_cmap.getColor(val, preempt_range)
 
-    def map_link_color(self, val):
+    def map_link_color(self, val, preempt_range = 0):
         """Turns a color value in [0,1] into a 4-tuple RGBA color.
            Used to map links.
         """
         if val < self.lowerBound-1e-8 or val > self.upperBound+1e-8:
             return [1,1,1,0]
         else:
-            return self.link_cmap.getColor(val)
+            return self.link_cmap.getColor(val, preempt_range)
 
     def set_all_alphas(self, alpha):
         """Set all nodes and links to the same given alpha value."""

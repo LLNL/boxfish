@@ -218,7 +218,7 @@ class ModuleView(QMainWindow):
                     self.overlayDroppedData), i, 0, 1, 1)
                 layout.setRowStretch(i, 5)
 
-        # Add a Close button to deal with lack of cancel signal
+        # Add a Close button to deal with lack of cancel signal 
         # for drag/drop
         class CloseLabel(QLabel):
             
@@ -226,6 +226,8 @@ class ModuleView(QMainWindow):
 
             def __init__(self):
                 super(CloseLabel, self).__init__("Close")
+
+                self.setStyleSheet("QLabel { color : white; }")
 
             def mousePressEvent(self, e):
                 self.closeSignal.emit()
@@ -740,7 +742,7 @@ class OverlayDialog(QDialog):
 
         self.setAcceptDrops(True)
 
-        #self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_TranslucentBackground)
         bgcolor = self.palette().color(QPalette.Background)
         self.setPalette(QColor(bgcolor.red(), bgcolor.green(), bgcolor.blue(),
             0)) # alpha
@@ -787,8 +789,9 @@ class OverlayFrame(QFrame):
         roundness = 10
         rect = self.rect()
         bgcolor = self.palette().color(QPalette.Background)
-        alpha_bgcolor = QColor(bgcolor.red(), bgcolor.green(),
-            bgcolor.blue(), 150)
+        alpha_bgcolor = QColor(50, 50, 50, 150)
+        #alpha_bgcolor = QColor(bgcolor.red(), bgcolor.green(),
+        #    bgcolor.blue(), 150)
 
         painter = QPainter()
         painter.begin(self)
