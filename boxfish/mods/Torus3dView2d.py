@@ -185,6 +185,7 @@ class GLTorus2dView(Torus3dGLWidget):
         self.orient_scene()
         self.cubeList()
         self.linkList()
+        self.doLegend()
 
         super(GLTorus2dView, self).paintGL()
 
