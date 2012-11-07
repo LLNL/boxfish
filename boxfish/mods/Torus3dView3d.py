@@ -40,6 +40,7 @@ class GLTorus3dView(Torus3dGLWidget):
         self.cubeList()
         self.linkList()
         self.doAxis()
+        self.doLegend()
 
         super(GLTorus3dView, self).paintGL()
 

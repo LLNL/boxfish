@@ -20,6 +20,14 @@ def glMatrix():
     glPopMatrix()
 
 @contextmanager
+def glModeMatrix(type):
+    glMatrixMode(type)
+    glPushMatrix()
+    yield
+    glMatrixMode(type)
+    glPopMatrix()
+
+@contextmanager
 def attributes(*glBits):
     for bit in glBits:
         glPushAttrib(bit)

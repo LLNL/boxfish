@@ -1,7 +1,7 @@
 from PySide.QtCore import *
 
 from GLModule import *
-from boxfish.gl.GLWidget import GLWidget
+from boxfish.gl.GLWidget import GLWidget, set_perspective
 from boxfish.gl.glutils import *
 
 import TorusIcons
@@ -364,6 +364,8 @@ class Torus3dGLWidget(GLWidget):
         # Display lists for nodes and links
         self.cubeList = DisplayList(self.drawCubes)
         self.linkList = DisplayList(self.drawLinks)
+        self.nodeBarList = DisplayList(self.drawNodeColorBar)
+        self.linkBarList = DisplayList(self.drawLinkColorBar)
         self.nodeColorChangeSignal.connect(self.cubeList.update)
         self.linkColorChangeSignal.connect(self.linkList.update)
 
@@ -423,6 +425,96 @@ class Torus3dGLWidget(GLWidget):
                     if (self.dataModel.avg_link_values[node][dim][1] \
                     > sys.float_info.epsilon) else self.default_link_color
         self.linkColorChangeSignal.emit()
+    
+    def doLegend(self, bar_width = 20, bar_height = 160, bar_x = 20,
+        bar_y = 90):
+        # Prepare to change modes
+        glDisable(GL_LIGHTING)
+        glDisable(GL_LIGHT0)
+        glDisable(GL_BLEND)
+        glEnable(GL_SCISSOR_TEST)
+
+        with glModeMatrix(GL_PROJECTION):
+            self.nodeBarList()
+            
+            
+        with glModeMatrix(GL_PROJECTION):
+            self.linkBarList()
+            
+
+        # Change mode back
+        glViewport(0, 0, self.width(), self.height())
+        #glLoadIdentity()
+        #print "Perspective!"
+        #set_perspective(self.fov, float(self.width())/self.height(),
+        #    self.near_plane, self.far_plane)
+        glDisable(GL_SCISSOR_TEST)
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+        glEnable(GL_LIGHTING)
+        glEnable(GL_LIGHT0)
+        glEnable(GL_BLEND)
+        glClearColor(*self.bg_color)
+
+    # TODO: Move these crazy defaults somewhere sane
+    def drawNodeColorBar(self, x = 10, y = 90, w = 12, h = 120):
+        node_bar = []
+        for i in range(11):
+            node_bar.append(self.map_node_color(float(i)/10.0))
+        
+        self.drawColorBar(node_bar, x, y, w, h)
+    
+    def drawLinkColorBar(self, x = 32, y = 90, w = 12, h = 120):
+        link_bar = []
+        for i in range(11):
+            link_bar.append(self.map_link_color(float(i)/10.0))
+        
+        self.drawColorBar(link_bar, x, y, w, h)
+
+    def drawColorBar(self, colors, bar_x, bar_y, bar_width, bar_height):
+        glLoadIdentity()
+        glScissor(bar_x, bar_y, bar_width, bar_height)
+        glViewport(bar_x, bar_y, bar_width, bar_height)
+        glOrtho(bar_x, bar_x + bar_width, bar_y, bar_y + bar_height, -1, 1)
+        glMatrixMode(GL_MODELVIEW)
+
+        with glMatrix():
+            glLoadIdentity()
+            glTranslatef(bar_x, bar_y, 0)
+
+            glClearColor(1, 1, 1, 1)
+            glClear(GL_COLOR_BUFFER_BIT)
+            glClear(GL_DEPTH_BUFFER_BIT)
+
+            segment_size = int(float(bar_height) / 10.0)
+
+            for i in range(10):
+
+                with glMatrix():
+                    glTranslatef(0, i*segment_size, 0)
+                    with glSection(GL_QUADS):
+                        glColor3f(colors[i][0], colors[i][1], colors[i][2])
+                        glVertex3f(0, 0, 0)
+                        glVertex3f(bar_width, 0, 0)
+                        glColor3f(colors[i+1][0], colors[i+1][1], 
+                            colors[i+1][2])
+                        glVertex3f(bar_width, segment_size, 0)
+                        glVertex3f(0, segment_size, 0)
+
+    
+            # black box around gradient
+            glColor3f(0.0, 0.0, 0.0)
+            with glMatrix():
+                with glSection(GL_LINES):
+                    glVertex3f(0, 0, 0.01)
+                    glVertex3f(bar_width, 0, 0.01)
+                    glVertex3f(bar_width, 0, 0.01)
+                    glVertex3f(bar_width, bar_height, 0.01)
+                    glVertex3f(bar_width, bar_height, 0.01)
+                    glVertex3f(0, bar_height, 0.01)
+                    glVertex3f(0, bar_height, 0.01)
+                    glVertex3f(0, 0, 0.01)
+
 
     def map_node_color(self, val, preempt_range = 0):
         """Turns a color value in [0,1] into a 4-tuple RGBA color.
@@ -476,6 +568,8 @@ class Torus3dGLWidget(GLWidget):
     def updateScene(self, node_cmap, node_range, link_cmap, link_range):
         self.node_cmap = node_cmap
         self.link_cmap = link_cmap
+        self.nodeBarList.update()
+        self.linkBarList.update()
         self.update()
         # TODO: deal with the ranges, will have to move them into the 
         # dataModel
