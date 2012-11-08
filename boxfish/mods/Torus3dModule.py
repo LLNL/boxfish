@@ -3,6 +3,7 @@ from PySide.QtCore import *
 from GLModule import *
 from boxfish.gl.GLWidget import GLWidget, set_perspective
 from boxfish.gl.glutils import *
+from OpenGL.GLUT import glutStrokeCharacter, GLUT_STROKE_ROMAN
 
 import TorusIcons
 from boxfish.ColorMaps import ColorMap, ColorMapWidget
@@ -457,34 +458,47 @@ class Torus3dGLWidget(GLWidget):
         glClearColor(*self.bg_color)
 
     # TODO: Move these crazy defaults somewhere sane
-    def drawNodeColorBar(self, x = 10, y = 90, w = 12, h = 120):
+    def drawNodeColorBar(self, x = 20, y = 90, w = 20, h = 120):
         node_bar = []
         for i in range(11):
             node_bar.append(self.map_node_color(float(i)/10.0))
         
-        self.drawColorBar(node_bar, x, y, w, h)
-    
-    def drawLinkColorBar(self, x = 32, y = 90, w = 12, h = 120):
+        # I want this extra stuff to take up no more than 1/10 of the
+        # screen space. Therefore total width = self.width() / 10
+
+        self.drawColorBar(node_bar, x, y, w, h, "N")
+        bar_width = int(max(2.0 / 13.0 * self.width(), 20))
+        bar_spacing = int(3.0 / 2.0 * bar_width)
+        bar_height = int(max(self.height() / 5.0, 150))
+        #self.drawColorBar(node_bar, bar_spacing, y, bar_width, bar_height)
+
+    def drawLinkColorBar(self, x = 50, y = 90, w = 20, h = 120):
         link_bar = []
         for i in range(11):
             link_bar.append(self.map_link_color(float(i)/10.0))
         
-        self.drawColorBar(link_bar, x, y, w, h)
+        self.drawColorBar(link_bar, x, y, w, h, "L")
+        bar_width = int(max(2.0 / 13.0 * self.width(), 20))
+        bar_spacing = int(3.0 / 2.0 * bar_width)
+        bar_height = int(max(self.height() / 5.0, 150))
+        #self.drawColorBar(link_bar, 2 * bar_spacing + bar_width, y, 
+        #    bar_width, bar_height)
 
-    def drawColorBar(self, colors, bar_x, bar_y, bar_width, bar_height):
+    def drawColorBar(self, colors, bar_x, bar_y, bar_width, bar_height,
+        label = ""):
         glLoadIdentity()
-        glScissor(bar_x, bar_y, bar_width, bar_height)
-        glViewport(bar_x, bar_y, bar_width, bar_height)
-        glOrtho(bar_x, bar_x + bar_width, bar_y, bar_y + bar_height, -1, 1)
+        glScissor(bar_x, bar_y, bar_width, bar_height + 12)
+        glViewport(bar_x, bar_y, bar_width, bar_height + 12)
+        glOrtho(bar_x, bar_x + bar_width, bar_y, bar_y + bar_height + 12, -1, 1)
         glMatrixMode(GL_MODELVIEW)
 
         with glMatrix():
             glLoadIdentity()
             glTranslatef(bar_x, bar_y, 0)
 
-            glClearColor(1, 1, 1, 1)
-            glClear(GL_COLOR_BUFFER_BIT)
-            glClear(GL_DEPTH_BUFFER_BIT)
+            #glClearColor(1, 1, 1, 1)
+            #glClear(GL_COLOR_BUFFER_BIT)
+            #glClear(GL_DEPTH_BUFFER_BIT)
 
             segment_size = int(float(bar_height) / 10.0)
 
@@ -506,14 +520,25 @@ class Torus3dGLWidget(GLWidget):
             glColor3f(0.0, 0.0, 0.0)
             with glMatrix():
                 with glSection(GL_LINES):
-                    glVertex3f(0, 0, 0.01)
+                    glVertex3f(0.01, 0.01, 0.01)
                     glVertex3f(bar_width, 0, 0.01)
                     glVertex3f(bar_width, 0, 0.01)
                     glVertex3f(bar_width, bar_height, 0.01)
                     glVertex3f(bar_width, bar_height, 0.01)
-                    glVertex3f(0, bar_height, 0.01)
-                    glVertex3f(0, bar_height, 0.01)
-                    glVertex3f(0, 0, 0.01)
+                    glVertex3f(0.01, bar_height, 0.01)
+                    glVertex3f(0.01, bar_height, 0.01)
+                    glVertex3f(0.01, 0.01, 0.01)
+
+            default_text_height = 152.38
+            scale_factor = 1.0 / default_text_height * segment_size
+            scale_factor = 0.08
+            if len(label) > 0:
+                with glMatrix():
+                    glTranslatef(7, bar_height + 3, 0.2)
+                    glScalef(scale_factor, scale_factor, scale_factor)
+                    for c in label:
+                        print c
+                        glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
 
 
     def map_node_color(self, val, preempt_range = 0):
