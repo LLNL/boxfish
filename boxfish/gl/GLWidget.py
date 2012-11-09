@@ -27,6 +27,7 @@ class GLWidget(QGLWidget):
     """
 
     transformChangeSignal = Signal(np.ndarray, np.ndarray)
+    resizeSignal = Signal()
 
     def __init__(self, parent=None, **keywords):
         """Sets up initial values for dragging variables, translation, and rotation matrices."""
@@ -171,6 +172,8 @@ class GLWidget(QGLWidget):
 
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
+
+        self.resizeSignal.emit()
 
     def paintGL(self):
         glFlush()

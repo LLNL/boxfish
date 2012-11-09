@@ -9,8 +9,49 @@ from Torus3dModule import *
 from boxfish.gl.GLWidget import GLWidget
 from boxfish.gl.glutils import *
 
+class T3V2ModuleScene(GLModuleScene):
+    def __init__(self, agent_type, module_type, rotation = None,
+        translation = None, background_color = None, axis = 0):
+        super(T3V2ModuleScene, self).__init__(agent_type, module_type,
+            rotation, translation, background_color)
 
-@Module("3D Torus - 2D View", Torus3dAgent, GLModuleScene)
+        self.axis = axis
+
+    def __eq__(self, other):
+        if self.axis != other.axis:
+            return False
+        return super(T3V2ModuleScene, self).__eq__(other)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def copy(self):
+        return T3V2ModuleScene(self.agent_type, self.module_name,
+            self.rotation.copy() if self.rotation is not None else None,
+            self.translation.copy() if self.translation is not None
+                else None,
+            self.background_color.copy()
+                if self.background_color is not None else None,
+            self.axis)
+
+class Torus3dView2dAgent(Torus3dAgent):
+
+    axisUpdateSignal = Signal(int)
+
+    def __init__(self, parent, datatree):
+        super(Torus3dView2dAgent, self).__init__(parent, datatree)
+
+    @Slot(ModuleScene)
+    def processModuleScene(self, module_scene):
+        super(Torus3dView2dAgent, self).processModuleScene(module_scene)
+
+        if isinstance(module_scene, T3V2ModuleScene):
+            self.module_scene = module_scene.copy()
+            self.axisUpdateSignal.emit(self.module_scene.axis)
+
+
+
+@Module("3D Torus - 2D View", Torus3dView2dAgent, T3V2ModuleScene)
 class Torus3dView2d(Torus3dView):
     """This is a 2d rendering of a 3d torus.
        Initial concept for this view by Aaditya Landge.
@@ -18,8 +59,16 @@ class Torus3dView2d(Torus3dView):
     def __init__(self, parent, parent_view = None, title = None):
         super(Torus3dView2d, self).__init__(parent, parent_view, title)
 
+        self.view.axisUpdateSignal.connect(self.axisChanged)
+        self.agent.axisUpdateSignal.connect(self.view.setAxis)
+
     def createView(self):
         return GLTorus2dView(self, self.dataModel)
+
+    @Slot(int)
+    def axisChanged(self, axis):
+        self.agent.module_scene.axis = axis
+        self.agent.module_scene.announceChange()
 
 
 def cylinder(node, shape, axis):
@@ -59,6 +108,9 @@ def shift(point, axis, amount):
 
 
 class GLTorus2dView(Torus3dGLWidget):
+
+    axisUpdateSignal = Signal(int)
+
     def __init__(self, parent, dataModel):
         super(GLTorus2dView, self).__init__(parent, dataModel, rotation=False)
 
@@ -70,6 +122,11 @@ class GLTorus2dView(Torus3dGLWidget):
 
         # selection interface
         self.right_drag = False
+
+        self.miniMapSizes()
+        self.miniMapList = DisplayList(self.miniMaps)
+        self.legendCalls.append(self.miniMapList)
+        self.resizeSignal.connect(self.miniMapList.update)
 
     # Convenience property for color model's shape
     shape = property(fget = lambda self: self.dataModel.shape)
@@ -94,8 +151,10 @@ class GLTorus2dView(Torus3dGLWidget):
         self.updateAxis()
 
     def setAxis(self, a):
-        self.axis = a
-        self.updateAxis()
+        if self.axis != a:
+            self.axis = a
+            self.axisUpdateSignal.emit(a)
+            self.updateAxis()
 
     def increaseLinkWidth(self):
         self.link_width += 1
@@ -178,6 +237,7 @@ class GLTorus2dView(Torus3dGLWidget):
 
             self.translation = [0, 0, -max(distx, disty)]
 
+        self.miniMapList.update()
         self.updateDrawing()
 
     def paintGL(self):
@@ -325,6 +385,11 @@ class GLTorus2dView(Torus3dGLWidget):
 
         if event.button() == Qt.RightButton:
             self.right_drag = True
+        else:
+            axis = self.isAxisChange(event.x(), self.height() - event.y())
+            if axis >= 0:
+                self.setAxis(axis)
+
 
     def mouseReleaseEvent(self, event):
         """We keep track of whether a drag occurred with right-click."""
@@ -333,3 +398,69 @@ class GLTorus2dView(Torus3dGLWidget):
         if self.right_drag:
             self.right_drag = False
 
+    def isAxisChange(self, x, y):
+        if x > self.minimap_x and x < self.minimap_x + self.minimap_size:
+            if y > self.minimap_y0 and y < self.minimap_y0 + self.minimap_size:
+                return 0
+            if y > self.minimap_y1 and y < self.minimap_y1 + self.minimap_size:
+                return 1
+            if y > self.minimap_y2 and y < self.minimap_y2 + self.minimap_size:
+                return 2
+        return -1
+
+    def miniMapSizes(self):
+        self.minimap_x = 5
+        self.minimap_y0 = self.height() - 75
+        self.minimap_y1 = self.height() - 150
+        self.minimap_y2 = self.height() - 225
+        self.minimap_size = 70
+
+    def miniMaps(self):
+        self.miniMapSizes()
+        self.drawMiniMaps(0, self.minimap_x, self.minimap_y0,
+            self.minimap_size, self.minimap_size)
+        self.drawMiniMaps(1, self.minimap_x, self.minimap_y1,
+            self.minimap_size, self.minimap_size)
+        self.drawMiniMaps(2, self.minimap_x, self.minimap_y2,
+            self.minimap_size, self.minimap_size)
+        #self.drawMiniMaps(0, 5, self.height() - 75, 70, 70)
+        #self.drawMiniMaps(1, 5, self.height() - 150, 70, 70)
+        #self.drawMiniMaps(2, 5, self.height() - 225, 70, 70)
+
+    def drawMiniMaps(self, axis, x, y, w, h):
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        glScissor(x, y, w, h)
+        glViewport(x, y, w, h)
+        glOrtho(x, x+w, y, y+h, -1, 1)
+
+        glMatrixMode(GL_MODELVIEW)
+
+        with glMatrix():
+            glLoadIdentity()
+            glTranslatef(x, y, 0)
+            
+            glClearColor(*self.bg_color)
+            glClear(GL_COLOR_BUFFER_BIT)
+            glClear(GL_DEPTH_BUFFER_BIT)
+
+
+
+
+            # Draw Border
+            glColor3f(0.0, 0.0, 0.0)
+            if axis == self.axis:
+                glLineWidth(3.0)
+            with glMatrix():
+                with glSection(GL_LINES):
+                    glVertex3f(0.01, 0.01, 0.01)
+                    glVertex3f(w, 0.01, 0.01)
+                    glVertex3f(w, 0.01, 0.01)
+                    glVertex3f(w, h, 0.01)
+                    glVertex3f(w, h, 0.01)
+                    glVertex3f(0.01, h, 0.01)
+                    glVertex3f(0.01, h, 0.01)
+                    glVertex3f(0.01, 0.01, 0.01)
+            if axis == self.axis:
+                glLineWidth(self.link_width)
+                    

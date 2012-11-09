@@ -347,6 +347,7 @@ class Torus3dGLWidget(GLWidget):
 
         self.parent = parent
         self.dataModel = None
+        self.legendCalls = []
 
         self.box_size = 0.2
 
@@ -435,6 +436,9 @@ class Torus3dGLWidget(GLWidget):
         glDisable(GL_BLEND)
         glEnable(GL_SCISSOR_TEST)
 
+        # We need to do the mode change/push outside the display list
+        # or it will cache the matrix for a particular window setup
+        # and weird things will happen on resize
         with glModeMatrix(GL_PROJECTION):
             self.nodeBarList()
             
@@ -443,10 +447,14 @@ class Torus3dGLWidget(GLWidget):
             self.linkBarList()
             
 
+        for func in self.legendCalls:
+            with glModeMatrix(GL_PROJECTION):
+                func()
+                
+
         # Change mode back
         glViewport(0, 0, self.width(), self.height())
         #glLoadIdentity()
-        #print "Perspective!"
         #set_perspective(self.fov, float(self.width())/self.height(),
         #    self.near_plane, self.far_plane)
         glDisable(GL_SCISSOR_TEST)
@@ -467,9 +475,9 @@ class Torus3dGLWidget(GLWidget):
         # screen space. Therefore total width = self.width() / 10
 
         self.drawColorBar(node_bar, x, y, w, h, "N")
-        bar_width = int(max(2.0 / 13.0 * self.width(), 20))
-        bar_spacing = int(3.0 / 2.0 * bar_width)
-        bar_height = int(max(self.height() / 5.0, 150))
+        #bar_width = int(max(2.0 / 13.0 * self.width(), 20))
+        #bar_spacing = int(3.0 / 2.0 * bar_width)
+        #bar_height = int(max(self.height() / 5.0, 150))
         #self.drawColorBar(node_bar, bar_spacing, y, bar_width, bar_height)
 
     def drawLinkColorBar(self, x = 50, y = 90, w = 20, h = 120):
@@ -478,9 +486,9 @@ class Torus3dGLWidget(GLWidget):
             link_bar.append(self.map_link_color(float(i)/10.0))
         
         self.drawColorBar(link_bar, x, y, w, h, "L")
-        bar_width = int(max(2.0 / 13.0 * self.width(), 20))
-        bar_spacing = int(3.0 / 2.0 * bar_width)
-        bar_height = int(max(self.height() / 5.0, 150))
+        #bar_width = int(max(2.0 / 13.0 * self.width(), 20))
+        #bar_spacing = int(3.0 / 2.0 * bar_width)
+        #bar_height = int(max(self.height() / 5.0, 150))
         #self.drawColorBar(link_bar, 2 * bar_spacing + bar_width, y, 
         #    bar_width, bar_height)
 
@@ -521,8 +529,8 @@ class Torus3dGLWidget(GLWidget):
             with glMatrix():
                 with glSection(GL_LINES):
                     glVertex3f(0.01, 0.01, 0.01)
-                    glVertex3f(bar_width, 0, 0.01)
-                    glVertex3f(bar_width, 0, 0.01)
+                    glVertex3f(bar_width, 0.01, 0.01)
+                    glVertex3f(bar_width, 0.01, 0.01)
                     glVertex3f(bar_width, bar_height, 0.01)
                     glVertex3f(bar_width, bar_height, 0.01)
                     glVertex3f(0.01, bar_height, 0.01)
@@ -537,7 +545,6 @@ class Torus3dGLWidget(GLWidget):
                     glTranslatef(7, bar_height + 3, 0.2)
                     glScalef(scale_factor, scale_factor, scale_factor)
                     for c in label:
-                        print c
                         glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
 
 
