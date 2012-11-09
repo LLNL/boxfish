@@ -29,6 +29,7 @@ class Torus3dAgent(GLAgent):
 
         self.addRequest("nodes")
         self.addRequest("links")
+        self.coords = None
         self.coords_table = None
         self.node_coords_dict = dict()
         self.coords_node_dict = dict()
@@ -58,6 +59,7 @@ class Torus3dAgent(GLAgent):
             self.run = run
             hardware = run["hardware"]
             coords = hardware["coords"]
+            self.coords = coords
             self.coords_table = run.getTable(hardware["coords_table"])
             shape = [hardware["dim"][coord] for coord in coords]
 

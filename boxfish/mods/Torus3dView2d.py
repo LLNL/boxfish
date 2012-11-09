@@ -116,7 +116,7 @@ class GLTorus2dView(Torus3dGLWidget):
 
         self.link_width = 2   # Width of links in the view in pixels
 
-        self.axis = 2           # Which axis the display should look down (default Z)
+        self.axis = 0           # Which axis the display should look down (default X)
         self.gap = 2            # Spacing between successive cylinders
         self.pack_factor = 3.5  # How close to pack boxes (1.5 is .5 box space)
 
@@ -239,8 +239,16 @@ class GLTorus2dView(Torus3dGLWidget):
             # Needed horizontal distance
             fovx = float(self.fov) * aspect * math.pi / 360.
             distx = spans[w] / 2. / math.tan(fovx)
-
-            self.translation = [0, 0, -max(distx, disty)]
+            
+            # Terrible quick fix
+            trans_x = 0
+            trans_y = 0
+            if self.axis == 1:
+                trans_x = -1
+                trans_y = -1
+            if self.axis == 2:
+                trans_x = -1
+            self.translation = [trans_x, trans_y, -max(distx, disty)]
 
         self.miniMapList.update()
         self.updateDrawing()
@@ -467,6 +475,8 @@ class GLTorus2dView(Torus3dGLWidget):
         glMatrixMode(GL_MODELVIEW)
 
         axis_map = { 0: (2, 1), 1: (0, 2), 2: (0, 1) }
+        
+        coords = self.parent.agent.coords
         with glMatrix():
             glLoadIdentity()
             glTranslatef(x, y, 0)
@@ -501,4 +511,11 @@ class GLTorus2dView(Torus3dGLWidget):
                     glVertex3f(0.01, 0.01, 0.01)
             if axis == self.axis:
                 glLineWidth(self.link_width)
-                    
+
+
+            if coords is not None and len(coords[axis]) > 0:
+                with glMatrix():
+                    glTranslate(5, 5, 0.2)
+                    glScalef(0.12, 0.12, 0.12)
+                    for c in coords[axis]:
+                        glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
