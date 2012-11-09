@@ -241,14 +241,7 @@ class GLTorus2dView(Torus3dGLWidget):
             distx = spans[w] / 2. / math.tan(fovx)
             
             # Terrible quick fix
-            trans_x = 0
-            trans_y = 0
-            if self.axis == 1:
-                trans_x = -1
-                trans_y = -1
-            if self.axis == 2:
-                trans_x = -1
-            self.translation = [trans_x, trans_y, -max(distx, disty)]
+            self.translation = [0, 0, -max(distx, disty)]
 
         self.miniMapList.update()
         self.updateDrawing()
