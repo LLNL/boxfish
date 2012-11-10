@@ -71,7 +71,7 @@ class Torus3dView2d(Torus3dView):
         self.agent.module_scene.announceChange()
 
 
-def cylinder(node, shape, axis, scale = 1):
+def cylinder(node, shape, axis):
     """This function is for finding the index of the squared cylinder
        containing particular points in the torus.  Cylinders are
        defined for a shape, along a particular axis.
@@ -97,7 +97,7 @@ def cylinder(node, shape, axis, scale = 1):
     num_cylinders = (min(dims) + 1) / 2
     nonaxis = node[:axis] + node[axis+1:]
     d_near_edge = [min(abs(d - n - 1), n) for n, d in zip(nonaxis, dims)]
-    return scale * (num_cylinders - min(d_near_edge) - 1)
+    return num_cylinders - min(d_near_edge) - 1
 
 
 def shift(point, axis, amount):
@@ -117,6 +117,8 @@ class GLTorus2dView(Torus3dGLWidget):
         self.link_width = 2   # Width of links in the view in pixels
 
         self.axis = 0           # Which axis the display should look down (default X)
+        self.axis_map = { 0: (2, 1), 1: (0, 2), 2: (0, 1) }
+
         self.gap = 2            # Spacing between successive cylinders
         self.pack_factor = 3.5  # How close to pack boxes (1.5 is .5 box space)
 
@@ -158,7 +160,6 @@ class GLTorus2dView(Torus3dGLWidget):
     def setAxis(self, a):
         if self.axis != a:
             self.axis = a
-            self.axisUpdateSignal.emit(a)
             self.updateAxis()
 
     def increaseLinkWidth(self):
@@ -200,16 +201,15 @@ class GLTorus2dView(Torus3dGLWidget):
 
     def width_height(self):
         """Get the dimensions that span width and height of screen"""
-        axis_map = { 0: (2, 1), 1: (0, 2), 2: (0, 1) }
-        return axis_map[self.axis]
+        return self.axis_map[self.axis]
 
 
-    def spans(self):
+    def spans(self, shape, axis, gap):
         """Span in OpenGL space of each dimension of the 2D view"""
         b = self.box_size * self.pack_factor
         def span(d):
-            return b * (self.shape[self.axis] + self.gap) * (d+2)
-        return [span(d) for d in self.shape]
+            return b * (shape[axis] + gap) * (d+2)
+        return [span(d) for d in shape]
 
     def updateAxis(self):
         # Rotate so that the camera is looking the correct direction
@@ -226,7 +226,7 @@ class GLTorus2dView(Torus3dGLWidget):
         w, h = self.width_height()
         w_span, h_span = self.shape[w], self.shape[h]
         if w_span != 0 and h_span != 0:
-            spans = self.spans()
+            spans = self.spans(self.shape, self.axis, self.gap)
             aspect = self.width() / float(self.height())
 
             # Check both distances instead of the one with the larger span
@@ -246,6 +246,7 @@ class GLTorus2dView(Torus3dGLWidget):
         self.miniMapList.update()
         self.updateDrawing()
 
+
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.orient_scene()
@@ -255,18 +256,20 @@ class GLTorus2dView(Torus3dGLWidget):
 
         super(GLTorus2dView, self).paintGL()
 
-    def centerView(self, scale = 1):
-        half_spans = np.array(self.spans(), np.float) / -2
-        half_spans[self.axis] = 0
+
+    def centerView(self, shape, axis, gap, scale = 1):
+        half_spans = np.array(self.spans(shape, axis, gap), np.float) / -2
+        half_spans[axis] = 0
+        if scale != 1:
+            half_spans = self.mapxy(axis, half_spans)
         half_spans *= self.axis_directions
         half_spans *= scale
         glTranslatef(*half_spans)
 
 
-    def map2d(self, node):
-        axis = self.axis
+    def map2d(self, node, axis, gap, scale = 1):
         b = self.box_size * self.pack_factor   # box plus spacing
-        h = (self.shape[axis] * b) + self.gap  # grid spacing
+        h = (self.shape[axis] * b) + gap  # grid spacing
 
         def coord(n, d):
             center = float(self.shape[d] - 1) / 2
@@ -279,20 +282,29 @@ class GLTorus2dView(Torus3dGLWidget):
 
         node2d = np.zeros(3)
         for d in dim:
-            node2d[d] = coord(node[d], d)
+            node2d[d] = scale * coord(node[d], d)
         node2d *= self.axis_directions
+        if scale != 1:
+            node2d = self.mapxy(axis, node2d)
         return node2d
+
+
+    def mapxy(self, axis, vec):
+        """Map from axis 2d into xy 2d."""
+        w, h = self.axis_map[axis]
+        return np.array([vec[w], vec[h], 0.])
+
 
 
     def drawCubes(self):
         glPushMatrix()
-        self.centerView()
+        self.centerView(self.shape, self.axis, self.gap)
 
         for x, y, z in np.ndindex(*self.shape):
             glPushMatrix()
 
             # center around the mapped noded
-            node = self.map2d((x, y, z))
+            node = self.map2d((x, y, z), self.axis, self.gap)
             glTranslatef(*node)
 
             # Draw cube with node color from the model
@@ -322,41 +334,21 @@ class GLTorus2dView(Torus3dGLWidget):
         glVertex3fv(end)
         glEnd()
 
-        return
-        # unit vector in direction start -> end
-        dir = end - start
-
-        # vector in direction of axis
-        ax = np.zeros(3)
-        ax[self.axis] = 1.0
-
-        # v is perpendicular to u and axis
-        v = np.cross(ax, dir)
-        v /= np.linalg.norm(v)
-        v *= self.link_width / 2.0
-
-        # draw corners and normal of quad.
-        with glSection(GL_QUADS):
-            glVertex3fv(start + v)
-            glVertex3fv(end + v)
-            glVertex3fv(end - v)
-            glVertex3fv(start - v)
-            glNormal3f(*ax)
 
 
     def drawLinks(self):
-        self.layoutLinks(self.shape, self.axis, self.avg_link_colors)
+        self.layoutLinks(self.shape, self.axis, self.gap, self.avg_link_colors)
 
-    def layoutLinks(self, shape, axis, link_colors, scale = 1):
+    def layoutLinks(self, shape, axis, gap, link_colors, scale = 1):
         glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,[1.0, 1.0, 1.0, 1.0])
         glPushMatrix()
-        self.centerView(scale)
+        self.centerView(shape, axis, gap, scale)
 
         for start_node in np.ndindex(*shape):
             colors = link_colors[start_node]
 
-            start_cyl = cylinder(start_node, shape, axis, scale)
-            start = np.array(self.map2d(start_node))
+            start_cyl = cylinder(start_node, shape, axis)
+            start = np.array(self.map2d(start_node, axis, gap, scale))
 
             # iterate over dimensions.
             for dim in range(3):
@@ -367,7 +359,7 @@ class GLTorus2dView(Torus3dGLWidget):
                     continue
 
                 # Only render lines that connect points within the same cylinder
-                end_cyl = cylinder(end_node, shape, axis, scale)
+                end_cyl = cylinder(end_node, shape, axis)
                 if start_cyl == end_cyl:
                     # Prevents occluding links on the innermost cylinder by not
                     # rendering links that would make T-junctions
@@ -375,12 +367,12 @@ class GLTorus2dView(Torus3dGLWidget):
                         # find transverse dimension
                         for t in range(3):
                             if t != axis and t != dim: break
-                        left_cyl = cylinder(shift(start_node, t, -1), shape, axis, scale)
-                        right_cyl = cylinder(shift(start_node, t, 1), shape, axis, scale)
+                        left_cyl = cylinder(shift(start_node, t, -1), shape, axis)
+                        right_cyl = cylinder(shift(start_node, t, 1), shape, axis)
                         if end_cyl == right_cyl and end_cyl == left_cyl:
                             continue
 
-                    end = np.array(self.map2d(end_node))
+                    end = np.array(self.map2d(end_node, axis, gap, scale))
                     glColor4f(*colors[dim])
                     self.drawLinkQuad(start, end)
 
@@ -396,7 +388,7 @@ class GLTorus2dView(Torus3dGLWidget):
         else:
             axis = self.isAxisChange(event.x(), self.height() - event.y())
             if axis >= 0:
-                self.setAxis(axis)
+                self.axisUpdateSignal.emit(axis)
 
 
     def mouseReleaseEvent(self, event):
@@ -467,8 +459,6 @@ class GLTorus2dView(Torus3dGLWidget):
 
         glMatrixMode(GL_MODELVIEW)
 
-        axis_map = { 0: (2, 1), 1: (0, 2), 2: (0, 1) }
-        
         coords = self.parent.agent.coords
         with glMatrix():
             glLoadIdentity()
@@ -478,15 +468,20 @@ class GLTorus2dView(Torus3dGLWidget):
             glClear(GL_COLOR_BUFFER_BIT)
             glClear(GL_DEPTH_BUFFER_BIT)
 
+            # Draw Links
             mini_shape = list(self.shape[:])
             if mini_shape[axis] != 0:
                 mini_shape[axis] = 1
-            width, height = axis_map[axis]
+            width, height = self.axis_map[axis]
             if self.shape[width] != 0 and self.shape[height] != 0:
-                scale = min(float(w) / self.shape[width],
-                    float(h) / self.shape[height])
-                self.layoutLinks(tuple(mini_shape), axis,
-                    self.miniColors[axis], scale)
+                with glMatrix():
+                    #glTranslate(w / 2. * self.axis_directions[axis], 
+                    #    h / 2. * self.axis_directions[axis], 0)
+                    scale = min(self.shape[width] / float(w) * 10,
+                        self.shape[height] / float(h) * 10)
+                    self.layoutLinks(tuple(mini_shape), axis, .2,
+                        self.miniColors[axis], scale)
+        
 
             # Draw Border
             glColor3f(0.0, 0.0, 0.0)
@@ -506,6 +501,7 @@ class GLTorus2dView(Torus3dGLWidget):
                 glLineWidth(self.link_width)
 
 
+            # Draw Label
             if coords is not None and len(coords[axis]) > 0:
                 with glMatrix():
                     glTranslate(5, 5, 0.2)
