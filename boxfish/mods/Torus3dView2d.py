@@ -422,14 +422,13 @@ class GLTorus2dView(Torus3dGLWidget):
                     val = 0.0
                     count = 0
                     subNode = list(node)
-                    for i in range(self.shape[dim]):
-                        subNode[dim] = i
+                    for i in range(self.shape[axis]):
+                        subNode[axis] = i
                         val += self.dataModel.avg_link_values[tuple(subNode)][dim][0]
                         count += self.dataModel.avg_link_values[tuple(subNode)][dim][1]
-                    print val, val / float(self.shape[dim]), node, dim
                     link_colors[node][dim] = self.map_link_color(
-                        val / float(self.shape[dim]), 1.0) \
-                        if count / float(self.shape[dim]) \
+                        val / float(self.shape[axis]), 1.0) \
+                        if count / float(self.shape[axis]) \
                         >= 1 else self.default_link_color
             self.miniColors.append(link_colors.copy())
 
