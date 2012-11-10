@@ -129,7 +129,7 @@ class GLTorus2dView(Torus3dGLWidget):
         self.miniMapList = DisplayList(self.miniMaps)
         self.legendCalls.append(self.miniMapList)
         self.resizeSignal.connect(self.miniMapList.update)
-        self.updateMiniMaps()
+        self.updateMiniMapValues()
 
     # Convenience property for color model's shape
     shape = property(fget = lambda self: self.dataModel.shape)
@@ -148,7 +148,7 @@ class GLTorus2dView(Torus3dGLWidget):
     def update(self):
         super(GLTorus2dView, self).update()
         
-        self.updateMiniMaps()
+        self.updateMiniMapValues()
 
         # We really want this only to happen when the shape changes but
         # we have no way of checking this right now. May need to add
@@ -267,14 +267,14 @@ class GLTorus2dView(Torus3dGLWidget):
         glTranslatef(*half_spans)
 
 
-    def map2d(self, node, axis, gap, scale = 1):
+    def map2d(self, node, shape, axis, gap, scale = 1):
         b = self.box_size * self.pack_factor   # box plus spacing
-        h = (self.shape[axis] * b) + gap  # grid spacing
+        h = (shape[axis] * b) + gap  # grid spacing
 
         def coord(n, d):
-            center = float(self.shape[d] - 1) / 2
+            center = float(shape[d] - 1) / 2
             inset = node[axis] * b * np.sign(center - n)
-            even = (self.shape[d] % 2 == 0)
+            even = (shape[d] % 2 == 0)
             return h * (n + int(even and n > center)) + inset
 
         dim = range(3)
@@ -304,7 +304,7 @@ class GLTorus2dView(Torus3dGLWidget):
             glPushMatrix()
 
             # center around the mapped noded
-            node = self.map2d((x, y, z), self.axis, self.gap)
+            node = self.map2d((x, y, z), self.shape, self.axis, self.gap)
             glTranslatef(*node)
 
             # Draw cube with node color from the model
@@ -348,7 +348,7 @@ class GLTorus2dView(Torus3dGLWidget):
             colors = link_colors[start_node]
 
             start_cyl = cylinder(start_node, shape, axis)
-            start = np.array(self.map2d(start_node, axis, gap, scale))
+            start = np.array(self.map2d(start_node, shape, axis, gap, scale))
 
             # iterate over dimensions.
             for dim in range(3):
@@ -372,7 +372,7 @@ class GLTorus2dView(Torus3dGLWidget):
                         if end_cyl == right_cyl and end_cyl == left_cyl:
                             continue
 
-                    end = np.array(self.map2d(end_node, axis, gap, scale))
+                    end = np.array(self.map2d(end_node, shape, axis, gap, scale))
                     glColor4f(*colors[dim])
                     self.drawLinkQuad(start, end)
 
@@ -408,9 +408,8 @@ class GLTorus2dView(Torus3dGLWidget):
                 return 2
         return -1
 
-    def updateMiniMaps(self):
+    def updateMiniMapValues(self):
         self.miniColors = list()
-        link_range = self.dataModel.avg_link_range[1] - self.dataModel.avg_link_range[0]
         for axis in range(3):
             shape = self.shape[:]
             if shape[axis] != 0:
@@ -420,17 +419,18 @@ class GLTorus2dView(Torus3dGLWidget):
             link_colors = np.tile(self.default_link_color, list(shape) + [3,1])
             for node in np.ndindex(*shape):
                 for dim in range(3):
-                    val = 0
+                    val = 0.0
                     count = 0
                     subNode = list(node)
                     for i in range(self.shape[dim]):
                         subNode[dim] = i
                         val += self.dataModel.avg_link_values[tuple(subNode)][dim][0]
                         count += self.dataModel.avg_link_values[tuple(subNode)][dim][1]
+                    print val, val / float(self.shape[dim]), node, dim
                     link_colors[node][dim] = self.map_link_color(
-                        val / float(self.shape[dim]), link_range) \
+                        val / float(self.shape[dim]), 1.0) \
                         if count / float(self.shape[dim]) \
-                        > sys.float_info.epsilon else self.default_link_color
+                        >= 1 else self.default_link_color
             self.miniColors.append(link_colors.copy())
 
 
@@ -475,11 +475,15 @@ class GLTorus2dView(Torus3dGLWidget):
             width, height = self.axis_map[axis]
             if self.shape[width] != 0 and self.shape[height] != 0:
                 with glMatrix():
-                    #glTranslate(w / 2. * self.axis_directions[axis], 
-                    #    h / 2. * self.axis_directions[axis], 0)
-                    scale = min(self.shape[width] / float(w) * 10,
-                        self.shape[height] / float(h) * 10)
-                    self.layoutLinks(tuple(mini_shape), axis, .2,
+                    if axis != 0:
+                        glTranslate(w / 2., h / 2., 0.) 
+                    else:
+                        glTranslate(w * 4 / 3. + 1., h / 2., 0.)
+                    scale = min(float(w) / self.shape[width] / 2.,
+                        float(h) / self.shape[height] / 2.)
+                    #scale = min(self.shape[width] / float(w) * 30,
+                    #    self.shape[height] / float(h) * 30)
+                    self.layoutLinks(tuple(mini_shape), axis, 1,
                         self.miniColors[axis], scale)
         
 
