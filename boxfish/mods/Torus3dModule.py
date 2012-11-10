@@ -24,6 +24,9 @@ class Torus3dAgent(GLAgent):
     # node colormap and range, link colormap and range
     nodelinkSceneUpdateSignal = Signal(ColorMap, tuple, ColorMap, tuple)
 
+    # Name of run for labeling
+    runNameUpdateSignal = Signal(str)
+
     def __init__(self, parent, datatree):
         super(Torus3dAgent, self).__init__(parent, datatree)
 
@@ -78,6 +81,8 @@ class Torus3dAgent(GLAgent):
             self.torusUpdateSignal.emit(shape,
                 node_coords_dict, coords_node_dict,
                 link_coords_dict, coords_link_dict)
+
+            self.runNameUpdateSignal.emit(self.run.name)
 
 
     def requestUpdated(self, name):
@@ -322,6 +327,10 @@ class Torus3dView(GLView):
         self.agent.highlightUpdateSignal.connect(self.view.updateHighlights)
         self.agent.nodelinkSceneUpdateSignal.connect(self.view.updateScene)
 
+
+        self.base_title = parent.windowTitle()
+        self.agent.runNameUpdateSignal.connect(self.newRun)
+
         self.createDragOverlay(["nodes", "links"],
             ["Color Nodes", "Color Links"],
             [QPixmap(":/nodes.png"), QPixmap(":/links.png")])
@@ -334,6 +343,9 @@ class Torus3dView(GLView):
         elif tag == "links":
             self.agent.registerLinkAttributes(index_list)
 
+    @Slot(str)
+    def newRun(self, name):
+        self.parent().setWindowTitle(name + "  |  " + self.base_title)
 
 
 class Torus3dGLWidget(GLWidget):
@@ -352,6 +364,7 @@ class Torus3dGLWidget(GLWidget):
         self.legendCalls = []
 
         self.box_size = 0.2
+        self.link_width = 2.
 
         kwarg("default_node_color", (0.2, 0.2, 0.2, 0.3))
         kwarg("node_cmap", self.parent.agent.requestScene("nodes").color_map)
@@ -429,7 +442,7 @@ class Torus3dGLWidget(GLWidget):
                     if (self.dataModel.avg_link_values[node][dim][1] \
                     > sys.float_info.epsilon) else self.default_link_color
         self.linkColorChangeSignal.emit()
-    
+
     def doLegend(self, bar_width = 20, bar_height = 160, bar_x = 20,
         bar_y = 90):
         # Prepare to change modes
@@ -443,16 +456,16 @@ class Torus3dGLWidget(GLWidget):
         # and weird things will happen on resize
         with glModeMatrix(GL_PROJECTION):
             self.nodeBarList()
-            
-            
+
+
         with glModeMatrix(GL_PROJECTION):
             self.linkBarList()
-            
+
 
         for func in self.legendCalls:
             with glModeMatrix(GL_PROJECTION):
                 func()
-                
+
 
         # Change mode back
         glViewport(0, 0, self.width(), self.height())
@@ -472,7 +485,7 @@ class Torus3dGLWidget(GLWidget):
         node_bar = []
         for i in range(11):
             node_bar.append(self.map_node_color(float(i)/10.0))
-        
+
         # I want this extra stuff to take up no more than 1/10 of the
         # screen space. Therefore total width = self.width() / 10
 
@@ -486,7 +499,7 @@ class Torus3dGLWidget(GLWidget):
         link_bar = []
         for i in range(11):
             link_bar.append(self.map_link_color(float(i)/10.0))
-        
+
         self.drawColorBar(link_bar, x, y, w, h, "L")
         #bar_width = int(max(2.0 / 13.0 * self.width(), 20))
         #bar_spacing = int(3.0 / 2.0 * bar_width)
@@ -520,13 +533,14 @@ class Torus3dGLWidget(GLWidget):
                         glColor3f(colors[i][0], colors[i][1], colors[i][2])
                         glVertex3f(0, 0, 0)
                         glVertex3f(bar_width, 0, 0)
-                        glColor3f(colors[i+1][0], colors[i+1][1], 
+                        glColor3f(colors[i+1][0], colors[i+1][1],
                             colors[i+1][2])
                         glVertex3f(bar_width, segment_size, 0)
                         glVertex3f(0, segment_size, 0)
 
-    
+
             # black box around gradient
+            glLineWidth(1.0)
             glColor3f(0.0, 0.0, 0.0)
             with glMatrix():
                 with glSection(GL_LINES):
@@ -548,6 +562,7 @@ class Torus3dGLWidget(GLWidget):
                     glScalef(scale_factor, scale_factor, scale_factor)
                     for c in label:
                         glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
+            glLineWidth(self.link_width)
 
 
     def map_node_color(self, val, preempt_range = 0):

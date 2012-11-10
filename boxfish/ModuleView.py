@@ -221,7 +221,7 @@ class ModuleView(QMainWindow):
         # Add a Close button to deal with lack of cancel signal 
         # for drag/drop
         class CloseLabel(QLabel):
-            
+
             closeSignal = Signal()
 
             def __init__(self):

@@ -462,12 +462,13 @@ class GLTorus2dView(Torus3dGLWidget):
         with glMatrix():
             glLoadIdentity()
             glTranslatef(x, y, 0)
-            
+
             glClearColor(*self.bg_color)
             glClear(GL_COLOR_BUFFER_BIT)
             glClear(GL_DEPTH_BUFFER_BIT)
 
             # Draw Links
+            glLineWidth(2.0)
             mini_shape = list(self.shape[:])
             if mini_shape[axis] != 0:
                 mini_shape[axis] = 1
@@ -475,7 +476,7 @@ class GLTorus2dView(Torus3dGLWidget):
             if self.shape[width] != 0 and self.shape[height] != 0:
                 with glMatrix():
                     if axis != 0:
-                        glTranslate(w / 2., h / 2., 0.) 
+                        glTranslate(w / 2., h / 2., 0.)
                     else:
                         glTranslate(w * 4 / 3. + 1., h / 2., 0.)
                     scale = min(float(w) / self.shape[width] / 2.,
@@ -484,12 +485,14 @@ class GLTorus2dView(Torus3dGLWidget):
                     #    self.shape[height] / float(h) * 30)
                     self.layoutLinks(tuple(mini_shape), axis, 1,
                         self.miniColors[axis], scale)
-        
+
 
             # Draw Border
             glColor3f(0.0, 0.0, 0.0)
             if axis == self.axis:
                 glLineWidth(3.0)
+            else:
+                glLineWidth(1.0)
             with glMatrix():
                 with glSection(GL_LINES):
                     glVertex3f(0.01, 0.01, 0.01)
@@ -500,8 +503,7 @@ class GLTorus2dView(Torus3dGLWidget):
                     glVertex3f(0.01, h, 0.01)
                     glVertex3f(0.01, h, 0.01)
                     glVertex3f(0.01, 0.01, 0.01)
-            if axis == self.axis:
-                glLineWidth(self.link_width)
+            glLineWidth(self.link_width)
 
 
             # Draw Label

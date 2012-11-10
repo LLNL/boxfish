@@ -138,13 +138,15 @@ class ColorBarImage(QImage):
         super(ColorBarImage, self).__init__(width, height,
             QImage.Format_ARGB32_Premultiplied)
 
-        # QFrame-like border
+        # Qborder
         for w in range(width):
-            self.setPixel(w, 0, qRgba(255, 255, 255, 255))
+            #self.setPixel(w, 0, qRgba(255, 255, 255, 255))
+            self.setPixel(w, 0, qRgba(0, 0, 0, 255))
             self.setPixel(w, height - 1, qRgba(0, 0, 0, 255))
         for h in range(height):
             self.setPixel(0, h, qRgba(0, 0, 0, 255))
-            self.setPixel(width - 1, h, qRgba(255, 255, 255, 255))
+            self.setPixel(width - 1, h, qRgba(0, 0, 0, 0))
+            #self.setPixel(width - 1, h, qRgba(255, 255, 255, 255))
 
         pixel_value = 1.0 / width
         for w in range(width-2):
@@ -194,7 +196,7 @@ class ColorMapWidget(QWidget):
         label = QLabel(self.color_map_label)
         self.colorbar = QLabel(self)
         self.colorbar.setPixmap(QPixmap.fromImage(ColorBarImage(
-            self.color_map, 180, 12)))
+            self.color_map, 180, 15)))
 
         self.mapCombo = QComboBox(self)
         self.mapCombo.addItems(map_names)
