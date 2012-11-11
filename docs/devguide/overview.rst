@@ -24,11 +24,11 @@ are module-specific (e.g. rotation for a 3D view module).
 There are two options for each module instance for HighlightScenes and
 ModuleScenes. The options are apply/accept and propagate. The apply/accept
 option indicates whether the module instance will overwrite its own scene
-information with any applicable scene information is receives from its parent.
+information with any applicable scene information it receives from its parent.
 
 The propagate option indicates whether the module will propagate scene
 information to all of its children. If this option is set on, then all of its
-children will also set their propagation option on, ensuring that the full
+children will also set their propagation option on, ensuring that the entire
 subtree behaves the same.
 
 For AttributeScenes, the two options apply to each requested group of
@@ -37,15 +37,15 @@ attributes in each module. Some modules may make multiple disparate requests
 
 Data Storage Structure
 ----------------------
-Boxfish stores all of the inputted performance data in a hierarchy known as
+Boxfish stores all of the input performance data in a hierarchy known as
 the ``DataTree``. This structure allows a logical display of the data
 available as well as an understood method for retrieving related data
 associated with any node in the tree. 
 
-The first level of the Boxfish DataTree contains runs, representing groupings
-of data taken under the same system and application configuration. The run may
-contain meta-information about the conditions under which the data was
-gathered. Some of this information may be required by individual Boxfish
+The first level of the Boxfish ``DataTree`` contains runs, representing
+groupings of data taken under the same system and application configuration.
+The run may contain meta-information about the conditions under which the data
+was gathered. Some of this information may be required by individual Boxfish
 modules. For example, the 3D Torus View requires meta-information indicating
 the run was done on a torus/mesh network and meta-information about the size
 and shape of that network.
