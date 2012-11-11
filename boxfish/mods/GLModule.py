@@ -18,12 +18,18 @@ class GLAgent(ModuleAgent):
     bgColorUpdateSignal = Signal(np.ndarray)
 
     def __init__(self, parent, datatree):
+        """Creates an agent for GL type modules."""
         super(GLAgent, self).__init__(parent, datatree)
 
         self.receiveModuleSceneSignal.connect(self.processModuleScene)
 
     @Slot(ModuleScene)
     def processModuleScene(self, module_scene):
+        """Handles module-specific scene changes in all GL type modules.
+
+           If subclassing GLModuleScene, override this class and be
+           sure to call the superclass' version of this method.
+        """
         if self.module_scene.module_name == module_scene.module_name:
             self.module_scene = module_scene.copy()
             self.transformUpdateSignal.emit(self.module_scene.rotation,
@@ -46,6 +52,7 @@ class GLView(ModuleView):
                in the view.
     """
     def __init__(self, parent, parent_view = None, title = None):
+        """Creates the View skeleton for GL type Modules."""
         # Need to set this before the module initialization so that createView can use it.
         # TODO: not sure whether I like this order.  It's not very intuitive, but seems necessary.
         super(GLView, self).__init__(parent, parent_view, title)
@@ -58,19 +65,30 @@ class GLView(ModuleView):
         self.color_tab_type = GLColorTab
 
     def transformChanged(self, rotation, translation):
+        """Called when the GLWidget within this view's transform changes."""
         self.agent.module_scene.rotation = rotation
         self.agent.module_scene.translation = translation
         self.agent.module_scene.announceChange()
 
     @Slot(np.ndarray, np.ndarray)
     def updateTransform(self, rotation, translation):
+        """Slot for transform changes coming from ModuleScene information."""
         self.view.set_transform(rotation, translation)
 
     @Slot(np.ndarray)
     def updateBGColor(self, color):
+        """Slot for background color changes coming from ModuleScene
+           information.
+        """
         self.view.change_background_color(color)
 
     def buildTabDialog(self):
+        """Adds a tab for colors (e.g. background color) to the Tab Dialog.
+
+           To add more functionality to the color tab, subclass GLColorTab
+           and set the ModuleView's color_tab_type member to the new class.
+           See GLColorTab class for tips on subclassing it.
+        """
         super(GLView, self).buildTabDialog()
         self.tab_dialog.addTab(self.color_tab_type(self.tab_dialog,
             self), "Colors")
@@ -78,10 +96,12 @@ class GLView(ModuleView):
 
 class GLModuleScene(ModuleScene):
     """Contains scene information for propagation between GL-based
-       modules."""
+       modules such as transform state and background color.
+    """
 
     def __init__(self, agent_type, module_type, rotation = None,
         translation = None, background_color = None):
+        """Create a GLModuleScene."""
         super(GLModuleScene, self).__init__(agent_type, module_type)
 
         self.rotation = rotation
@@ -110,6 +130,9 @@ class GLModuleScene(ModuleScene):
 class GLColorTab(QWidget):
     """This is the widget for changing color related information in
        GL Views. The base takes care of GL background colors.
+
+       Subclass this Tab by adding widgets and spacers to the class' layout
+       member by overriding createContent.
     """
 
     def __init__(self, parent, view):
@@ -128,20 +151,24 @@ class GLColorTab(QWidget):
         self.setLayout(self.layout)
 
     def createContent(self):
+        """Adds the elements (e.g. widgets, items) to the Tab's layout."""
         self.layout.addWidget(self.buildBGColorWidget())
 
 
     def gl_to_rgb(self, color):
+        """Switch from gl colors to rgb colors."""
         if color is None:
             return [0, 0, 0, 0]
 
         return [int(255 * x) for x in color]
 
     def rgbString(self, color):
+        """Creates a stylesheet style string out of an rgb color."""
         return "rgb(" + str(color[0]) + "," + str(color[1]) + ","\
             + str(color[2]) + ")"
 
     def buildBGColorWidget(self):
+        """Creates the controls for altering the GL background colors."""
         widget = QWidget()
         layout = QHBoxLayout()
         label = QLabel("Background Color")
@@ -163,6 +190,7 @@ class GLColorTab(QWidget):
         return widget
 
     def bgColorChange(self):
+        """Handles change events to the background color."""
         color = QColorDialog.getColor(QColor(*self.bgcolor), self)
 
         self.bgcolor = [color.red(), color.green(), color.blue(), self.bgcolor[3]]

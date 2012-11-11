@@ -202,6 +202,7 @@ class TableView(ModuleView):
 
 
 class TableTab(QTableWidget):
+    """A TableTab is the display for a single Table in the TableWidget."""
 
     idsChanged = Signal(str, str, set)
 

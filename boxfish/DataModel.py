@@ -541,7 +541,7 @@ class TableItem(DataObjectItem):
             attr_dict[group] = id
 
         return id_dict, attr_dict
-        
+
 
 
 

@@ -16,11 +16,13 @@ from boxfish.ModuleView import *
 
 
 class PlotterAgent(ModuleAgent):
+    """This module does standard plotting via matplotlib."""
 
     plotUpdateSignal = Signal(list, list, list) # ids, x, y
     highlightUpdateSignal = Signal(list)
 
     def __init__(self, parent, datatree):
+        """Creates the PlotterAgent."""
         super(PlotterAgent, self).__init__(parent, datatree)
 
         self.table = None
@@ -31,15 +33,21 @@ class PlotterAgent(ModuleAgent):
         self.apply_attribute_scenes = False # We don't do anything with these
 
     def setXData(self, indexList):
+        """Update the x request."""
         self.requestAddIndices("x", indexList)
 
     def setYData(self, indexList):
+        """Update the y request."""
         self.requestAddIndices("y", indexList)
 
     def requestUpdated(self, tag):
         self.presentData()
 
     def presentData(self):
+        """If both x and y requests have attribute data, combines them
+           via a generalized group by which falls into the domain of the
+           first attribute of x.
+        """
         if not self.requests['x'].indices or not self.requests['y'].indices:
             return
 
@@ -49,11 +57,17 @@ class PlotterAgent(ModuleAgent):
 
     @Slot(list)
     def selectionChanged(self, ids):
+        """Should be called when a view using this agent has changed
+           highlights.
+        """
         if self.table:
             self.setHighlights([self.table], [self.table.getRun()], [[self.ids[x] for x in ids]])
 
     @Slot()
     def processHighlights(self):
+        """When highlights have changed via HighlightScene information,
+           processes them to the domain space of the x request.
+        """
         if not self.table:
             return
 
@@ -66,8 +80,10 @@ class PlotterAgent(ModuleAgent):
 
 @Module("Plotter", PlotterAgent)
 class PlotterView(ModuleView):
+    """This is a ModuleView class for matplotlib style plotting."""
 
     def __init__(self, parent, parent_view = None, title = None):
+        """Create the PlotterView."""
         super(PlotterView, self).__init__(parent, parent_view, title)
 
         self.ids = None
@@ -77,6 +93,7 @@ class PlotterView(ModuleView):
 
 
     def createView(self):
+        """The main view of this class is a PlotterWidget."""
         view = QWidget()
         self.plotter = PlotterWidget(self)
 
@@ -95,22 +112,28 @@ class PlotterView(ModuleView):
 
     @Slot(list, list, list)
     def plotData(self, ids, xs, ys):
+        """Passes x, y information from requests down to plotter."""
         self.ids = ids
         self.plotter.plotData(xs, ys)
 
     def droppedData(self, indexList):
+        """Dropped data defaults to y. """
         # We assume generally dropped data is Y data
         self.droppedYData(indexList)
 
     def droppedXData(self, indexList):
+        """Handles dropped x data."""
         self.plotter.setXLabel(self.buildAttributeString(indexList))
         self.agent.setXData(indexList)
 
     def droppedYData(self, indexList):
+        """Handles dropped y data."""
         self.plotter.setYLabel(self.buildAttributeString(indexList))
         self.agent.setYData(indexList)
 
     def buildAttributeString(self, indexList):
+        """Builds a string representing an indexList."""
+        # TODO: Make this a function of DataTree for and class to use
         mytext = ""
         for index in indexList:
             mytext = mytext + self.agent.datatree.getItem(index).name + ", "
@@ -125,6 +148,10 @@ class PlotterView(ModuleView):
             super(PlotterView, self).dragEnterEvent(event)
 
     def dropEvent(self, event):
+        """Overriden function sends the dropped data to x or y depending
+           on whether it is dropped beneath the x axis (x data) or anywhere
+           else (y dadta).
+        """
         if isinstance(event.mimeData(), DataIndexMime):
             # if this point is below the bottom of the axes y coordinate
             # transformed to display coords and inverted (because
@@ -139,6 +166,8 @@ class PlotterView(ModuleView):
 
             event.accept()
             self.propagateKillRogueOverlayMessage()
+
+            # Determine whether  x or y data
             if drop_point.x() > axes_corner[0] \
                 and self.height() - drop_point.y() < axes_corner[1]:
                 self.droppedXData(event.mimeData().getDataIndices())
@@ -149,10 +178,12 @@ class PlotterView(ModuleView):
 
 
 class PlotterWidget(QWidget):
+    """Widget surrounding matplotlib plotter."""
 
     selectionChangedSignal = Signal(list)
 
     def __init__(self, parent=None):
+        """Create PlotterWidget."""
         super(PlotterWidget, self).__init__(parent)
 
         self.selected = []
@@ -186,20 +217,22 @@ class PlotterWidget(QWidget):
         self.axes.set_title("Drag attributes to change graph.")
         self.axes.set_xlabel("Drag here to set x axis.")
         self.axes.set_ylabel("Drag here to set y axis.")
-        print "Drawing plot..."
         self.canvas.draw() # Why does this take so long on 4726 iMac?
 
     def setXLabel(self, label):
+        """Changes the x label of the plot."""
         self.xlabel = label
         self.axes.set_xlabel(label)
         self.canvas.draw()
 
     def setYLabel(self, label):
+        """Changes the y label of the plot."""
         self.ylabel = label
         self.axes.set_ylabel(label)
         self.canvas.draw()
 
     def plotData(self, xs, ys):
+        """Plots the given x and y data."""
         self.axes.clear()
         self.axes.set_xlabel(self.xlabel)
         self.axes.set_ylabel(self.ylabel)
@@ -212,6 +245,12 @@ class PlotterWidget(QWidget):
         self.canvas.draw()
 
     def onPick(self, event):
+        """Handles pick event, taking the closest single point.
+
+           Note that since the id associated with a given point may be
+           associated with many points, the final selection displayed to the
+           user may be serveral points.
+        """
         selected = np.array(event.ind)
 
         mouseevent = event.mouseevent
@@ -226,6 +265,9 @@ class PlotterWidget(QWidget):
 
     @Slot(list)
     def setHighlights(self, ids):
+        """Sets highlights based on the given ids. These ids are the indices
+           of the x and y data, not the domain.
+        """
         old_selection = list(self.selected)
         self.selected = ids
         if ids is None:
@@ -255,6 +297,7 @@ class PlotterWidget(QWidget):
 
     # Mouse movement (with or w/o button press) handling
     def onMouseMotion(self, event):
+        """Handles the panning."""
         if event.button == 1:
             xmotion = self.lastX - event.x
             ymotion = self.lastY - event.y
@@ -269,15 +312,24 @@ class PlotterWidget(QWidget):
             self.axes.set_ylim(ymin, ymax)
             self.canvas.draw()
 
-    # Calculates the translate required by the drag for a single dimension
-    # dtuple - the current limits in some dimension
-    # motion - the movement of the drag in pixels in that dimension
-    # figsize - estimate of the size of the figure
     # Note: the dtuple is in data coordinates, the motion is in pixels,
     # we estimate how much motion there is based on the figsize and then
     # scale it appropriately to the data coordinates to get the proper
     # offset in figure limits.
     def calcTranslate(self, dtuple, motion, figsize):
+        """Calculates the translation necessary in one direction given a
+           mouse drag in that direction.
+
+           dtuple
+               The current limits in a single dimension
+
+           motion
+               The number of pixels the mouse was dragged in the dimension.
+               This may be negative.
+
+           figsize
+               The approximate size of the figure.
+        """
         dmin, dmax = dtuple
         drange = dmax - dmin
         dots = self.fig.dpi * figsize
@@ -290,12 +342,14 @@ class PlotterWidget(QWidget):
     # their drag event, so we set the last-coordinates that are used to
     # calculate drag
     def onMouseButtonPress(self, event):
+        """Records start of drag event."""
         if event.button == 1:
             self.lastX = event.x
             self.lastY = event.y
 
     # On mouse wheel scrool, we zoom
     def onScroll(self, event):
+        """Zooms on mouse scroll."""
         zoom = event.step
         xmin, xmax = self.calcZoom(self.axes.get_xlim(), 1. + zoom*0.05)
         ymin, ymax = self.calcZoom(self.axes.get_ylim(), 1. + zoom*0.05)
@@ -308,6 +362,14 @@ class PlotterWidget(QWidget):
     # scale - fraction to increase/decrease the image size
     # This does a zoom by scaling the limits in that direction appropriately
     def calcZoom(self, dtuple, scale):
+        """Calculates the zoom in a single direction based on:
+
+           dtuple
+               The limits in the direction
+
+           scale
+               Fraction by which to increase/decrease the figure.
+        """
         dmin, dmax = dtuple
         drange = dmax - dmin
         dlen = 0.5*drange

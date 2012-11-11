@@ -405,24 +405,29 @@ class Torus3dGLWidget(GLWidget):
         #self.update()
 
     def update(self):
+        """Update the drawing."""
         self.updateCubeColors()
         self.updateLinkColors()
         self.updateGL()
 
     def updateDrawing(self):
+        """Updates and redraws when the node/link information has changed."""
         self.cubeList.update()
         self.linkList.update()
         self.updateGL()
 
     def clearNodes(self):
+        """Sets the nodes to the default color."""
         self.node_colors = np.tile(self.default_node_color,
             list(self.dataModel.shape) + [1])
 
     def clearLinks(self):
+        """Sets the links to the default color."""
         self.avg_link_colors = np.tile(self.default_link_color,
             list(self.dataModel.shape) + [3, 1])
 
     def updateCubeColors(self):
+        """Updates the node colors from the dataModel."""
         self.clearNodes()
         node_range = self.dataModel.node_range[1] - self.dataModel.node_range[0]
         for node in np.ndindex(*self.dataModel.shape):
@@ -433,6 +438,7 @@ class Torus3dGLWidget(GLWidget):
         self.nodeColorChangeSignal.emit()
 
     def updateLinkColors(self):
+        """Updates the link colors from the dataModel."""
         self.clearLinks()
         link_range = self.dataModel.avg_link_range[1] - self.dataModel.avg_link_range[0]
         for node in np.ndindex(*self.dataModel.shape):
@@ -445,6 +451,10 @@ class Torus3dGLWidget(GLWidget):
 
     def doLegend(self, bar_width = 20, bar_height = 160, bar_x = 20,
         bar_y = 90):
+        """Draws the legend information over the main view. This includes
+           the colorbars and anything done in functions that have been
+           appeneded to the legendCalls member of this class.
+        """
         # Prepare to change modes
         glDisable(GL_LIGHTING)
         glDisable(GL_LIGHT0)
@@ -469,9 +479,6 @@ class Torus3dGLWidget(GLWidget):
 
         # Change mode back
         glViewport(0, 0, self.width(), self.height())
-        #glLoadIdentity()
-        #set_perspective(self.fov, float(self.width())/self.height(),
-        #    self.near_plane, self.far_plane)
         glDisable(GL_SCISSOR_TEST)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
@@ -482,6 +489,7 @@ class Torus3dGLWidget(GLWidget):
 
     # TODO: Move these crazy defaults somewhere sane
     def drawNodeColorBar(self, x = 20, y = 90, w = 20, h = 120):
+        """Draw the color bar for nodes."""
         node_bar = []
         for i in range(11):
             node_bar.append(self.map_node_color(float(i)/10.0))
@@ -496,6 +504,7 @@ class Torus3dGLWidget(GLWidget):
         #self.drawColorBar(node_bar, bar_spacing, y, bar_width, bar_height)
 
     def drawLinkColorBar(self, x = 50, y = 90, w = 20, h = 120):
+        """Draw the color bar for links."""
         link_bar = []
         for i in range(11):
             link_bar.append(self.map_link_color(float(i)/10.0))
@@ -509,6 +518,12 @@ class Torus3dGLWidget(GLWidget):
 
     def drawColorBar(self, colors, bar_x, bar_y, bar_width, bar_height,
         label = ""):
+        """Draws a single colorbar at bar_x, bar_y with width bar_width
+           and height bar_height.
+
+           colors
+               A list of sampled 11 sampled colors spanning the colormap.
+        """
         glLoadIdentity()
         glScissor(bar_x, bar_y, bar_width, bar_height + 12)
         glViewport(bar_x, bar_y, bar_width, bar_height + 12)
@@ -518,10 +533,6 @@ class Torus3dGLWidget(GLWidget):
         with glMatrix():
             glLoadIdentity()
             glTranslatef(bar_x, bar_y, 0)
-
-            #glClearColor(1, 1, 1, 1)
-            #glClear(GL_COLOR_BUFFER_BIT)
-            #glClear(GL_DEPTH_BUFFER_BIT)
 
             segment_size = int(float(bar_height) / 10.0)
 
@@ -615,6 +626,7 @@ class Torus3dGLWidget(GLWidget):
 
     @Slot(ColorMap, tuple, ColorMap, tuple)
     def updateScene(self, node_cmap, node_range, link_cmap, link_range):
+        """Handle AttributeScene information from agent."""
         self.node_cmap = node_cmap
         self.link_cmap = link_cmap
         self.nodeBarList.update()
@@ -650,11 +662,16 @@ class Torus3dGLWidget(GLWidget):
 
 
 class Torus3dColorTab(GLColorTab):
+    """Color controls for Torus views."""
 
     def __init__(self, parent, view):
+        """Create the Torus3dColorTab."""
         super(Torus3dColorTab, self).__init__(parent, view)
 
     def createContent(self):
+        """Overriden createContent adds the node and link color controls
+           to any existing ones in hte superclass.
+        """
         super(Torus3dColorTab, self).createContent()
 
         self.layout.addSpacerItem(QSpacerItem(5,5))
@@ -666,12 +683,14 @@ class Torus3dColorTab(GLColorTab):
 
     @Slot(ColorMap, str)
     def colorMapChanged(self, color_map, tag):
+        """Handles change events from the node and link color controls."""
         scene = self.view.agent.requestScene(tag)
         scene.color_map = color_map
         scene.processed = False
         scene.announceChange()
 
     def buildColorMapWidget(self, title, fxn, tag):
+        """Integrates ColorMapWidgets into this Tab."""
         color_map = self.view.agent.requestScene(tag).color_map
 
         groupBox = QGroupBox(title, self)

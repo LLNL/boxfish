@@ -39,7 +39,7 @@ class MainWindow(QMainWindow):
 
         self.createMenus()
         self.setWindowTitle("Boxfish")
-        self.resize(1000, 800)
+        self.resize(1008, 704)
 
         self.setAcceptDrops(True) # For Rogue overlay problem
 

@@ -225,9 +225,11 @@ class ClickFrame(QFrame):
     clicked = Signal()
 
     def __init__(self, parent = None, flags = 0):
+        """Create ClickFrame widget."""
         super(ClickFrame, self).__init__(parent, flags)
 
     def mousePressEvent(self, event):
+        """Emits the clicked signal."""
         self.clicked.emit()
 
 class ClickLabel(QLabel):
@@ -236,9 +238,11 @@ class ClickLabel(QLabel):
     clicked = Signal()
 
     def __init__(self, parent = None, flags = 0):
+        """Create a ClickLabel widget."""
         super(ClickLabel, self).__init__(parent, flags)
 
     def mousePressEvent(self, event):
+        """Emits the clicked signal."""
         self.clicked.emit()
 
 

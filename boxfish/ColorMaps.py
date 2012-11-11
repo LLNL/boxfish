@@ -84,6 +84,19 @@ class ColorMap(object):
 
     def __init__(self, base_color_map = 'PuOr_r',
         color_step = 0, step_size = 0.1):
+        """Create a ColorMap object.
+
+           base_color_map
+               the matplotlib colormap this object is based around
+
+           color_step
+               the number of different values for color cycling. If this is
+               zero, color cycling is off
+
+           step_size
+               the default value separating two neighboring elements being
+               color cycled.
+        """
         super(ColorMap, self).__init__()
         self.color_map = getMap(base_color_map)
         self.color_map_name = base_color_map
@@ -96,6 +109,9 @@ class ColorMap(object):
 
     @property
     def step_size(self):
+        """The value separating two neighboring elements when color cycling
+           is on.
+        """
         return self._step_size
 
     @step_size.setter
@@ -122,6 +138,15 @@ class ColorMap(object):
         return ColorMap(self.color_map_name, self.color_step, self.step_size)
 
     def getColor(self, value, preempt_range = 0):
+        """Gets the color associated with the given value.
+
+           preempt_range
+               When color cycling is on and preempt_range is not zero,
+               preempt_range is used to calculate the spaccin between
+               colors rather than step_size. Note that preempt_range is
+               the entire data range to scale the [0, 1] value by, while
+               step_size will divide the value.
+        """
         if self.color_step == 0:
             return self.color_map(value)
         elif preempt_range != 0: # Fix until I change the way ranges/dataModel is handled AGAIN.
@@ -132,13 +157,16 @@ class ColorMap(object):
             return self.color_map(1.0 / self.color_step * stepped_value)
 
 class ColorBarImage(QImage):
-    """Pixmap representing the color bar."""
+    """QImage representing the color bar, will incorporate cycling"""
 
     def __init__(self, color_map, width, height):
+        """Creates a QImage of width by height from the given colormap."""
         super(ColorBarImage, self).__init__(width, height,
             QImage.Format_ARGB32_Premultiplied)
 
-        # Qborder
+        # Qborder - this is black all the way around
+        # The commented out parts were for white in one corner
+        # but didn't come out nicely
         for w in range(width):
             #self.setPixel(w, 0, qRgba(255, 255, 255, 255))
             self.setPixel(w, 0, qRgba(0, 0, 0, 255))
@@ -148,6 +176,7 @@ class ColorBarImage(QImage):
             self.setPixel(width - 1, h, qRgba(0, 0, 0, 0))
             #self.setPixel(width - 1, h, qRgba(255, 255, 255, 255))
 
+        # Draws the color map lineby line
         pixel_value = 1.0 / width
         for w in range(width-2):
             color_np = color_map(w * pixel_value)
@@ -157,15 +186,31 @@ class ColorBarImage(QImage):
 
 
 class ColorMapWidget(QWidget):
-    """Interface for changing ColorMap information.
+    """Interface for changing ColorMap information. It shows the current
+       color map selection, a selector for other colormaps, and the option
+       to cycle the color map by any number of ordinal values.
 
        This widget was designed for use with the tab dialog. It can be used by
        itself or it can be used as part of a bigger color tab.
+
+       Changes to this widget are emitted via a changeSignal as a ColorMap
+       object and this widget's tag.
     """
 
     changeSignal = Signal(ColorMap, str)
 
     def __init__(self, parent, initial_map, tag):
+        """Creates a ColorMap widget.
+
+           parent
+               The Qt parent of this widget.
+
+           initial_map
+               The colormap set on creation.
+
+           tag
+               A name for this widget, will be emitted on change.
+        """
         super(ColorMapWidget, self).__init__(parent)
         self.color_map = initial_map.color_map
         self.color_map_name = initial_map.color_map_name
@@ -190,6 +235,7 @@ class ColorMapWidget(QWidget):
         self.setLayout(layout)
 
     def buildColorBarControl(self):
+        """Builds the portion of this widget for color map selection."""
         widget = QWidget()
         layout = QHBoxLayout()
 
@@ -214,6 +260,7 @@ class ColorMapWidget(QWidget):
 
     @Slot(int)
     def colorbarChange(self, ind):
+        """Handles a selection of a different colormap."""
         indx = self.mapCombo.currentIndex()
         self.color_map_name = map_names[indx]
         self.color_map = getMap(self.color_map_name)
@@ -223,6 +270,7 @@ class ColorMapWidget(QWidget):
             self.step_size), self.tag)
 
     def buildColorStepsControl(self):
+        """Builds the portion of this widget for color cycling options."""
         widget = QWidget()
         layout = QHBoxLayout()
 
@@ -252,6 +300,9 @@ class ColorMapWidget(QWidget):
 
 
     def colorstepsChange(self):
+        """Handles a change in the state of the color cycling for this
+           colormap.
+        """
         if self.stepBox.checkState() == Qt.Checked:
             self.stepEdit.setEnabled(True)
             self.color_step = int(self.stepEdit.text())
