@@ -5,4 +5,4 @@ import Torus3dModule
 import Torus3dView3d
 import Torus3dView2d
 import TableModule
-import PatchModule
+import Patch3dModule
