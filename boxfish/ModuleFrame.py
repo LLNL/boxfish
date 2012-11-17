@@ -41,6 +41,8 @@ class ModuleFrame(QMainWindow):
        modules.
     """
 
+    droppedDataSignal = Signal(list, str)
+
     def __init__(self, parent, parent_frame, title = None):
         """Construct a ModuleFrame.
 
@@ -271,16 +273,11 @@ class ModuleFrame(QMainWindow):
     def overlayDroppedData(self, indexList, tag):
         """Called when indexList is dropped on the DragOverlay on widgets
            associated with tag. Handles closing the DragOverlay and
-           passing the parameters to droppedData.
+           passing the parameters through the droppedDataSignal.
         """
         self.closeOverlay()
         self.propagateKillRogueOverlayMessage()
-        self.droppedData(indexList, tag)
-
-    def droppedData(self, indexList, tag = None):
-        """Handle DataModel indices dropped into this window.
-        """
-        pass
+        self.droppedDataSignal.emit(indexList, tag)
 
     def dragLeaveEvent(self, event):
         """Close any DragOverlays when the drag leaves this widget."""
@@ -347,7 +344,7 @@ class ModuleFrame(QMainWindow):
             indexList = event.mimeData().getDataIndices()
             event.accept()
             self.propagateKillRogueOverlayMessage()
-            self.droppedData(indexList)
+            self.droppedDataSignal.emit(indexList, None)
         else:
             self.propagateKillRogueOverlayMessage()
             super(ModuleFrame, self).dropEvent(event)

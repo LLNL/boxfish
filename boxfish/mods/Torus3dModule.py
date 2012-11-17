@@ -322,6 +322,7 @@ class Torus3dFrame(GLFrame):
         self.dataModel = Torus3dFrameDataModel()
         super(Torus3dFrame, self).__init__(parent, parent_frame, title)
 
+        self.droppedDataSignal.connect(self.droppedData)
         self.agent.torusUpdateSignal.connect(self.dataModel.updateTorus)
         self.agent.nodeUpdateSignal.connect(self.dataModel.updateNodeData)
         self.agent.linkUpdateSignal.connect(self.dataModel.updateLinkData)
@@ -338,6 +339,7 @@ class Torus3dFrame(GLFrame):
 
         self.color_tab_type = Torus3dColorTab
 
+    @Slot(list, str)
     def droppedData(self, index_list, tag):
         if tag == "nodes":
             self.agent.registerNodeAttributes(index_list)

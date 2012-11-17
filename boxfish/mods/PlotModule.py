@@ -86,6 +86,7 @@ class PlotterFrame(ModuleFrame):
         super(PlotterFrame, self).__init__(parent, parent_frame, title)
 
         self.ids = None
+        self.droppedDataSignal.connect(self.droppedData)
         self.agent.plotUpdateSignal.connect(self.plotData)
         self.agent.highlightUpdateSignal.connect(self.plotter.setHighlights)
         self.plotter.selectionChangedSignal.connect(self.agent.selectionChanged)
@@ -115,6 +116,7 @@ class PlotterFrame(ModuleFrame):
         self.ids = ids
         self.plotter.plotData(xs, ys)
 
+    @Slot(list, str)
     def droppedData(self, indexList):
         """Dropped data defaults to y. """
         # We assume generally dropped data is Y data

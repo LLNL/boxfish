@@ -119,13 +119,9 @@ class TableFrame(ModuleFrame):
 
         self.selected = []
 
-        # self.agent may not be accessible of parent_frame is None,
-        # so any actions in the constructor involving agent should
-        # do this check. All other functions are only accessible when
-        # agent is not None, so the check is not required hereafter.
-        if self.agent is not None:
-            self.agent.tableUpdateSignal.connect(self.updateTables)
-            self.agent.highlightUpdateSignal.connect(self.updateSelection)
+        self.droppedDataSignal.connect(self.droppedData)
+        self.agent.tableUpdateSignal.connect(self.updateTables)
+        self.agent.highlightUpdateSignal.connect(self.updateSelection)
 
 
     def createView(self):
@@ -137,6 +133,7 @@ class TableFrame(ModuleFrame):
         return self.tabs
 
 
+    @Slot(list, str)
     def droppedData(self, indexList):
         """Overrides the superclass method to send the agent the dropped
            data indices.

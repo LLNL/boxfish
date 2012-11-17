@@ -56,10 +56,12 @@ class Patch3dFrame(GLFrame):
         super(Patch3dFrame, self).__init__(parent, parent_frame, title)
 
 	self.agent.patchUpdateSignal.connect(self.updatePatchData)
+        self.droppedDataSignal.connect(self.droppedData)
 
     def createView(self):
         return Patch3dGLWidget(self)
 
+    @Slot(list, str)
     def droppedData(self, indexList):
 	self.agent.registerPatchAttributes(indexList)
 
