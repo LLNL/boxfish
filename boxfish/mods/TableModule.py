@@ -35,7 +35,13 @@ class TableAgent(ModuleAgent):
         self.tables = None
         self.runs = None
 
+
+        # We handle updated data through self.presentData
+        self.requestUpdatedSignal.connect(self.presentData)
+
+        # We handle highlights throguh self.processHighlights
         self.highlightSceneChangeSignal.connect(self.processHighlights)
+
         self.apply_attribute_scenes = False # This modules doesn't use these
 
     def addDataIndices(self, indexList):
@@ -44,16 +50,7 @@ class TableAgent(ModuleAgent):
         """
         self.requestAddIndices("table columns", indexList)
 
-    def requestUpdated(self, name):
-        """This overloads the ModuleAgent function called when a Request
-           has been updated. It handles the update notification by verifying
-           the Request tag is recognized and then processing the changed
-           request.
-        """
-        if name != "table columns":
-            raise ValueError("Table Module: Unrecognized Request!")
-        self.presentData()
-
+    @Slot(str)
     def presentData(self):
         """This function is called by requestUpdated to retrieve the
            appropriate data from the Request and pass it to all those

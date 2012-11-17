@@ -41,6 +41,7 @@ class Torus3dAgent(GLAgent):
         self.coords_link_dict = dict()
         self.run = None
         self.shape = [0, 0, 0]
+        self.requestUpdatedSignal.connect(self.requestUpdated)
         self.highlightSceneChangeSignal.connect(self.processHighlights)
         self.attributeSceneUpdateSignal.connect(self.processAttributeScenes)
 
@@ -84,7 +85,7 @@ class Torus3dAgent(GLAgent):
 
             self.runNameUpdateSignal.emit(self.run.name)
 
-
+    @Slot(str)
     def requestUpdated(self, name):
         if name == "nodes":
             self.updateNodeValues()

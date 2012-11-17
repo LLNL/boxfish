@@ -23,6 +23,8 @@ class Patch3dAgent(GLAgent):
 	self.coords_patch_dict = dict()
 	self.run = None
 
+        self.requestUpdatedSignal.connect(self.updatePatchValues)
+
 
     def registerPatchAttributes(self, indices):
         self.registerRun(self.datatree.getItem(indices[0]).getRun())
@@ -39,10 +41,7 @@ class Patch3dAgent(GLAgent):
 	    self.patch_coords_dict, self.coords_patch_dict = \
 		self.patch_table.createIdAttributeMaps(centers + sizes)
 
-    def requestUpdated(self, name):
-        if name == "patches":
-            self.updatePatchValues()
-
+    @Slot(str)
     def updatePatchValues(self):
         self.patchid, self.values = self.requestOnDomain("patches",
             domain_table = self.patch_table,

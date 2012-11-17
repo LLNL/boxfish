@@ -28,6 +28,7 @@ class PlotterAgent(ModuleAgent):
         self.table = None
         self.addRequest("x")
         self.addRequest("y")
+        self.requestUpdatedSignal.connect(self.presentData)
 
         self.highlightSceneChangeSignal.connect(self.processHighlights)
         self.apply_attribute_scenes = False # We don't do anything with these
@@ -40,9 +41,7 @@ class PlotterAgent(ModuleAgent):
         """Update the y request."""
         self.requestAddIndices("y", indexList)
 
-    def requestUpdated(self, tag):
-        self.presentData()
-
+    @Slot(str)
     def presentData(self):
         """If both x and y requests have attribute data, combines them
            via a generalized group by which falls into the domain of the

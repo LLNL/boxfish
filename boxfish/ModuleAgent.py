@@ -17,12 +17,13 @@ class ModuleAgent(QObject):
 
     # Signals that I send 
     addCouplerSignal           = Signal(FilterCoupler, QObject)
+    requestUpdatedSignal       = Signal(str)
 
     # Scene Signals I send... really necessary with parent/child structure?
     sceneChangedSignal         = Signal(Scene, object) # my scene info changed
     receiveModuleSceneSignal   = Signal(ModuleScene) # we receive scene info
-    highlightSceneChangeSignal = Signal()
-    attributeSceneUpdateSignal = Signal()
+    highlightSceneChangeSignal = Signal() # my highlight Scene changed
+    attributeSceneUpdateSignal = Signal() # my attribute Scene updated
     requestScenesSignal        = Signal(QObject)
 
     def __init__(self, parent, datatree = None):
@@ -97,7 +98,7 @@ class ModuleAgent(QObject):
             subdomain)
 
         # Connect signals
-        self.requests[name].indicesChangedSignal.connect(self.requestUpdated)
+        self.requests[name].indicesChangedSignal.connect(self.requestUpdatedSignal.emit)
         self.requests[name].attributesChangedSignal.connect(
             self.requestAttributesChanged)
         self.requests[name].attributeSceneChangedSignal.connect(
@@ -107,21 +108,15 @@ class ModuleAgent(QObject):
         #Now send this new one to the parent
         self.addCouplerSignal.emit(coupler, self)
 
-    def requestUpdated(self, name):
-        """Called when the request with the given name is considered
-           updated. Subclasses should override this to handle the update.
-        """
-        pass
-
 
     @Slot(FilterCoupler)
     def requestedCouplerChanged(self, coupler):
         """Called whenever a FilterCoupler associated with a request
-           signals an update. Finds the associated request and calls
-           the requestUpdated function.
+           signals an update. Finds the associated request and emits
+           the requestUpdatedSignal.
         """
         request = self.requests[coupler.name]
-        self.requestUpdated(coupler.name)
+        self.requestUpdatedSignal.emit(coupler.name)
 
 
     def requestScene(self, tag):
