@@ -1,103 +1,117 @@
-import sys
-import numpy as np
-
 from PySide.QtCore import *
+from OpenGL.GL import *
 from OpenGL.GLUT import *
 
-from boxfish.mods.GLModule import *
+from GLModule import *
 from boxfish.gl.GLWidget import GLWidget
 
 
-class PatchAgent(GLAgent):
-    patchUpdateSignal = Signal(list,list)
+class Patch3dAgent(GLAgent):
+    """ This is an agent for modules that deal with application patches. """
+
+    patchUpdateSignal = Signal(list, list)
 
     def __init__(self, parent, datatree):
-        super(PatchAgent, self).__init__(parent, datatree)
+        super(Patch3dAgent, self).__init__(parent, datatree)
 
         self.addRequest("patches")
 
-        self.centers = None
-        self.sizes = None
-        self.table = None
+	self.patchid = None
+	self.values = None
+        self.patch_table = None
+	self.patch_coords_dict = dict()
+	self.coords_patch_dict = dict()
+	self.run = None
 
 
     def registerPatchAttributes(self, indices):
-        # Determine Torus info from first index
         self.registerRun(self.datatree.getItem(indices[0]).getRun())
         self.requestAddIndices("patches", indices)
-        self.updatePatchValues()
 
     def registerRun(self, run):
-        application = run["application"]
-        self.sizes = application["size"]
-        self.centers = application["center"]
-        self.table = application["patch_table"]
+	if run is not self.run:
+	    self.run = run
+	    application = run["application"]
+	    centers = application["centers"]
+	    sizes = application["sizes"]
+	    self.patch_table = run.getTable(application["patch_table"])
+
+	    self.patch_coords_dict, self.coords_patch_dict = \
+		self.patch_table.createIdAttributeMaps(centers + sizes)
 
     def requestUpdated(self, name):
         if name == "patches":
             self.updatePatchValues()
 
     def updatePatchValues(self):
-        if not self.table:
-            return
-
-        table_item = self.datatree.getTable(self.table)
-        patch_info, attribute_values = self.requestGroupBy("patches",
-            [table_item["field"],self.centers,self.sizes], table_item,
-            "mean", "mean")
-
-        if attribute_values is not None:
-            self.patchUpdateSignal.emit(patch_info, attribute_values[0])
+        self.patchid, self.values = self.requestOnDomain("patches",
+            domain_table = self.patch_table,
+            row_aggregator = "mean", attribute_aggregator = "mean")
+        self.patchUpdateSignal.emit(self.patchid, self.values)
 
 
-@Module("3D Patch View", PatchAgent, GLModuleScene)
-class PatchView3d(GLView):
+@Module("3D Patch View", Patch3dAgent, GLModuleScene)
+class Patch3dView(GLView):
 
     def __init__(self, parent, parent_view = None, title = None):
-        super(PatchView3d, self).__init__(parent, parent_view, title)
+        super(Patch3dView, self).__init__(parent, parent_view, title)
+
+	self.agent.patchUpdateSignal.connect(self.updatePatchData)
 
     def createView(self):
-        return GLPatchView3d(self)
+        return Patch3dGLWidget(self)
+
+    def droppedData(self, indexList):
+	self.agent.registerPatchAttributes(indexList)
 
     @Slot(list, list)
-    def updatePatchData(self, patch_info, vals):
+    def updatePatchData(self, patchid, values):
+        self.view.patchid = patchid
+        self.view.values = values
 
-        self.view.patch_info = patch_info
-        self.view.vals = vals
+	self.view.updateGL()
 
 
+class Patch3dGLWidget(GLWidget):
 
-class GLPatchView3d(GLWidget):
-
-    def __init__(self,parent):
-
-        super(GLPatchView3d, self).__init__(parent)
+    def __init__(self, parent):
+        super(Patch3dGLWidget, self).__init__(parent)
         self.parent = parent
 
         # color for when we have no data
-        self.default_color = [0.5, 0.5, 0.5, 0.5]
+        self.default_color = [0.9, 0.9, 0.9, 0.5]
 
+	self.values = None
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.orient_scene()
         self.drawPatches()
 
-        super(GLTorus3dView, self).paintGL()
+        super(Patch3dGLWidget, self).paintGL()
 
     def drawPatches(self):
+	if self.values is None:
+	    return
+
         glPushMatrix()
-        self.centerView()
 
         glColor4f(*self.default_color)
 
-        for patch in self.patch_info:
+	cmap = self.parent.agent.requestScene("patches").color_map
+	minval = min(self.values)
+	maxval = max(self.values)
+
+        for patch, value in zip(self.patchid, self.values):
             glPushMatrix()
 
-            glTranslatef(-patch[1][0],-patch[1][1],-patch[1][2])
-            glScalef(-patch[2][0],-patch[2][1],-patch[2][2])
+	    cx, cy, cz, sx, sy, sz = self.parent.agent.patch_coords_dict[patch]
+            glTranslatef(-cx, -cy, -cz)
+            glScalef(-sx, -sy, -sz)
 
-            # glut will draw a cube with its center at (0,0,0)
+	    glColor4f(*cmap.getColor((value-minval) / (maxval - minval)))
+
+            # glut will draw a cube with its center at (0, 0, 0)
             glutSolidCube(1)
             glPopMatrix()
 

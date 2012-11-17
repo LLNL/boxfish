@@ -1,13 +1,19 @@
-
 ---
 key: BGPCOUNTER_ORIGINAL
-encoding: binary
 ---
 - [patchid, int32]
-- [patch-center, 3float32]
-- [patch-size, 3float32]
+- [cx, float32]
+- [cy, float32]
+- [cz, float32]
+- [sx, float32]
+- [sy, float32]
+- [sz, float32]
 - [Avg Hops-Extents,float32]
 - [Max Hops-Extents,float32]
 - [Min Hops-Extents,float32]
 - [Owner-Extents,float32]
 ...
+0 0 0 0 0.5 0.5 0.5 1 1 4 0
+1 2 1 1 0.5 0.5 0.5 5 2 5 0
+2 2 3 1 0.5 0.5 2.5 3 2 5 0
+3 4 1 1 0.5 3.5 3.5 9 2 5 0

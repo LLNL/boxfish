@@ -1,10 +1,10 @@
 ---
 key: SAMRAI_ORIGINAL
-date: 2012-06-06
+date: 2012-11-10
 author: pave
 application: {
-  center: patch-center,
-  size: patch-size,
+  centers: [cx, cy, cz],
+  sizes: [sx, sy, sz],
   patch_table: samr_data.yaml
 }
 ---
