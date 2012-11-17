@@ -167,7 +167,7 @@ def range_tuple(vals):
     return (min_val, max_val)
 
 
-class Torus3dViewDataModel(object):
+class Torus3dFrameDataModel(object):
     """This class is designed to hold data for a view of a 3d Torus.
        This is really where the raw data to be displayed lives; you might
        say that this is the torus "domain" itself.  Views of the torus
@@ -305,7 +305,7 @@ class Torus3dViewDataModel(object):
 
 
 
-class Torus3dView(GLView):
+class Torus3dFrame(GLFrame):
     """This is a base class for a rendering of a 3d torus.
        Subclasses need to define this method:
            createView(self)
@@ -315,11 +315,11 @@ class Torus3dView(GLView):
        Subclasses should receive updates by registering for change updates
        with the color model.
     """
-    def __init__(self, parent, parent_view = None, title = None):
+    def __init__(self, parent, parent_frame = None, title = None):
         # Need to set this before the module initialization so that createView can use it.
         # TODO: not sure whether I like this order.  It's not very intuitive, but seems necessary.
-        self.dataModel = Torus3dViewDataModel()
-        super(Torus3dView, self).__init__(parent, parent_view, title)
+        self.dataModel = Torus3dFrameDataModel()
+        super(Torus3dFrame, self).__init__(parent, parent_frame, title)
 
         self.agent.torusUpdateSignal.connect(self.dataModel.updateTorus)
         self.agent.nodeUpdateSignal.connect(self.dataModel.updateNodeData)
@@ -664,9 +664,9 @@ class Torus3dGLWidget(GLWidget):
 class Torus3dColorTab(GLColorTab):
     """Color controls for Torus views."""
 
-    def __init__(self, parent, view):
+    def __init__(self, parent, mframe):
         """Create the Torus3dColorTab."""
-        super(Torus3dColorTab, self).__init__(parent, view)
+        super(Torus3dColorTab, self).__init__(parent, mframe)
 
     def createContent(self):
         """Overriden createContent adds the node and link color controls
@@ -684,14 +684,14 @@ class Torus3dColorTab(GLColorTab):
     @Slot(ColorMap, str)
     def colorMapChanged(self, color_map, tag):
         """Handles change events from the node and link color controls."""
-        scene = self.view.agent.requestScene(tag)
+        scene = self.mframe.agent.requestScene(tag)
         scene.color_map = color_map
         scene.processed = False
         scene.announceChange()
 
     def buildColorMapWidget(self, title, fxn, tag):
         """Integrates ColorMapWidgets into this Tab."""
-        color_map = self.view.agent.requestScene(tag).color_map
+        color_map = self.mframe.agent.requestScene(tag).color_map
 
         groupBox = QGroupBox(title, self)
         layout = QVBoxLayout()

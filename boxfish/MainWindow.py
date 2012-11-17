@@ -30,8 +30,8 @@ class MainWindow(QMainWindow):
         self.centralWidget.setStretchFactor(0, 0)
 
         # Filter group
-        self.filter_box = FilterBoxView(self, \
-            title = "Boxfish", parent_view = self)
+        self.filter_box = FilterBoxFrame(self, \
+            title = "Boxfish", parent_frame = self)
         self.centralWidget.addWidget(self.filter_box)
         self.centralWidget.setStretchFactor(1, 1)
 
@@ -135,7 +135,7 @@ class MainWindow(QMainWindow):
         #sys.path = saved_syspath # Revert true sys.path
         import mods
 
-        modules = ModuleView.subclassList()
+        modules = ModuleFrame.subclassList()
         return modules
 
 class TopAgent(ModuleAgent):

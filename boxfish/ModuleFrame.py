@@ -8,7 +8,7 @@ from GUIUtils import *
 from DataModel import DataIndexMime
 
 def Module(display_name, agent_type, scene_type = ModuleScene):
-    """This decorator denotes a ModuleView as a module creatable by
+    """This decorator denotes a ModuleFrame as a module creatable by
        users.
 
        display_name
@@ -31,7 +31,7 @@ def Module(display_name, agent_type, scene_type = ModuleScene):
 # This class must be a QMainWindow as that is the only widget that
 # can accept QDockWidgets which are used for all of our module
 # drag/drop/re-parenting.
-class ModuleView(QMainWindow):
+class ModuleFrame(QMainWindow):
     """This is the parent of what we will think of as a
        agent/extension/plug-in. It has the interface to create the single
        ModuleAgent it represents as well as the GUI elements to handle its
@@ -41,23 +41,23 @@ class ModuleView(QMainWindow):
        modules.
     """
 
-    def __init__(self, parent, parent_view, title = None):
-        """Construct a ModuleView.
+    def __init__(self, parent, parent_frame, title = None):
+        """Construct a ModuleFrame.
 
            parent
                The GUI parent of this window as necessary for Qt
 
-           parent_view
-               The ModuleView that is the logical parent to this one.
+           parent_frame
+               The ModuleFrame that is the logical parent to this one.
         """
-        super(ModuleView, self).__init__(parent)
+        super(ModuleFrame, self).__init__(parent)
 
         self.title = title
-        self.parent_view = parent_view
+        self.parent_frame = parent_frame
         self.agent = None
 
-        # Only realize if we have a parent and a parent view
-        if self.parent_view is not None and self.parent() is not None:
+        # Only realize if we have a parent and a parent frame
+        if self.parent_frame is not None and self.parent() is not None:
             self.realize()
 
         self.acceptDocks = False # Set to True to have child windows
@@ -73,8 +73,8 @@ class ModuleView(QMainWindow):
 
         # If we have a parent, set the height hint to be tall
         self.heightHint = self.size().height()
-        if self.parent_view is not None:
-            self.heightHint = self.parent_view.height() - 100
+        if self.parent_frame is not None:
+            self.heightHint = self.parent_frame.height() - 100
 
         self.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, \
             QSizePolicy.Preferred))
@@ -89,11 +89,11 @@ class ModuleView(QMainWindow):
            ModuleAgent creation and wiring and subclass view placement.
         """
         # Create and wire the Agent into the Boxfish tree
-        self.agent = self.agent_type(self.parent_view.agent,
-            self.parent_view.agent.datatree)
+        self.agent = self.agent_type(self.parent_frame.agent,
+            self.parent_frame.agent.datatree)
         self.agent.module_scene = self.scene_type(self.agent_type,
             self.display_name)
-        self.parent_view.agent.registerChild(self.agent)
+        self.parent_frame.agent.registerChild(self.agent)
 
         # Create and place the module-specific view elements
         self.view = self.createView()
@@ -128,25 +128,25 @@ class ModuleView(QMainWindow):
             + " cannot create view")
 
     @classmethod
-    def instantiate(cls, module_name, parent, parent_view, title = None):
+    def instantiate(cls, module_name, parent, parent_frame, title = None):
         """Creates a module and inserts it into the Boxfish tree.
 
            module_name
                The display name of the module used to determine the
-               specific type of ModelView/ModelAgent to create.
+               specific type of ModuleFrame/ModuleAgent to create.
 
            parent
                The GUI parent of the module to be created.
 
-           parent_view
-               The ModelView that is the logical parent to the one we
+           parent_frame
+               The ModuleFrame that is the logical parent to the one we
                are creating.
         """
         if hasattr(cls, 'display_name') and cls.display_name == module_name:
-            return cls(parent, parent_view, title)
+            return cls(parent, parent_frame, title)
         else:
             for s in cls.__subclasses__():
-                result = s.instantiate(module_name, parent, parent_view, title)
+                result = s.instantiate(module_name, parent, parent_frame, title)
                 if result is not None:
                     return result
             return None
@@ -180,9 +180,9 @@ class ModuleView(QMainWindow):
             # parent is a dockwidget, so coords are relative
             x, y = self.parent().findPosition()
             return x + self.x(), y + self.y()
-        else: # parent_view is boxfish main, get absolute coords
-            return self.parent_view.geometry().x() + self.x(),\
-                self.parent_view.geometry().y() + self.y()
+        else: # parent_frame is boxfish main, get absolute coords
+            return self.parent_frame.geometry().x() + self.x(),\
+                self.parent_frame.geometry().y() + self.y()
 
 
     def allowDocks(self, dockable):
@@ -192,12 +192,12 @@ class ModuleView(QMainWindow):
         self.acceptDocks = dockable
 
     def createDragOverlay(self, tags, texts, images = None):
-        """Creates a DragOverlay for this ModuleView with the given
+        """Creates a DragOverlay for this ModuleFrame with the given
            text and optional images. When DataIndexMimes (DataTree indices)
            are dropped on the text/images of this overlay, they are
            associated with the tag of the same index of the text/image.
 
-           This is a user interface for when a ModuleView wants to
+           This is a user interface for when a ModuleFrame wants to
            accept drops for multiple purposes.
         """
         self.dragOverlay = True
@@ -257,12 +257,12 @@ class ModuleView(QMainWindow):
         #TODO: Need to also do this when drag operation is aborted
         # (back to the tree view). This is currently unknown
         if isinstance(self.parent(), BFDockWidget):
-            self.parent_view.propagateKillRogueOverlayMessage()
+            self.parent_frame.propagateKillRogueOverlayMessage()
         else:
             self.killRogueOverlays()
 
     def closeOverlay(self):
-        """Close the DragOverlay for this ModuleView."""
+        """Close the DragOverlay for this ModuleFrame."""
         if self.overlay_dialog is not None:
             self.overlay_dialog.close()
             self.overlay_dialog = None
@@ -292,7 +292,7 @@ class ModuleView(QMainWindow):
         """Accept dragged DataTree indices and optionally dragged
            Modules.
         """
-        if self.acceptDocks and isinstance(event.mimeData(), ModuleViewMime):
+        if self.acceptDocks and isinstance(event.mimeData(), ModuleFrameMime):
             event.accept()
         elif isinstance(event.mimeData(), DataIndexMime):
             if self.dragOverlay and self.overlay_dialog is None:
@@ -304,13 +304,11 @@ class ModuleView(QMainWindow):
         elif self.acceptDocks and isinstance(event.mimeData(), ModuleNameMime):
             event.accept()
         else:
-            super(ModuleView, self).dragEnterEvent(event)
+            super(ModuleFrame, self).dragEnterEvent(event)
 
     # If the event has a DockWidget in it, we check if it is our
     # parent or if we are its widget. If so, do nothing
     # If not, we add it to our dock and change its parent to us
-    # In the future we should have some sort of event that
-    # re-goodifies the view since the filter/data has changed
     def dropEvent(self, event):
         """Accepts dragged DataTree indices and optionally dragged
            modules. When a module is dropped (already existing or from
@@ -319,13 +317,13 @@ class ModuleView(QMainWindow):
            a DragOverlay is present in which case they are ignored.
         """
         # Dropped DockWidget
-        if self.acceptDocks and isinstance(event.mimeData(), ModuleViewMime):
+        if self.acceptDocks and isinstance(event.mimeData(), ModuleFrameMime):
             if event.mimeData().getDockWindow().parent() != self and \
                event.mimeData().getDockWindow().widget() != self:
                 self.addDockWidget(Qt.BottomDockWidgetArea, \
                     event.mimeData().getDockWindow())
                 event.mimeData().getDockWindow().widget().agent.changeParent(self.agent)
-                event.mimeData().getDockWindow().widget().parent_view = self
+                event.mimeData().getDockWindow().widget().parent_frame = self
                 event.mimeData().getDockWindow().changeParent(self)
                 event.mimeData().getDockWindow().widget().agent.refreshSceneInformation()
                 event.setDropAction(Qt.MoveAction)
@@ -336,7 +334,7 @@ class ModuleView(QMainWindow):
         elif self.acceptDocks and isinstance(event.mimeData(), ModuleNameMime):
             mod_name = event.mimeData().getName()
             dock = BFDockWidget(mod_name, self)
-            new_mod = ModuleView.instantiate(mod_name, dock, self, mod_name)
+            new_mod = ModuleFrame.instantiate(mod_name, dock, self, mod_name)
             new_mod.agent.refreshSceneInformation()
             dock.setWidget(new_mod)
             self.addDockWidget(Qt.BottomDockWidgetArea, dock)
@@ -352,16 +350,16 @@ class ModuleView(QMainWindow):
             self.droppedData(indexList)
         else:
             self.propagateKillRogueOverlayMessage()
-            super(ModuleView, self).dropEvent(event)
+            super(ModuleFrame, self).dropEvent(event)
 
 
     def buildTabDialog(self):
-        """Create the TabDialog associated with this ModuleView and
+        """Create the TabDialog associated with this ModuleFrame and
            add associated Tabs to it.
 
            Subclasses adding other Tabs should override this function
            and call super in order to get the Tabs associated with all
-           ModuleViews. Then the Subclasses may construct their own Tabs.
+           ModuleFrames. Then the Subclasses may construct their own Tabs.
         """
         self.tab_dialog = TabDialog(self)
         self.tab_dialog.addTab(SceneTab(self.tab_dialog, self.agent),
@@ -377,7 +375,7 @@ class ModuleView(QMainWindow):
 
            Note this action constructs the TabDialog anew each time.
            This means the Tabs may also be re-created, allowing them
-           to be passed the most current values from the ModuleView
+           to be passed the most current values from the ModuleFrame
            and ModuleAgent rather than having to keep the Tabs in
            synch at all times.
         """
@@ -435,11 +433,11 @@ class BFDockWidget(QDockWidget):
     def mouseMoveEvent(self, e):
         if (e.buttons() == Qt.MidButton): # dropAction Doesn't work :(
             drag = QDrag(self)
-            drag.setMimeData(ModuleViewMime(self))
+            drag.setMimeData(ModuleFrameMime(self))
             dropAction = drag.start(Qt.MoveAction)
         elif (e.modifiers() == Qt.ShiftModifier): # dropAction works here
             drag = QDrag(self)
-            drag.setMimeData(ModuleViewMime(self))
+            drag.setMimeData(ModuleFrameMime(self))
             dropAction = drag.start(Qt.MoveAction)
         else:
             super(BFDockWidget, self).mouseMoveEvent(e)
@@ -476,11 +474,11 @@ class DragDockLabel(QLabel):
         pass
 
     def mouseMoveEvent(self, e):
-        """On drag, create a ModuleViewMime containing the dock that
+        """On drag, create a ModuleFrameMime containing the dock that
            contains this label.
         """
         drag = QDrag(self)
-        drag.setMimeData(ModuleViewMime(self.dock))
+        drag.setMimeData(ModuleFrameMime(self.dock))
         dropAction = drag.start(Qt.MoveAction)
 
 
@@ -502,22 +500,22 @@ class DragToolBar(QToolBar):
         pass
 
     def mouseMoveEvent(self, e):
-        """On drag, create a ModuleViewMime containing the dock that
+        """On drag, create a ModuleFrameMime containing the dock that
            contains this toolbar.
         """
         drag = QDrag(self)
-        drag.setMimeData(ModuleViewMime(self.dock))
+        drag.setMimeData(ModuleFrameMime(self.dock))
         dropAction = drag.start(Qt.MoveAction)
 
 
-class ModuleViewMime(QMimeData):
+class ModuleFrameMime(QMimeData):
     """This allows passing of the QDockWidget between windows
        during Drag & Drop.
     """
 
     def __init__(self, dock_window):
-        """Construct a ModuleViewMime containing the given BFDockWidget."""
-        super(ModuleViewMime, self).__init__()
+        """Construct a ModuleFrameMime containing the given BFDockWidget."""
+        super(ModuleFrameMime, self).__init__()
 
         self.dock_window = dock_window
 
@@ -545,7 +543,7 @@ class ModuleNameMime(QMimeData):
 class TabDialog(QDialog):
     """This dialog contains tabs with options for everything related
        to the module. Inheriting modules can add their own tabs
-       to this dialog by overriding buildTagDialog in ModuleView. They
+       to this dialog by overriding buildTagDialog in ModuleFrame. They
        should all super in order to keep the original tabs.
 
        Example: a module might create a tab that determines what
@@ -553,7 +551,7 @@ class TabDialog(QDialog):
     """
 
     def __init__(self, parent, title = ""):
-        """Construct a TabDialog with the ModuleView parent and the
+        """Construct a TabDialog with the ModuleFrame parent and the
            given title.
         """
         super(TabDialog, self).__init__(parent)

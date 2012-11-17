@@ -5,7 +5,7 @@ import matplotlib.cm as cm
 from PySide.QtCore import *
 
 from boxfish.ModuleAgent import *
-from boxfish.ModuleView import *
+from boxfish.ModuleFrame import *
 from boxfish.SceneInfo import ModuleScene
 
 class GLAgent(ModuleAgent):
@@ -44,18 +44,18 @@ class GLAgent(ModuleAgent):
             self.bgColorUpdateSignal.emit(self.module_scene.background_color)
 
 
-class GLView(ModuleView):
+class GLFrame(ModuleFrame):
     """This is a base class for a rendering in OpenGL.
        Subclasses need to define this method:
            createView(self)
                Must return a subclass of GLWidget that displays the scene
                in the view.
     """
-    def __init__(self, parent, parent_view = None, title = None):
+    def __init__(self, parent, parent_frame = None, title = None):
         """Creates the View skeleton for GL type Modules."""
         # Need to set this before the module initialization so that createView can use it.
         # TODO: not sure whether I like this order.  It's not very intuitive, but seems necessary.
-        super(GLView, self).__init__(parent, parent_view, title)
+        super(GLFrame, self).__init__(parent, parent_frame, title)
 
         self.agent.transformUpdateSignal.connect(self.updateTransform)
         self.agent.bgColorUpdateSignal.connect(self.updateBGColor)
@@ -89,7 +89,7 @@ class GLView(ModuleView):
            and set the ModuleView's color_tab_type member to the new class.
            See GLColorTab class for tips on subclassing it.
         """
-        super(GLView, self).buildTabDialog()
+        super(GLFrame, self).buildTabDialog()
         self.tab_dialog.addTab(self.color_tab_type(self.tab_dialog,
             self), "Colors")
 
@@ -129,19 +129,19 @@ class GLModuleScene(ModuleScene):
 
 class GLColorTab(QWidget):
     """This is the widget for changing color related information in
-       GL Views. The base takes care of GL background colors.
+       GL Frames. The base takes care of GL background colors.
 
        Subclass this Tab by adding widgets and spacers to the class' layout
        member by overriding createContent.
     """
 
-    def __init__(self, parent, view):
+    def __init__(self, parent, mframe):
         """Construct a GLColorTab with given parent (TabDialog) and
-           ModuleAgent.
+           ModuleFrame.
         """
         super(GLColorTab, self).__init__(parent)
 
-        self.view = view
+        self.mframe = mframe
 
         self.layout = QVBoxLayout()
         self.layout.setAlignment(Qt.AlignCenter)
@@ -178,7 +178,7 @@ class GLColorTab(QWidget):
         self.bgColorBox.setMinimumWidth(36)
         self.bgColorBox.clicked.connect(self.bgColorChange)
 
-        self.bgcolor = self.gl_to_rgb(self.view.agent.module_scene.background_color)
+        self.bgcolor = self.gl_to_rgb(self.mframe.agent.module_scene.background_color)
         self.bgColorBox.setStyleSheet("QFrame { background-color: "\
             + self.rgbString(self.bgcolor) + " }")
 
@@ -196,9 +196,9 @@ class GLColorTab(QWidget):
         self.bgcolor = [color.red(), color.green(), color.blue(), self.bgcolor[3]]
         self.bgColorBox.setStyleSheet("QFrame { background-color: "\
             + self.rgbString(self.bgcolor) + " }")
-        self.view.agent.module_scene.background_color = np.array(
+        self.mframe.agent.module_scene.background_color = np.array(
             [x / 255.0 for x in self.bgcolor])
-        self.view.agent.module_scene.announceChange()
+        self.mframe.agent.module_scene.announceChange()
 
         # Normally we shouldn't have to do this but when I try opening the 
         # TabDialog with show() which gives back control, unfortunate things
@@ -206,7 +206,7 @@ class GLColorTab(QWidget):
         # outside the dialog, so I force this color change here
         # Sadly this appears to only solve the problem for modules created
         # after this one. Will need to fix some other time...
-        self.view.updateBGColor(self.view.agent.module_scene.background_color)
+        self.mframe.updateBGColor(self.mframe.agent.module_scene.background_color)
 
         QApplication.processEvents()
 

@@ -30,7 +30,7 @@ class SimpleWhereFilter(Filter):
     def process(self, table, identifiers):
         """Given a TableItem from the DataTree and a list of identifiers
            to consider from that TableItem's table, applies its
-           condition (Clause object) and returns the filtered list of 
+           condition (Clause object) and returns the filtered list of
            identifiers.
         """
         return table.evaluate(self.conditions, identifiers)

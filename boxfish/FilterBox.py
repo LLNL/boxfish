@@ -3,7 +3,7 @@ from PySide.QtGui import QWidget, QGridLayout, QLabel, QToolBar, QAction,\
     QIcon, QStringListModel, QVBoxLayout, QTreeView, QSplitter,\
     QHBoxLayout, QPushButton, QSpacerItem, QGroupBox, QLineEdit, QListView,\
     QCompleter
-from ModuleView import *
+from ModuleFrame import *
 from ModuleAgent import *
 from GUIUtils import *
 from Query import *
@@ -40,13 +40,13 @@ class FilterBoxAgent(ModuleAgent):
                 coupler.modifier = self.filters[0]
 
 @Module("Filter Box", FilterBoxAgent)
-class FilterBoxView(ModuleView):
-    """ModuleView for handling filtering operations.
+class FilterBoxFrame(ModuleFrame):
+    """ModuleFrame for handling filtering operations.
     """
 
-    def __init__(self, parent, parent_view = None, title = None):
-        """Constructor for FilterBoxView."""
-        super(FilterBoxView, self).__init__(parent, parent_view, title)
+    def __init__(self, parent, parent_frame = None, title = None):
+        """Constructor for FilterBoxFrame."""
+        super(FilterBoxFrame, self).__init__(parent, parent_frame, title)
 
         self.allowDocks(True)
 
@@ -95,14 +95,14 @@ class FilterBoxView(ModuleView):
             # Do something with it.
             event.accept()
         else:
-            super(FilterBoxView, self).dropEvent(event)
+            super(FilterBoxFrame, self).dropEvent(event)
 
 
     @Slot(Clause)
     def editFilter(self, clause):
         """Given a Clause object, passes it to the Agent to associate
            a fiter based on that Clause with this module. Updates the
-           ModuleView to show the filter.
+           ModuleFrame to show the filter.
         """
         self.agent.createSimpleFilter(clause)
         self.filter_label.setText("Filter: " + str(clause))
@@ -111,7 +111,7 @@ class FilterBoxView(ModuleView):
         """Appends the FilterBox specific filter-building GUI to the
            tab dialog for this module.
         """
-        super(FilterBoxView, self).buildTabDialog()
+        super(FilterBoxFrame, self).buildTabDialog()
         self.filter_tab = FilterTab(self.tab_dialog, self,
             self.agent.filters)
         self.filter_tab.applySignal.connect(self.editFilter)
@@ -136,22 +136,22 @@ class FilterMime(QMimeData):
 
 class FilterTab(QWidget):
     """This class is the GUI for creating filters for the FilterBox
-       module. This GUI will be added as a tab to the ModuleView
+       module. This GUI will be added as a tab to the ModuleFrame
        tab dialog.
     """
 
     applySignal = Signal(Clause)
 
-    def __init__(self, parent, view, existing_filters):
+    def __init__(self, parent, mframe, existing_filters):
         """Create a FilterTab with the given parent TabDialog, logical
-           parent ModuleView view, and existing_filters list of Clause
+           parent ModuleFrame mframe, and existing_filters list of Clause
            objects.
         """
         super(FilterTab, self).__init__(parent)
 
-        self.view = view
+        self.mframe = mframe
         self.parent = parent
-        self.attributes = self.view.agent.datatree.generateAttributeList()
+        self.attributes = self.mframe.agent.datatree.generateAttributeList()
 
         self.clause_list = list()
         self.clause_dict = dict()
@@ -170,7 +170,7 @@ class FilterTab(QWidget):
         # You can only select one attribute at a time to build the 
         # filter clauses
         self.data_view = QTreeView(self)
-        self.data_view.setModel(self.view.agent.datatree)
+        self.data_view.setModel(self.mframe.agent.datatree)
         self.data_view.setDragEnabled(True)
         self.data_view.setDropIndicatorShown(True)
         self.data_view.expandAll()
@@ -214,7 +214,7 @@ class FilterTab(QWidget):
 
     def buildFilterWidget(self):
         """Creates the filter portion of the widget by laying out
-           the subwidgets for relations, workspace and existing 
+           the subwidgets for relations, workspace and existing
            clauses.
         """
         filter_widget = QWidget()
@@ -257,11 +257,11 @@ class FilterTab(QWidget):
 
         attributeCompleter = QCompleter(self.attributes)
         attributeCompleter.setCompletionMode(QCompleter.InlineCompletion)
-        self.dropAttribute = DropLineEdit(self, self.view.agent.datatree, "",
+        self.dropAttribute = DropLineEdit(self, self.mframe.agent.datatree, "",
             attributeCompleter)
         self.dropRelation = DropTextLabel("__")
         self.dropValue = FilterValueLineEdit(groupBox,
-            self.view.agent.datatree, self.dropAttribute)
+            self.mframe.agent.datatree, self.dropAttribute)
 
         # Clear dropValue when dropAttribute changes
         self.dropAttribute.textChanged.connect(self.dropValue.clear)

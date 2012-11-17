@@ -12,7 +12,7 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 
 from boxfish.ModuleAgent import *
-from boxfish.ModuleView import *
+from boxfish.ModuleFrame import *
 
 
 class PlotterAgent(ModuleAgent):
@@ -79,12 +79,12 @@ class PlotterAgent(ModuleAgent):
         self.highlightUpdateSignal.emit(highlight_indices)
 
 @Module("Plotter", PlotterAgent)
-class PlotterView(ModuleView):
-    """This is a ModuleView class for matplotlib style plotting."""
+class PlotterFrame(ModuleFrame):
+    """This is a ModuleFrame class for matplotlib style plotting."""
 
-    def __init__(self, parent, parent_view = None, title = None):
-        """Create the PlotterView."""
-        super(PlotterView, self).__init__(parent, parent_view, title)
+    def __init__(self, parent, parent_frame = None, title = None):
+        """Create the PlotterFrame."""
+        super(PlotterFrame, self).__init__(parent, parent_frame, title)
 
         self.ids = None
         self.agent.plotUpdateSignal.connect(self.plotData)
@@ -145,7 +145,7 @@ class PlotterView(ModuleView):
             # is, boldify that axis label. May need dragMoveEvent for this
             event.accept()
         else:
-            super(PlotterView, self).dragEnterEvent(event)
+            super(PlotterFrame, self).dragEnterEvent(event)
 
     def dropEvent(self, event):
         """Overriden function sends the dropped data to x or y depending
@@ -174,7 +174,7 @@ class PlotterView(ModuleView):
             else:
                 self.droppedYData(event.mimeData().getDataIndices())
         else:
-            super(PlotterView, self).dropEvent(event)
+            super(PlotterFrame, self).dropEvent(event)
 
 
 class PlotterWidget(QWidget):

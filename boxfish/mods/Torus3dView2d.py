@@ -52,12 +52,12 @@ class Torus3dView2dAgent(Torus3dAgent):
 
 
 @Module("3D Torus - 2D View", Torus3dView2dAgent, T3V2ModuleScene)
-class Torus3dView2d(Torus3dView):
+class Torus3dView2d(Torus3dFrame):
     """This is a 2d rendering of a 3d torus.
        Initial concept for this view by Aaditya Landge.
     """
-    def __init__(self, parent, parent_view = None, title = None):
-        super(Torus3dView2d, self).__init__(parent, parent_view, title)
+    def __init__(self, parent, parent_frame = None, title = None):
+        super(Torus3dView2d, self).__init__(parent, parent_frame, title)
 
         self.view.axisUpdateSignal.connect(self.axisChanged)
         self.agent.axisUpdateSignal.connect(self.view.setAxis)
@@ -147,14 +147,14 @@ class GLTorus2dView(Torus3dGLWidget):
 
     def update(self):
         super(GLTorus2dView, self).update()
-        
+
         self.updateMiniMapValues()
 
         # We really want this only to happen when the shape changes but
         # we have no way of checking this right now. May need to add
         # another signal to the data model
         self.updateAxis()
-        
+
 
 
     def setAxis(self, a):
@@ -239,8 +239,7 @@ class GLTorus2dView(Torus3dGLWidget):
             # Needed horizontal distance
             fovx = float(self.fov) * aspect * math.pi / 360.
             distx = spans[w] / 2. / math.tan(fovx)
-            
-            # Terrible quick fix
+
             self.translation = [0, 0, -max(distx, disty)]
 
         self.miniMapList.update()

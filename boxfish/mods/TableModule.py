@@ -4,7 +4,7 @@ from PySide.QtGui import QTabWidget, QTableWidget, QAbstractItemView, \
     QItemSelectionModel
 
 from boxfish.ModuleAgent import *
-from boxfish.ModuleView import *
+from boxfish.ModuleFrame import *
 from boxfish.SceneInfo import *
 
 class TableAgent(ModuleAgent):
@@ -96,33 +96,33 @@ class TableAgent(ModuleAgent):
 
 
 
-# For a Module to appear in Boxfish's GUI, as ModuleView must be decorated
+# For a Module to appear in Boxfish's GUI, as ModuleFrame must be decorated
 # with @Module and given the display name ("Table") and the corresponding
-# agent class the View uses (TableAgent).
+# agent class the Frame uses (TableAgent).
 @Module("Table", TableAgent)
-class TableView(ModuleView):
-    """This is the View class of the TableModule.
+class TableFrame(ModuleFrame):
+    """This is the Frame class of the TableModule.
     """
 
-    def __init__(self, parent, parent_view = None, title = None):
-        """Like all subclasses of ModuleView, the constructor requires:
+    def __init__(self, parent, parent_frame = None, title = None):
+        """Like all subclasses of ModuleFrame, the constructor requires:
 
             parent
-                The GUI parent of this view.
+                The GUI parent of this frame.
 
-            parent_view
-                The ModuleView that is logically the parent to this one.
+            parent_frame
+                The ModuleFrame that is logically the parent to this one.
 
            Optionally, a title can be passed, but this is not yet in use.
 
-           The Boxfish system handles the creation of ModuleViews and will
-           pass these values and only these values to any ModuleView.
+           The Boxfish system handles the creation of ModuleFrames and will
+           pass these values and only these values to any ModuleFrame.
         """
-        super(TableView, self).__init__(parent, parent_view, title)
+        super(TableFrame, self).__init__(parent, parent_frame, title)
 
         self.selected = []
 
-        # self.agent may not be accessible of parent_view is None,
+        # self.agent may not be accessible of parent_frame is None,
         # so any actions in the constructor involving agent should
         # do this check. All other functions are only accessible when
         # agent is not None, so the check is not required hereafter.

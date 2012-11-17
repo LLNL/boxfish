@@ -51,10 +51,10 @@ class Patch3dAgent(GLAgent):
 
 
 @Module("3D Patch View", Patch3dAgent, GLModuleScene)
-class Patch3dView(GLView):
+class Patch3dFrame(GLFrame):
 
-    def __init__(self, parent, parent_view = None, title = None):
-        super(Patch3dView, self).__init__(parent, parent_view, title)
+    def __init__(self, parent, parent_frame = None, title = None):
+        super(Patch3dFrame, self).__init__(parent, parent_frame, title)
 
 	self.agent.patchUpdateSignal.connect(self.updatePatchData)
 

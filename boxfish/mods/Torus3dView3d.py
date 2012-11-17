@@ -12,11 +12,11 @@ from boxfish.gl.glutils import *
 from Torus3dModule import *
 
 @Module("3D Torus - 3D View", Torus3dAgent, GLModuleScene)
-class Torus3dView3d(Torus3dView):
+class Torus3dView3d(Torus3dFrame):
     """This is a 3d rendering of a 3d torus.
     """
-    def __init__(self, parent, parent_view = None, title = None):
-        super(Torus3dView3d, self).__init__(parent, parent_view, title)
+    def __init__(self, parent, parent_frame = None, title = None):
+        super(Torus3dView3d, self).__init__(parent, parent_frame, title)
 
     def createView(self):
         return GLTorus3dView(self, self.dataModel)
