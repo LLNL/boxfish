@@ -269,6 +269,40 @@ be shown. The Filter Box module uses this dialog for its filter GUI.
 
 Selection Propagation
 ---------------------
+When one or more entitites is selected in a module, that selection can be
+propagated to other modules (or other types of entities within the same
+module), depending on the user's settings. Making use of this feature requires
+the module writer to do things -- 1) alert the ``ModuleAgent`` of the
+selection when it occurs within the module; 2) listen for selections from
+other modules and process their request.
+
+Alerting the ``ModuleAgent`` is done by calling the agent's
+``setHighlights(table_list, run_list, ids_list)`` function. These parameters
+are parallel lists, each index denoting the coupled table, run and list of
+selected ids. The table and run may be specified either by name or by index
+from the ``DataTree``. 
+
+Listening for selections from other modules is done by creating a slot for the
+``ModuleAgent``'s ``highlightSceneChangeSignal``. Upon this trigger, the list
+of selected ids can be updated by calling ``ModuleAgent``'s
+``getHighlightIds`` which given a single table and run (as a string or
+``DataTree`` index), will return the list of ids in that table which are
+selected. Any projections needed are handled by this function.::
+
+  def __init__(self, parent, datatree):
+    super(MyModuleAgent, self).__init__(parent, datatree)
+
+    # ... Module Setup ...
+
+    self.highlightSceneChangedSignal.connect(processHighlights)
+
+  @PySide.QtCore.Slot()
+  def processHighlights(self):
+    if self.table is None:
+      return
+
+    ids = self.getHighlightIds(self.table, self.run)
+    self.highlightUpdateSignal.emit(ids)
 
 
 .. _module-scene-label:
