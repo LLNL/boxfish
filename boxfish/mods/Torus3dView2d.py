@@ -10,6 +10,9 @@ from boxfish.gl.GLWidget import GLWidget
 from boxfish.gl.glutils import *
 
 class T3V2ModuleScene(GLModuleScene):
+    """Module Scene for 3D Torus - 2D View. This adds the axis parameter
+       (which axis the user is looking down) to the GLModuleScene.
+    """
     def __init__(self, agent_type, module_type, rotation = None,
         translation = None, background_color = None, axis = 0):
         super(T3V2ModuleScene, self).__init__(agent_type, module_type,
@@ -34,7 +37,10 @@ class T3V2ModuleScene(GLModuleScene):
                 if self.background_color is not None else None,
             self.axis)
 
+
 class Torus3dView2dAgent(Torus3dAgent):
+    """Agent for the 3D Torus - 2D View. This adds axis parameter signalling.
+    """
 
     axisUpdateSignal = Signal(int)
 
@@ -116,7 +122,7 @@ class GLTorus2dView(Torus3dGLWidget):
 
         self.link_width = 2   # Width of links in the view in pixels
 
-        self.axis = 0           # Which axis the display should look down (default X)
+        self.axis = 0   # Which axis the display should look down (default X)
         self.axis_map = { 0: (2, 1), 1: (0, 2), 2: (0, 1) }
 
         self.gap = 2            # Spacing between successive cylinders
@@ -237,7 +243,7 @@ class GLTorus2dView(Torus3dGLWidget):
             disty = spans[h] / 2. / math.tan(fovy)
 
             # Needed horizontal distance
-            fovx = float(self.fov) * aspect * math.pi / 360.
+            fovx = fovy * aspect
             distx = spans[w] / 2. / math.tan(fovx)
 
             self.translation = [0, 0, -max(distx, disty)]
@@ -326,13 +332,13 @@ class GLTorus2dView(Torus3dGLWidget):
         # Draw link
         glePolyCylinder(cyl_points, None, self.link_width / 2.0)
 
-    def drawLinkQuad(self, start, end):
 
+    def drawLinkQuad(self, start, end):
+        """Surprise! Actually draws a line."""
         glBegin(GL_LINES)
         glVertex3fv(start)
         glVertex3fv(end)
         glEnd()
-
 
 
     def drawLinks(self):
@@ -366,12 +372,15 @@ class GLTorus2dView(Torus3dGLWidget):
                         # find transverse dimension
                         for t in range(3):
                             if t != axis and t != dim: break
-                        left_cyl = cylinder(shift(start_node, t, -1), shape, axis)
-                        right_cyl = cylinder(shift(start_node, t, 1), shape, axis)
+                        left_cyl = cylinder(shift(start_node, t, -1), shape,
+                            axis)
+                        right_cyl = cylinder(shift(start_node, t, 1), shape,
+                            axis)
                         if end_cyl == right_cyl and end_cyl == left_cyl:
                             continue
 
-                    end = np.array(self.map2d(end_node, shape, axis, gap, scale))
+                    end = np.array(self.map2d(end_node, shape, axis, gap,
+                        scale))
                     glColor4f(*colors[dim])
                     self.drawLinkQuad(start, end)
 
@@ -398,6 +407,7 @@ class GLTorus2dView(Torus3dGLWidget):
             self.right_drag = False
 
     def isAxisChange(self, x, y):
+        """Checks if the given (x,y) value falls within a minimap."""
         if x > self.minimap_x and x < self.minimap_x + self.minimap_size:
             if y > self.minimap_y0 and y < self.minimap_y0 + self.minimap_size:
                 return 0
@@ -408,6 +418,7 @@ class GLTorus2dView(Torus3dGLWidget):
         return -1
 
     def updateMiniMapValues(self):
+        """Determines link colors for the minimaps by averaging."""
         self.miniColors = list()
         for axis in range(3):
             shape = self.shape[:]
@@ -423,8 +434,10 @@ class GLTorus2dView(Torus3dGLWidget):
                     subNode = list(node)
                     for i in range(self.shape[axis]):
                         subNode[axis] = i
-                        val += self.dataModel.avg_link_values[tuple(subNode)][dim][0]
-                        count += self.dataModel.avg_link_values[tuple(subNode)][dim][1]
+                        val += self.dataModel.avg_link_values[
+                            tuple(subNode)][dim][0]
+                        count += self.dataModel.avg_link_values[
+                            tuple(subNode)][dim][1]
                     link_colors[node][dim] = self.map_link_color(
                         val / float(self.shape[axis]), 1.0) \
                         if count / float(self.shape[axis]) \
@@ -433,6 +446,9 @@ class GLTorus2dView(Torus3dGLWidget):
 
 
     def miniMapSizes(self):
+        """Determines the size and placement of the minimaps based on the the
+           size of the gl window.
+        """
         self.minimap_x = 5
         self.minimap_y0 = self.height() - 75
         self.minimap_y1 = self.height() - 150
@@ -440,6 +456,7 @@ class GLTorus2dView(Torus3dGLWidget):
         self.minimap_size = 70
 
     def miniMaps(self):
+        """Draws all three minimaps."""
         self.miniMapSizes()
         self.drawMiniMaps(0, self.minimap_x, self.minimap_y0,
             self.minimap_size, self.minimap_size)
@@ -449,24 +466,22 @@ class GLTorus2dView(Torus3dGLWidget):
             self.minimap_size, self.minimap_size)
 
     def drawMiniMaps(self, axis, x, y, w, h):
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        glScissor(x, y, w, h)
-        glViewport(x, y, w, h)
-        glOrtho(x, x+w, y, y+h, -1, 1)
+        """Draws the minimap for the given axis."""
+        setup_overlay2D(x, y, w, h)
 
-        glMatrixMode(GL_MODELVIEW)
-
-        coords = self.parent.agent.coords
+        coords = self.parent.agent.coords # coord names from user
         with glMatrix():
             glLoadIdentity()
             glTranslatef(x, y, 0)
 
+            # Background color stays the same but we set this clear
+            # information because otherwise it will be transparent.
             glClearColor(*self.bg_color)
             glClear(GL_COLOR_BUFFER_BIT)
             glClear(GL_DEPTH_BUFFER_BIT)
 
-            # Draw Links
+            # Draw Links by setting the axis we're looking down to a shape
+            # of 1, thus compressing it to a single line.
             glLineWidth(2.0)
             mini_shape = list(self.shape[:])
             if mini_shape[axis] != 0:
@@ -476,12 +491,10 @@ class GLTorus2dView(Torus3dGLWidget):
                 with glMatrix():
                     if axis != 0:
                         glTranslate(w / 2., h / 2., 0.)
-                    else:
+                    else: # The x-axis does something weird, please fix
                         glTranslate(w * 4 / 3. + 1., h / 2., 0.)
                     scale = min(float(w) / self.shape[width] / 2.,
                         float(h) / self.shape[height] / 2.)
-                    #scale = min(self.shape[width] / float(w) * 30,
-                    #    self.shape[height] / float(h) * 30)
                     self.layoutLinks(tuple(mini_shape), axis, 1,
                         self.miniColors[axis], scale)
 
@@ -502,13 +515,14 @@ class GLTorus2dView(Torus3dGLWidget):
                     glVertex3f(0.01, h, 0.01)
                     glVertex3f(0.01, h, 0.01)
                     glVertex3f(0.01, 0.01, 0.01)
-            glLineWidth(self.link_width)
 
 
-            # Draw Label
+            # Draw Label based on given coords
+            glLineWidth(1.0)
             if coords is not None and len(coords[axis]) > 0:
                 with glMatrix():
                     glTranslate(5, 5, 0.2)
                     glScalef(0.12, 0.12, 0.12)
                     for c in coords[axis]:
                         glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
+            glLineWidth(self.link_width)

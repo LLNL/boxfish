@@ -1,10 +1,12 @@
 """\
-Basic support for interactive OpenGL widgets in Qt.  See GLWindow class docs for details.
+Basic support for interactive OpenGL widgets in Qt.  See GLWindow class docs
+for details.
 
 Authors:
     Todd Gamblin, tgamblin@llnl.gov
 
-Original rotation code was borrowed liberally from boxfish by Kate Isaacs and Josh Levine.
+Original rotation code was borrowed liberally from boxfish by Kate Isaacs
+and Josh Levine.
 """
 
 import math
@@ -20,20 +22,24 @@ from OpenGL.GLUT import *
 from glutils import *
 
 class GLWidget(QGLWidget):
-    """ This class implements basic support for interactive OpenGL application.  This includes support
-        for rotation and translation using the mouse.  Other than handling mouse events for basic interactive
-        features, this is just a regular QGLWidget, so the user still needs to implement resizeGL(), initializeGL(),
-        and paintGL() to get their scene drawn.
+    """ This class implements basic support for interactive OpenGL application
+        This includes support for rotation and translation using the mouse.
+        Other than handling mouse events for basic interactive features, this
+        is just a regular QGLWidget, so the user still needs to implement
+        resizeGL(), initializeGL(), and paintGL() to get their scene drawn.
     """
 
     transformChangeSignal = Signal(np.ndarray, np.ndarray)
     resizeSignal = Signal()
 
     def __init__(self, parent=None, **keywords):
-        """Sets up initial values for dragging variables, translation, and rotation matrices."""
+        """Sets up initial values for dragging variables, translation, and
+        rotation matrices.
+        """
         super(GLWidget, self).__init__(parent)
 
-        # Initialize last position and dragging flag to support mouse interaction
+        # Initialize last position and dragging flag to support mouse
+        # interaction
         self.last_pos = [0,0,0]
         self.dragging = False
 
@@ -96,9 +102,9 @@ class GLWidget(QGLWidget):
 
 
     def map_to_sphere(self, x, y):
-        """This takes local x and y window coordinates and maps them to an arcball sphere
-           based on the width and height of the window.  This is used for quaternion rotation
-           later in mouseMoveEvent().
+        """This takes local x and y window coordinates and maps them to an
+           arcball sphere based on the width and height of the window. This
+           is used for quaternion rotation later in mouseMoveEvent().
         """
         width, height = self.width(), self.height()
         v = [0,0,0]
@@ -150,7 +156,7 @@ class GLWidget(QGLWidget):
         glEnable(GL_LIGHT0)
         glEnable(GL_COLOR_MATERIAL)
         glEnable(GL_LINE_SMOOTH)
-        #glEnable(GL_POLYGON_SMOOTH)
+        #glEnable(GL_POLYGON_SMOOTH) # Looks terrible on Quadro cards
 
     def resizeGL(self, width, height):
         if (height == 0):
@@ -190,13 +196,15 @@ class GLWidget(QGLWidget):
         self.dragging = True
 
     def mouseReleaseEvent(self, event):
-        """Ends dragging so that mouseMoveEvent() will know not to adjust things. """
+        """Ends dragging so that mouseMoveEvent() will know not to adjust
+           things.
+        """
         self.dragging = False
 
     def mouseMoveEvent(self, event):
-        """This method rotates the scene around as the mouse moves, and it calls updateGL()
-           to notify the UI that the system needs updating.  Rotation is quaternion (axis/angle)
-           based.
+        """This method rotates the scene around as the mouse moves, and it
+           calls updateGL() to notify the UI that the system needs updating.
+           Rotation is quaternion (axis/angle) based.
         """
         if not self.dragging:
             return
@@ -215,15 +223,19 @@ class GLWidget(QGLWidget):
             if dx != 0 or dy != 0 or dz != 0 :
                 # compute theta and cross product
                 tb_angle = 90.0 * math.sqrt(dx*dx + dy*dy + dz*dz)
-                tb_axis[0] = self.last_pos[1]*cur_pos[2] - self.last_pos[2]*cur_pos[1]
-                tb_axis[1] = self.last_pos[2]*cur_pos[0] - self.last_pos[0]*cur_pos[2]
-                tb_axis[2] = self.last_pos[0]*cur_pos[1] - self.last_pos[1]*cur_pos[0]
+                tb_axis[0] = self.last_pos[1]*cur_pos[2]\
+                    - self.last_pos[2]*cur_pos[1]
+                tb_axis[1] = self.last_pos[2]*cur_pos[0]\
+                    - self.last_pos[0]*cur_pos[2]
+                tb_axis[2] = self.last_pos[0]*cur_pos[1]\
+                    - self.last_pos[1]*cur_pos[0]
 
                 # update position
                 self.last_pos = cur_pos
 
-            # Once rotation has been computed, use OpenGL to add our rotation to the
-            # current modelview matrix.  Then fetch the result and keep it around.
+            # Once rotation has been computed, use OpenGL to add our rotation
+            # to the current modelview matrix.  Then fetch the result and keep
+            # it around.
             glLoadIdentity()
             glRotatef(0.5*tb_angle, tb_axis[0] , tb_axis[1], tb_axis[2])
             glMultMatrixd(self.rotation)
@@ -234,10 +246,11 @@ class GLWidget(QGLWidget):
 
 
     def wheelEvent(self, event):
-        """Does translation in response to wheel events.  Within paintGL(), you will
-           need to either call self.orient_scene() or do your own glTranslate() and
-           glRotate() based on self.translation and self.rotation.
-           """
+        """Does translation in response to wheel events.  Within paintGL(),
+           you will need to either call self.orient_scene() or do your own
+           glTranslate() and glRotate() based on self.translation and
+           self.rotation.
+        """
         if self.enable_translation:
             if event.orientation() == Qt.Orientation.Vertical:
                 if int(Qt.Key_Shift) in self.pressed_keys:
@@ -266,9 +279,9 @@ class GLWidget(QGLWidget):
         pass
 
     def orient_scene(self):
-        """You should call this from paintGL() to orient the scene before rendering.
-           This will do translation and rotation so that rendering happens at the right
-           location and orientation.
+        """You should call this from paintGL() to orient the scene before
+           rendering. This will do translation and rotation so that rendering
+           happens at the right location and orientation.
         """
         glLoadIdentity()
         glTranslatef(*self.translation)
@@ -276,6 +289,8 @@ class GLWidget(QGLWidget):
 
 
     def set_transform(self, rotation, translation):
+        """Allows forcing the rotation and translation to the given values.
+        """
         need_update = False
 
         if self.enable_translation and translation != None:
@@ -289,6 +304,7 @@ class GLWidget(QGLWidget):
             self.updateGL()
 
     def change_background_color(self, color):
+        """Changes the background color to the given."""
         if color is not None:
             self.bg_color = color
             glClearColor(*color)

@@ -1,5 +1,7 @@
-"""\
-Support for nicely indented GL sections in python using Python's with statement.
+"""
+Support for nicely indented GL sections in python using Python's with
+statement.
+
 Author:
     Todd Gamblin, tgamblin@llnl.gov
 """
@@ -50,6 +52,40 @@ def disabled(*glBits):
     yield
     for bit in glBits:
         glEnable(bit)
+
+@contextmanager
+def overlays2D(width, height, background_color):
+    """The before and after gl calls necessary to setup 2D overlays to the
+       main gl drawing. This should be encase all methods which have a call to
+       setup_overlay2D.
+    """
+    # Prepare to change modes
+    glDisable(GL_LIGHTING)
+    glDisable(GL_LIGHT0)
+    glDisable(GL_BLEND)
+    glEnable(GL_SCISSOR_TEST)
+    with glModeMatrix(GL_PROJECTION):
+        yield
+    # Change mode back
+    glViewport(0, 0, width, height)
+    glDisable(GL_SCISSOR_TEST)
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+    glEnable(GL_LIGHTING)
+    glEnable(GL_LIGHT0)
+    glEnable(GL_BLEND)
+    glClearColor(*background_color)
+
+def setup_overlay2D(x, y, width, height):
+    """Sets up the small 2D overlay area. The background is clear.
+    """
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    glScissor(x, y, width, height)
+    glViewport(x, y, width, height)
+    glOrtho(x, x + width, y, y + height, -1, 1)
+    glMatrixMode(GL_MODELVIEW)
+
 
 class DisplayList(object):
     """Use this to turn some rendering function of yours into a DisplayList,

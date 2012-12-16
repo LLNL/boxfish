@@ -6,6 +6,11 @@ from PySide.QtCore import Slot,Signal,QObject,Qt
 from PySide.QtGui import QWidget,QLabel,QPixmap,QLineEdit,QHBoxLayout,qRgba,\
     QImage,QVBoxLayout,QComboBox,QCheckBox,QSpacerItem,QIntValidator
 
+from OpenGL.GL import *
+from OpenGL.GL.glget import *
+from boxfish.gl.glutils import *
+from OpenGL.GLUT import glutStrokeCharacter, GLUT_STROKE_ROMAN
+
 # maybe instead of separate we should use register_cmap()
 boxfish_maps = dict()
 
@@ -313,3 +318,60 @@ class ColorMapWidget(QWidget):
             self.color_step = 0
             self.changeSignal.emit(ColorMap(self.color_map_name,
                 self.color_step, self.step_size), self.tag)
+
+
+def drawGLColorBar(colors, bar_x, bar_y, bar_width, bar_height, label = ""):
+    """Draws a single colorbar at bar_x, bar_y with width bar_width
+       and height bar_height.
+
+       colors
+           A list of sampled 11 sampled colors spanning the colormap.
+    """
+    setup_overlay2D(bar_x, bar_y, bar_width, bar_height + 12)
+
+    with glMatrix():
+        glLoadIdentity()
+        glTranslatef(bar_x, bar_y, 0)
+
+        segment_size = int(float(bar_height) / 10.0)
+
+        for i in range(10):
+
+            with glMatrix():
+                glTranslatef(0, i*segment_size, 0)
+                with glSection(GL_QUADS):
+                    glColor3f(colors[i][0], colors[i][1], colors[i][2])
+                    glVertex3f(0, 0, 0)
+                    glVertex3f(bar_width, 0, 0)
+                    glColor3f(colors[i+1][0], colors[i+1][1],
+                        colors[i+1][2])
+                    glVertex3f(bar_width, segment_size, 0)
+                    glVertex3f(0, segment_size, 0)
+
+
+        # black box around gradient
+        prev_lineWidth = glGetFloatv(GL_LINE_WIDTH)
+        glLineWidth(1.0)
+        glColor3f(0.0, 0.0, 0.0)
+        with glMatrix():
+            with glSection(GL_LINES):
+                glVertex3f(0.01, 0.01, 0.01)
+                glVertex3f(bar_width, 0.01, 0.01)
+                glVertex3f(bar_width, 0.01, 0.01)
+                glVertex3f(bar_width, bar_height, 0.01)
+                glVertex3f(bar_width, bar_height, 0.01)
+                glVertex3f(0.01, bar_height, 0.01)
+                glVertex3f(0.01, bar_height, 0.01)
+                glVertex3f(0.01, 0.01, 0.01)
+
+        # TODO: Make this whole section much less magical
+        default_text_height = 152.38
+        scale_factor = 1.0 / default_text_height * segment_size
+        scale_factor = 0.08
+        if len(label) > 0:
+            with glMatrix():
+                glTranslatef(7, bar_height + 3, 0.2)
+                glScalef(scale_factor, scale_factor, scale_factor)
+                for c in label:
+                    glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
+        glLineWidth(prev_lineWidth)

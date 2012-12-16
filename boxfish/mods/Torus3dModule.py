@@ -3,10 +3,9 @@ from PySide.QtCore import *
 from GLModule import *
 from boxfish.gl.GLWidget import GLWidget, set_perspective
 from boxfish.gl.glutils import *
-from OpenGL.GLUT import glutStrokeCharacter, GLUT_STROKE_ROMAN
 
 import TorusIcons
-from boxfish.ColorMaps import ColorMap, ColorMapWidget
+from boxfish.ColorMaps import ColorMap, ColorMapWidget, drawGLColorBar
 
 class Torus3dAgent(GLAgent):
     """This is an agent for all 3D Torus based modules."""
@@ -365,6 +364,8 @@ class Torus3dGLWidget(GLWidget):
         self.parent = parent
         self.dataModel = None
         self.legendCalls = []
+        self.legendCalls.append(self.drawNodeColorBar)
+        self.legendCalls.append(self.drawLinkColorBar)
 
         self.box_size = 0.2
         self.link_width = 2.
@@ -458,37 +459,10 @@ class Torus3dGLWidget(GLWidget):
            the colorbars and anything done in functions that have been
            appeneded to the legendCalls member of this class.
         """
-        # Prepare to change modes
-        glDisable(GL_LIGHTING)
-        glDisable(GL_LIGHT0)
-        glDisable(GL_BLEND)
-        glEnable(GL_SCISSOR_TEST)
-
-        # We need to do the mode change/push outside the display list
-        # or it will cache the matrix for a particular window setup
-        # and weird things will happen on resize
-        with glModeMatrix(GL_PROJECTION):
-            self.nodeBarList()
-
-
-        with glModeMatrix(GL_PROJECTION):
-            self.linkBarList()
-
-
-        for func in self.legendCalls:
-            with glModeMatrix(GL_PROJECTION):
+        with overlays2D(self.width(), self.height(), self.bg_color):
+            for func in self.legendCalls:
                 func()
 
-
-        # Change mode back
-        glViewport(0, 0, self.width(), self.height())
-        glDisable(GL_SCISSOR_TEST)
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-        glEnable(GL_LIGHTING)
-        glEnable(GL_LIGHT0)
-        glEnable(GL_BLEND)
-        glClearColor(*self.bg_color)
 
     # TODO: Move these crazy defaults somewhere sane
     def drawNodeColorBar(self, x = 20, y = 90, w = 20, h = 120):
@@ -497,14 +471,15 @@ class Torus3dGLWidget(GLWidget):
         for i in range(11):
             node_bar.append(self.map_node_color(float(i)/10.0))
 
+        drawGLColorBar(node_bar, x, y, w, h, "N")
+
         # I want this extra stuff to take up no more than 1/10 of the
         # screen space. Therefore total width = self.width() / 10
 
-        self.drawColorBar(node_bar, x, y, w, h, "N")
         #bar_width = int(max(2.0 / 13.0 * self.width(), 20))
         #bar_spacing = int(3.0 / 2.0 * bar_width)
         #bar_height = int(max(self.height() / 5.0, 150))
-        #self.drawColorBar(node_bar, bar_spacing, y, bar_width, bar_height)
+        #drawGLColorBar(node_bar, bar_spacing, y, bar_width, bar_height)
 
     def drawLinkColorBar(self, x = 50, y = 90, w = 20, h = 120):
         """Draw the color bar for links."""
@@ -512,71 +487,7 @@ class Torus3dGLWidget(GLWidget):
         for i in range(11):
             link_bar.append(self.map_link_color(float(i)/10.0))
 
-        self.drawColorBar(link_bar, x, y, w, h, "L")
-        #bar_width = int(max(2.0 / 13.0 * self.width(), 20))
-        #bar_spacing = int(3.0 / 2.0 * bar_width)
-        #bar_height = int(max(self.height() / 5.0, 150))
-        #self.drawColorBar(link_bar, 2 * bar_spacing + bar_width, y, 
-        #    bar_width, bar_height)
-
-    def drawColorBar(self, colors, bar_x, bar_y, bar_width, bar_height,
-        label = ""):
-        """Draws a single colorbar at bar_x, bar_y with width bar_width
-           and height bar_height.
-
-           colors
-               A list of sampled 11 sampled colors spanning the colormap.
-        """
-        glLoadIdentity()
-        glScissor(bar_x, bar_y, bar_width, bar_height + 12)
-        glViewport(bar_x, bar_y, bar_width, bar_height + 12)
-        glOrtho(bar_x, bar_x + bar_width, bar_y, bar_y + bar_height + 12, -1, 1)
-        glMatrixMode(GL_MODELVIEW)
-
-        with glMatrix():
-            glLoadIdentity()
-            glTranslatef(bar_x, bar_y, 0)
-
-            segment_size = int(float(bar_height) / 10.0)
-
-            for i in range(10):
-
-                with glMatrix():
-                    glTranslatef(0, i*segment_size, 0)
-                    with glSection(GL_QUADS):
-                        glColor3f(colors[i][0], colors[i][1], colors[i][2])
-                        glVertex3f(0, 0, 0)
-                        glVertex3f(bar_width, 0, 0)
-                        glColor3f(colors[i+1][0], colors[i+1][1],
-                            colors[i+1][2])
-                        glVertex3f(bar_width, segment_size, 0)
-                        glVertex3f(0, segment_size, 0)
-
-
-            # black box around gradient
-            glLineWidth(1.0)
-            glColor3f(0.0, 0.0, 0.0)
-            with glMatrix():
-                with glSection(GL_LINES):
-                    glVertex3f(0.01, 0.01, 0.01)
-                    glVertex3f(bar_width, 0.01, 0.01)
-                    glVertex3f(bar_width, 0.01, 0.01)
-                    glVertex3f(bar_width, bar_height, 0.01)
-                    glVertex3f(bar_width, bar_height, 0.01)
-                    glVertex3f(0.01, bar_height, 0.01)
-                    glVertex3f(0.01, bar_height, 0.01)
-                    glVertex3f(0.01, 0.01, 0.01)
-
-            default_text_height = 152.38
-            scale_factor = 1.0 / default_text_height * segment_size
-            scale_factor = 0.08
-            if len(label) > 0:
-                with glMatrix():
-                    glTranslatef(7, bar_height + 3, 0.2)
-                    glScalef(scale_factor, scale_factor, scale_factor)
-                    for c in label:
-                        glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
-            glLineWidth(self.link_width)
+        drawGLColorBar(link_bar, x, y, w, h, "L")
 
 
     def map_node_color(self, val, preempt_range = 0):

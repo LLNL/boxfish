@@ -1,20 +1,20 @@
 Writing Modules
 ===============
 Each Boxfish module is formed of an agent and a view. Agents descend from the
-class ModuleAgent. Views descend from the class ModuleView. To register the
-module with the Boxfish root, the ModuleView must be annotated with the
+class ModuleAgent. Views must be wrapped in the class ModuleFrame. To register the
+module with the Boxfish root, the ModuleFrame must be annotated with the
 ``@Module`` decorator. This allows abstract agents and views to be created but
 not offered in the user interface.
 
-The agent maintains the connection between parent and child module and
-manages data requests and scene policy application. The bulk of this is
-handled by the ModuleAgent parent class. The view presents its requested data
-and handles the user interface. The view is aware of the agent and can pass
-data requests to it. The agent is not aware of the view -- the view must
-connect to the signals sent by the agent. The ModuleView class handles initial
-setup of the module, re-parenting of the module's frame, and interpreting of
-drag and drop data. Developers will need to write the rest of the
-functionality.
+The agent maintains the connection between parent and child module and manages
+data requests and scene policy application. The bulk of this is handled by the
+ModuleAgent parent class. The view presents its requested data and handles the
+user interface. The frame is aware of the agent and can pass data requests to
+it. The agent is not aware of the frame or view -- the frame or viewmust
+connect to the signals sent by the agent. The ModuleFrame class handles
+initial setup of the module, re-parenting of the module's frame, and
+interpreting of drag and drop data. Developers will need to write the rest of
+the functionality.
 
 Writing the Agent
 -----------------
@@ -51,7 +51,6 @@ Later this may be made significantly simpler.::
 
   def addDataIndices(self, indexList):
     self.requestAddIndices("descriptive tag", indexList)
-    self.presentData()
 
   def presentData(self):
     tables, runs, ids, attribute_names, data_lists \
@@ -92,7 +91,6 @@ This usually requires querying the meta-information of the run.::
   def addDataIndices(self, indexList):
     self.requestAddIndices("descriptive tag", indexList)
     self.getRunInfo(self.datatree.getItem(indexList[0]).getRun())
-    self.presentData()
 
   def getRunInfo(self, run):
     if run is not self.run:
@@ -131,15 +129,15 @@ created betwen the two for later user.
 
 Writing the View
 ----------------
-The view must be a subclass of ``ModuleView`` and must have an ``__init__``
-with the shown signature. This is used by Boxfish to create module instances
-dynamically.::
+The view must contained in a subclass of ``ModuleFrame`` and must have an
+``__init__`` with the shown signature. This is used by Boxfish to create
+module instances dynamically.::
 
   @Module("My Module", MyModuleAgent)
-  class MyModuleView(ModuleView):
+  class MyModuleViewFrame(ModuleFrame):
 
-  def __init__(self, parent, parent_view = None, title = None):
-    super(MyModuleView, self).__init__(parent, parent_view, title)
+  def __init__(self, parent, parent_frame = None, title = None):
+    super(MyModuleView, self).__init__(parent, parent_frame, title)
 
     self.agent.presentDataSignal.connect(self.updateView)
 
@@ -155,7 +153,7 @@ dynamically.::
     # Visualize processed_data
 
 Here the decorator ``@Module`` is used to tell Boxfish that this module can be
-created by the user. Abstract ``ModuleView`` classes may be created and hidden
+created by the user. Abstract ``ModuleFrame`` classes may be created and hidden
 from the user by omitting this decorator. The first decorator argument is the
 display name of the module which will be shown in the Boxfish GUI. The second
 is the class name of the agent that should be created for this view. Each view
@@ -166,16 +164,24 @@ created in the agent. When that Signal is fired, the view will call its
 ``updateView`` function to handle it. This function should be decorated as a
 PySide/Qt Slot for the type(s) of data it will receive from the Signal.
 
-Each ``ModuleView`` must override the ``createView`` function to return its
+Each ``ModuleFrame`` must override the ``createView`` function to return its
 custom  PySide/Qt widget. This widget contains all of the visualization and
 user interface unique to this view. This widget will then be placed in the
-module's outer structure which manages the interface for moving this module
-within the Boxfish tree structure.
+module's outer structure (the frame) which manages the interface for moving
+this module within the Boxfish tree structure.
 
 When Boxfish DataTree attribute indices are dropped onto a module, the
-function ``droppedData`` is automatically called in the view. Normally this
-function does nothing, so it must be overridden.::
+``droppedDataSignal`` is fired with the list of indices and potentially a tag. 
+To handle dropped attributes, a function should be connected to this signal.::
 
+  def __init__(self, parent, parent_frame = None, title = None):
+    super(MyModuleView, self).__init__(parent, parent_frame, title)
+
+    self.droppedDataSignal.connect(self.droppedData)
+
+    self.agent.presentDataSignal.connect(self.updateView)
+
+  @Slot(list, str)
   def droppedData(self, indexList):
     self.agent.addDataIndices(indexList)
 
@@ -185,12 +191,14 @@ streams. One way of handling this problem is to use a Drag Overlay.
 
 Drag Overlays
 -------------
+
 A Drag Overlay is a semitransparent splashscreen which appears over a module
 when the user is dragging Boxfish DataTrees over said module. It is divided
-into tagged regions. When data is dropped on a Drag Overlay, ``droppedData``
-is called with an extra parameter indicating which tag was associated with the
-region in which the data was dropped.::
+into tagged regions. When data is dropped on a Drag Overlay, the second
+parameter in ``droppedDataSignal`` will be the tag that was associated with
+the region in which the data was dropped.::
 
+  @Slot(list, str)
   self.droppedData(self, indexList, tag):
     if tag == "nodes":
       self.agent.addNodeIndices(indexList)
@@ -219,7 +227,7 @@ may access them by double-clicking in a module to bring up a dialog.
 This is a modal dialog which is re-created on user-request. The base class's
 dialog contains a single tab for scene information propagation. Subclasses may
 add their own user interfaces as tabs by overriding the ``buildTabDialog``
-function in the ``ModuleView`` class.::
+function in the ``ModuleFrame`` class.::
 
   def buildTabDialog(self):
     super(MyModuleView, self).buildTabDialog()
