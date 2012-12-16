@@ -81,10 +81,10 @@ Source Code Documentation
     :undoc-members:
     :show-inheritance:
 
-:mod:`ModuleView` Module
-------------------------
+:mod:`ModuleFrame` Module
+-------------------------
 
-.. automodule:: boxfish.ModuleView
+.. automodule:: boxfish.ModuleFrame
     :members:
     :undoc-members:
     :show-inheritance:

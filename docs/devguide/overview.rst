@@ -33,7 +33,9 @@ subtree behaves the same.
 
 For AttributeScenes, the two options apply to each requested group of
 attributes in each module. Some modules may make multiple disparate requests
-(e.g. a set of attributes for nodes and a set for links).
+(e.g. a set of attributes for nodes and a set for links). Note: currently this
+is implemented globally like HighlightScenes and ModuleScenes rather than
+request-by-request.
 
 Data Storage Structure
 ----------------------

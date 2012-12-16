@@ -20,16 +20,16 @@ for the hardware links.::
     def __init__(self, elements = list()):
       super(HWSubDomain, self).__init__(elements)
 
-      @classmethod
-      def domain(cls):
-        return "HW"
+    @classmethod
+    def domain(cls):
+      return "HW"
 
-  class Links(HWSubDomain)
+  class Links(HWSubDomain):
 
     def __init__(self, elements = list()):
       super(Links, self).__init__(elements)
 
-      @classmethod
-      def typename(cls):
-        return "link"
+    @classmethod
+    def typename(cls):
+      return "link"
 

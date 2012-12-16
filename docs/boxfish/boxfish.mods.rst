@@ -9,18 +9,10 @@ mods Package
     :undoc-members:
     :show-inheritance:
 
-:mod:`GLModuleScene` Module
----------------------------
+:mod:`Patch3dModule` Module
+--------------------------
 
-.. automodule:: boxfish.mods.GLModuleScene
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`PatchModule` Module
--------------------------
-
-.. automodule:: boxfish.mods.PatchModule
+.. automodule:: boxfish.mods.Patch3dModule
     :members:
     :undoc-members:
     :show-inheritance:
