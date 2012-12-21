@@ -58,7 +58,6 @@ propagations to support and how to display them.
    :maxdepth: 2
 
    mods/filterbox
-   mods/3dtorus2d
-   mods/3dtorus3d
+   mods/3dtorus
    mods/table
    mods/plotter
