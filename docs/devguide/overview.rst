@@ -37,6 +37,11 @@ attributes in each module. Some modules may make multiple disparate requests
 is implemented globally like HighlightScenes and ModuleScenes rather than
 request-by-request.
 
+More explanation and examples are in the user guide under :ref:`Scene Policy
+<policies-label>`.  Instructions on incorporating these features into your
+module are found in :ref:`selection-propagation-label` and
+:ref:`module-scene-label`.
+
 Data Storage Structure
 ----------------------
 Boxfish stores all of the input performance data in a hierarchy known as

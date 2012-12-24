@@ -17,7 +17,7 @@ information:
 
   ---
   key: MY_KEY
-  hardware {
+  hardware: {
     coords_table = nodes.yaml, # table with node id and coordinate columns
     coords = [x, y, z], # column names of coordinates
     dims = {x: 8, y: 16, z: 16}, # dimensions of torus in each coordinate
@@ -30,6 +30,14 @@ information:
 Attributes may be used to color either the nodes or the links. Multiple
 processes/threads on each node will be aggregated. Forward and backward data
 on the links will similarly be aggregated.
+
+.. figure:: ../../images/dragoverlay_1.png
+   :align: center
+   :alt: Drag overlay for 3D Torus modules.
+
+   When an attribute or set of attributes is dragged onto a 3D Torus module,
+   the overlay appears.  Drop the attributes on either nodes or links
+   depending on which element type should be colored. 
 
 Shared controls by these two modules are summarized in the following table:
 
@@ -49,6 +57,13 @@ This is useful when the values represent discrete groupings or clusterings.
 
 Note: If attribute propagation is on and nodes and links share the same
 attributes, then one color map will be coerced to the other.
+
+.. figure:: ../../images/colordialog_1.png
+   :align: center
+   :alt: Color dialog for the 3D Torus modules.
+
+   Color policy for the nodes and links, as well as general background color,
+   can be changed through the color tab in each module.
 
 The background color can also be changed. If the modules are set to accept and
 propagate module scene information, changing the background color will
@@ -94,6 +109,12 @@ the other two directions are then removed to prevent overlaps.
 Three "minimaps" are shown in the upper left hand corner of the module. They
 are small, aggregated representations of the main view for each of the three
 axes. Clicking on one will change the main view to a larger version of itself.
+
+.. figure:: ../../images/2dtorus_1.png
+   :align: center
+   :alt: The 2D View of the 3D Torus.
+
+   The 2D View of the 3D Torus.
 
 The 2D View supports translation/zoom propagation and  axis propagation. It
 will accept selections from other modules. The 2D View specific controls are:

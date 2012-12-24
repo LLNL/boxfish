@@ -92,13 +92,13 @@ agent has changed and in this case pass along that data.  The agent may have
 as many as necessary that pass along any type and any number of objects, but
 they must be declared as class variables.::
 
-The ``requestGetRows(tag)`` returns the data columns associated with
-the passed indices, after applying any filters from modules up the Boxfish
+The ``requestGetRows(tag)`` returns the data columns associated with the
+passed indices, after applying any filters from modules up the Boxfish
 structure tree. Many modules will want the information from the passed indices
-associated with a particular table or domain. To do this we use the 
-``requestOnDomain`` function. Note that to use this function, the module
-needs some way of determining in what table to find its domain information.
-This usually requires querying the meta-information of the run.::
+associated with a particular table or domain. To do this we use the
+``requestOnDomain`` function. Note that to use this function, the module needs
+some way of determining in what table to find its domain information.  This
+usually requires querying the meta-information of the run.::
 
   def addDataIndices(self, indexList):
     self.requestAddIndices("descriptive tag", indexList)
@@ -210,10 +210,17 @@ Drag Overlays
 -------------
 
 A Drag Overlay is a semitransparent splashscreen which appears over a module
-when the user is dragging Boxfish DataTrees over said module. It is divided
-into tagged regions. When data is dropped on a Drag Overlay, the second
-parameter in ``droppedDataSignal`` will be the tag that was associated with
-the region in which the data was dropped.::
+when the user is dragging Boxfish DataTrees over said module. 
+
+.. figure:: ../images/dragoverlay_1.png
+   :align: center
+   :alt: Drag Overlay for 3D Torus modules.
+
+   The Drag Overlay for 3D Torus modules.
+
+The Drag Overlay is divided into tagged regions. When data is dropped on a
+Drag Overlay, the second parameter in ``droppedDataSignal`` will be the tag
+that was associated with the region in which the data was dropped.::
 
   @PySide.QtCore.Slot(list, str)
   def droppedData(self, indexList, tag):
@@ -241,6 +248,12 @@ have scene information propagation settings. To save screen space, these
 settings and their user interfaces are normally not shown. Instead, the user
 may access them by double-clicking in a module to bring up a dialog.
 
+.. figure:: ../images/filters_1.png
+   :align: center
+   :alt: Tab Dialog for Filter Box module.
+
+   The Tab Dialog for Filter Box modules.
+
 This is a modal dialog which is re-created on user-request. The base class's
 dialog contains a single tab for scene information propagation. Subclasses may
 add their own user interfaces as tabs by overriding the ``buildTabDialog``
@@ -266,15 +279,25 @@ information propagation tab will not be available.
 This dialog may also be used for other complex interfaces that need not always
 be shown. The Filter Box module uses this dialog for its filter GUI.
 
+.. _selection-propagation-label:
 
 Selection Propagation
 ---------------------
 When one or more entitites is selected in a module, that selection can be
 propagated to other modules (or other types of entities within the same
-module), depending on the user's settings. Making use of this feature requires
-the module writer to do things -- 1) alert the ``ModuleAgent`` of the
-selection when it occurs within the module; 2) listen for selections from
-other modules and process their request.
+module), depending on the user's settings. 
+
+.. figure:: ../images/highlightprop_1.png
+   :align: center
+   :alt: Selection propagation across several modules.
+
+   All three visualization modules above handling selection propagation. The
+   Table module has a subcommunicator selected. This is propagated and
+   projected onto the elements of the 3D Torus modules.
+
+Making use of this feature requires the module writer to do things -- 1) alert
+the ``ModuleAgent`` of the selection when it occurs within the module; 2)
+listen for selections from other modules and process their request.
 
 Alerting the ``ModuleAgent`` is done by calling the agent's
 ``setHighlights(table_list, run_list, ids_list)`` function. These parameters
@@ -312,9 +335,17 @@ Custom Scene Propagation
 Some modules propagate module-specific scene information amongst modules of
 the same type within a subtree of the Boxfish structure. For example, the 3D
 Torus Views can link their transformation information so that they all display
-the same rotation and zoom. To add module-specific linked scene information
-for a new module, a subclass of ``ModuleScene`` must be created to hold said
-information.::
+the same rotation and zoom. 
+
+.. figure:: ../images/rotationprop_1.png
+   :align: center
+   :alt: Custom scene propagation for 3D Torus - 3D View.
+
+   The two 3D Torus modules propgate their rotation information to each other.
+   The module on the right has this feature turned off.
+
+To add module-specific linked scene information for a new module, a subclass
+of ``ModuleScene`` must be created to hold said information.::
 
   class MyModuleScene(ModuleScene):
 
