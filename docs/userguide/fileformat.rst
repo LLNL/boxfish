@@ -1,3 +1,5 @@
+.. _file-format-label:
+
 File Format
 ===========
 

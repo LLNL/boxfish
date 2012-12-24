@@ -4,11 +4,23 @@ Modules
 =======
 
 Modules in Boxfish are tools for interacting with, manipulating or visualizing
-data. Boxfish opens with a Filter Box module which will be the ancestor of all
-other modules. To start using a module, drag its name from the Module List
-onto an existing module. The new module will become a child of the one it was
-dragged onto. If that module does not accept children, the new module will
-become a child of the first ancestor that accepts children.
+data.
+
+Most modules process data associated with the attributes that are dragged onto
+them.
+
+.. figure:: ../images/dragattributes_1.png
+   :align: center
+   :scale: 50 %
+   :alt: Dragging attributes onto a module.
+
+   Three attributes being dragged onto a module.
+
+Boxfish opens with a Filter Box module which will be the ancestor of all other
+modules. To start using a module, drag its name from the Module List onto an
+existing module. The new module will become a child of the one it was dragged
+onto. If that module does not accept children, the new module will become a
+child of the first ancestor that accepts children.
 
 .. figure:: ../images/dragmodule_1.png
    :align: center

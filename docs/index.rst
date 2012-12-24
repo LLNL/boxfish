@@ -29,7 +29,6 @@ Contents
    intro
    userguide
    devguide
-   boxfish
 
 Indices and tables
 ==================

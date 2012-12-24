@@ -6,4 +6,5 @@ Developer Guide
 
    devguide/overview
    devguide/howtos
+   boxfish
 

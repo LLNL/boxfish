@@ -1,9 +1,13 @@
+.. _projections-label:
+
 Projections
 ===========
 
 Projections define the mapping of one entity to another and are used to
 calculate and display data associated with one entity and subdomain to
 another. Valid projections on a run should be defined in the run's meta-file.
+Boxfish is capable of chaining existing projections together as necessary in
+order to project data whenever possible. 
 
 All projections require ``filetype``, ``type``, ``subdomain``, and ``flags``
 fields. The ``filetype`` field will always bee ``projection`` (as opposed to
