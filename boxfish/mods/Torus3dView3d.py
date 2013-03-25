@@ -14,14 +14,18 @@ from Torus3dModule import *
 class T3V3ModuleScene(GLModuleScene):
 
     def __init__(self, agent_type, module_type, rotation = None,
-        translation = None, background_color = None, draw_links = True):
+        translation = None, background_color = None, draw_links = True,
+        node_size = 0.2):
         super(T3V3ModuleScene, self).__init__(agent_type, module_type,
             rotation, translation, background_color)
 
         self.draw_links = draw_links
+        self.node_size = node_size
 
     def __eq__(self, other):
         if self.draw_links != other.draw_links:
+            return False
+        if self.node_size != other.node_size:
             return False
         return super(T3V3ModuleScene, self).__eq__(other)
 
@@ -35,12 +39,13 @@ class T3V3ModuleScene(GLModuleScene):
                 else None,
             self.background_color.copy()
                 if self.background_color is not None else None,
-            self.draw_links)
+            self.draw_links, self.node_size)
 
 
 class Torus3dView3dAgent(Torus3dAgent):
 
     drawLinksUpdateSignal = Signal(bool)
+    nodeSizeUpdateSignal = Signal(float)
 
     def __init__(self, parent, datatree):
         super(Torus3dView3dAgent, self).__init__(parent, datatree)
@@ -52,6 +57,9 @@ class Torus3dView3dAgent(Torus3dAgent):
         if self.module_scene.draw_links != module_scene.draw_links:
             self.module_scene.draw_links = module_scene.draw_links
             self.drawLinksUpdateSignal.emit(self.module_scene.draw_links)
+        if self.module_scene.node_size != module_scene.node_size:
+            self.module_scene.node_size = module_scene.node_size
+            self.nodeSizeUpdateSignal.emit(self.module_scene.node_size)
 
 
 @Module("3D Torus - 3D View", Torus3dView3dAgent, T3V3ModuleScene)
@@ -63,16 +71,11 @@ class Torus3dView3d(Torus3dFrame):
         super(Torus3dView3d, self).__init__(parent, parent_frame, title)
 
         self.draw_links = True
-        self.view.drawLinksUpdateSignal.connect(self.drawLinksChanged)
         self.agent.drawLinksUpdateSignal.connect(self.view.setDrawLinks)
+        self.agent.nodeSizeUpdateSignal.connect(self.view.setNodeSize)
 
     def createView(self):
         return GLTorus3dView(self, self.dataModel)
-
-    @Slot(bool)
-    def drawLinksChanged(self, draw_links):
-        self.agent.module_scene.draw_links = draw_links
-        self.agent.module_scene.announceChange()
 
     def buildTabDialog(self):
         super(Torus3dView3d, self).buildTabDialog()
@@ -81,8 +84,6 @@ class Torus3dView3d(Torus3dFrame):
 
 
 class GLTorus3dView(Torus3dGLWidget):
-
-    drawLinksUpdateSignal = Signal(bool)
 
     def __init__(self, parent, dataModel):
         super(GLTorus3dView, self).__init__(parent, dataModel)
@@ -98,6 +99,11 @@ class GLTorus3dView(Torus3dGLWidget):
 
     def setDrawLinks(self, draw_links):
         self.draw_links = draw_links
+        self.updateGL()
+
+    def setNodeSize(self, node_size):
+        self.box_size = node_size
+        self.cubeList.update()
         self.updateGL()
 
     def paintGL(self):
@@ -306,6 +312,7 @@ class Torus3dView3dRenderTab(QWidget):
         super(Torus3dView3dRenderTab, self).__init__(parent)
 
         self.mframe = mframe
+        self.number_of_ticks = 10
 
         self.layout = QVBoxLayout()
         self.layout.setAlignment(Qt.AlignCenter)
@@ -316,6 +323,8 @@ class Torus3dView3dRenderTab(QWidget):
 
     def createContent(self):
         self.layout.addWidget(self.buildLinksCheckbox())
+        self.layout.addItem(QSpacerItem(5,5))
+        self.layout.addWidget(self.buildBoxSlider())
 
     def buildLinksCheckbox(self):
         widget = QWidget()
@@ -337,3 +346,29 @@ class Torus3dView3dRenderTab(QWidget):
 
         QApplication.processEvents()
 
+    def buildBoxSlider(self):
+        widget = QWidget()
+        layout = QHBoxLayout()
+        label = QLabel("Node size: ")
+        layout.addWidget(label)
+        layout.addItem(QSpacerItem(5,5))
+
+        self.boxslider = QSlider(Qt.Horizontal, widget)
+        self.boxslider.setRange(0,self.number_of_ticks)
+        self.boxslider.setTickInterval(1)
+        self.boxslider.setSliderPosition(
+            int(self.number_of_ticks * self.mframe.view.box_size))
+        self.boxslider.valueChanged.connect(self.boxSliderChanged)
+
+        layout.addWidget(self.boxslider)
+        widget.setLayout(layout)
+        return widget
+
+    @Slot(int)
+    def boxSliderChanged(self, value):
+        node_size = value / float(self.number_of_ticks)
+        self.mframe.agent.module_scene.node_size = node_size
+        self.mframe.agent.module_scene.announceChange()
+        self.mframe.view.setNodeSize(node_size)
+
+        QApplication.processEvents()
