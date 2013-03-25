@@ -11,34 +11,101 @@ from boxfish.gl.glutils import *
 
 from Torus3dModule import *
 
-@Module("3D Torus - 3D View", Torus3dAgent, GLModuleScene)
+class T3V3ModuleScene(GLModuleScene):
+
+    def __init__(self, agent_type, module_type, rotation = None,
+        translation = None, background_color = None, draw_links = True):
+        super(T3V3ModuleScene, self).__init__(agent_type, module_type,
+            rotation, translation, background_color)
+
+        self.draw_links = draw_links
+
+    def __eq__(self, other):
+        if self.draw_links != other.draw_links:
+            return False
+        return super(T3V3ModuleScene, self).__eq__(other)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def copy(self):
+        return T3V3ModuleScene(self.agent_type, self.module_name,
+            self.rotation.copy() if self.rotation is not None else None,
+            self.translation.copy() if self.translation is not None
+                else None,
+            self.background_color.copy()
+                if self.background_color is not None else None,
+            self.draw_links)
+
+
+class Torus3dView3dAgent(Torus3dAgent):
+
+    drawLinksUpdateSignal = Signal(bool)
+
+    def __init__(self, parent, datatree):
+        super(Torus3dView3dAgent, self).__init__(parent, datatree)
+
+    @Slot(ModuleScene)
+    def processModuleScene(self, module_scene):
+        super(Torus3dView3dAgent, self).processModuleScene(module_scene)
+
+        if self.module_scene.draw_links != module_scene.draw_links:
+            self.module_scene.draw_links = module_scene.draw_links
+            self.drawLinksUpdateSignal.emit(self.module_scene.draw_links)
+
+
+@Module("3D Torus - 3D View", Torus3dView3dAgent, T3V3ModuleScene)
 class Torus3dView3d(Torus3dFrame):
     """This is a 3d rendering of a 3d torus.
     """
+
     def __init__(self, parent, parent_frame = None, title = None):
         super(Torus3dView3d, self).__init__(parent, parent_frame, title)
+
+        self.draw_links = True
+        self.view.drawLinksUpdateSignal.connect(self.drawLinksChanged)
+        self.agent.drawLinksUpdateSignal.connect(self.view.setDrawLinks)
 
     def createView(self):
         return GLTorus3dView(self, self.dataModel)
 
+    @Slot(bool)
+    def drawLinksChanged(self, draw_links):
+        self.agent.module_scene.draw_links = draw_links
+        self.agent.module_scene.announceChange()
+
+    def buildTabDialog(self):
+        super(Torus3dView3d, self).buildTabDialog()
+        self.tab_dialog.addTab(Torus3dView3dRenderTab(self.tab_dialog,
+            self), "Rendering")
+
 
 class GLTorus3dView(Torus3dGLWidget):
+
+    drawLinksUpdateSignal = Signal(bool)
+
     def __init__(self, parent, dataModel):
         super(GLTorus3dView, self).__init__(parent, dataModel)
 
         self.seam = [0, 0, 0]  # Offsets for seam of the torus
         self.link_radius = self.box_size * .1   # Radius of link cylinders
+        self.draw_links = True
 
         # Display list and settings for the axis
         self.axisLength = 0.3
         self.axisList = DisplayList(self.drawAxis)
 
 
+    def setDrawLinks(self, draw_links):
+        self.draw_links = draw_links
+        self.updateGL()
+
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.orient_scene()
         self.cubeList()
-        self.linkList()
+        if self.draw_links:
+            self.linkList()
         self.doAxis()
         self.doLegend()
 
@@ -232,4 +299,41 @@ class GLTorus3dView(Torus3dGLWidget):
 
         print hitlist
         return hitlist
+
+class Torus3dView3dRenderTab(QWidget):
+
+    def __init__(self, parent, mframe):
+        super(Torus3dView3dRenderTab, self).__init__(parent)
+
+        self.mframe = mframe
+
+        self.layout = QVBoxLayout()
+        self.layout.setAlignment(Qt.AlignCenter)
+
+        self.createContent()
+
+        self.setLayout(self.layout)
+
+    def createContent(self):
+        self.layout.addWidget(self.buildLinksCheckbox())
+
+    def buildLinksCheckbox(self):
+        widget = QWidget()
+        layout = QHBoxLayout()
+        self.drawLinksCheckbox = QCheckBox("Draw links", widget)
+        self.drawLinksCheckbox.setChecked(
+            self.mframe.agent.module_scene.draw_links)
+        self.drawLinksCheckbox.stateChanged.connect(self.drawLinksChanged)
+        layout.addWidget(self.drawLinksCheckbox)
+        widget.setLayout(layout)
+        return widget
+
+    @Slot(int)
+    def drawLinksChanged(self, state):
+        self.mframe.agent.module_scene.draw_links \
+            = self.drawLinksCheckbox.isChecked()
+        self.mframe.agent.module_scene.announceChange()
+        self.mframe.view.setDrawLinks(self.drawLinksCheckbox.isChecked())
+
+        QApplication.processEvents()
 
