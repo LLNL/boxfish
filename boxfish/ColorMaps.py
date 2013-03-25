@@ -58,6 +58,71 @@ bdict = {'red':   ((0.0, 0.0,    0.0),
 BFBlGyRdmap = matplotlib.colors.LinearSegmentedColormap('BFBlGyRdmap',bdict,256)
 boxfish_maps['BFBlGyRd'] = BFBlGyRdmap
 
+# Rubik color map
+# Note that we divide the first one between the beginning and the end so color
+# cycling works
+bdict = {'red': (
+        (0.00000, 0.0, 0.0), # blueberry
+        (0.03125, 1.0, 1.0), # maraschino
+        (0.09375, 0.25, 0.25), # fern
+        (0.15625, 1.0, 1.0), # lemon
+        (0.21875, 0.0, 0.0), # agua
+        (0.28125, 1.0, 1.0), # magenta
+        (0.34375, 0.2, 0.2), # tungsten
+        (0.40625, 1.0, 1.0), # tangerine
+        (0.46875, 0.7, 0.7), # magnesium
+        (0.53125, 0.0, 0.0), # sea foam
+        (0.59375, 0.5, 0.5), # mocha
+        (0.65625, 0.5, 0.5), # grape
+        (0.71875, 0.0, 0.0), # turquoise
+        (0.78125, 0.0, 0.0), # spring
+        (0.84375, 1.0, 1.0), # salmon
+        (0.90625, 0.5, 0.5), # aspargus
+        (0.96875, 0.0, 0.0), # blueberry (other half)
+        (1.0, 0.0, 0.0)), # blueberry (other half)
+    'green': (
+        (0.00000, 0.0, 0.0), # blueberry
+        (0.03125, 0.0, 0.0), # maraschino
+        (0.09375, 0.5, 0.5), # fern
+        (0.15625, 1.0, 1.0), # lemon
+        (0.21875, 0.5, 0.5), # agua
+        (0.28125, 0.0, 0.0), # magenta
+        (0.34375, 0.2, 0.2), # tungsten
+        (0.40625, 0.5, 0.5), # tangerine
+        (0.46875, 0.7, 0.7), # magnesium
+        (0.53125, 1.0, 1.0), # sea foam
+        (0.59375, 0.25, 0.25), # mocha
+        (0.65625, 0.0, 0.0), # grape
+        (0.71875, 1.0, 1.0), # turquoise
+        (0.78125, 1.0, 1.0), # spring
+        (0.84375, 0.4, 0.4), # salmon
+        (0.90625, 0.5, 0.5), # aspargus
+        (0.96875, 0.0, 0.0), # blueberry (other half)
+        (1.0, 0.0, 0.0)), # blueberry (other half)
+    'blue': (
+        (0.00000, 1.0, 1.0), # blueberry
+        (0.03125, 0.0, 0.0), # maraschino
+        (0.09375, 0.0, 0.0), # fern
+        (0.15625, 0.0, 0.0), # lemon
+        (0.21875, 1.0, 1.0), # agua
+        (0.28125, 1.0, 1.0), # magenta
+        (0.34375, 0.2, 0.2), # tungsten
+        (0.40625, 0.0, 0.0), # tangerine
+        (0.46875, 0.7, 0.7), # magnesium
+        (0.53125, 0.5, 0.5), # sea foam
+        (0.59375, 0.0, 0.0), # mocha
+        (0.65625, 1.0, 1.0), # grape
+        (0.71875, 1.0, 1.0), # turquoise
+        (0.78125, 0.0, 0.0), # spring
+        (0.84375, 0.4, 0.4), # salmon
+        (0.90625, 0.0, 0.0), # aspargus
+        (0.96875, 1.0, 1.0), # blueberry (other half)
+        (1.0, 1.0, 1.0)) # blueberry (other half)
+    }
+Rubikmap = matplotlib.colors.LinearSegmentedColormap('Rubik',bdict,256)
+boxfish_maps['Rubik'] = Rubikmap
+
+
 def hasMap(colormap):
     """Returns True if the given colormap String is found in our list
        of custom colormaps.
