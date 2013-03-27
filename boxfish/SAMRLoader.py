@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+#
 import h5py
 import numpy as np
 
@@ -81,7 +83,10 @@ def loadSAMR(file_name):
     # This is the list of patches
     mapping = extents['patch_map']
 
-    dt = [('patch-id','i8'),('patch-center','3f4'),('patch-size','3f4')]
+    dt = [('patch-id','i8'),('patch-center-x','f4'),
+        ('patch-center-y', 'f4'), ('patch-center-z', 'f4'),
+        ('patch-size-x','f4'), ('patch-size-y', 'f4'),
+        ('patch-size-z', 'f4')]
     
     for v in extents.values():
         name = v.name.split('/')[-1]
@@ -107,8 +112,12 @@ def loadSAMR(file_name):
         c = 0.5*(location[i][2]+location[i][3])
         s = location[i][3] - location[i][2]
 
-        data[i][1] = c
-        data[i][2] = s
+        data[i][1] = c[0]
+        data[i][2] = c[1]
+        data[i][3] = c[2]
+        data[i][4] = s[0]
+        data[i][5] = s[1]
+        data[i][6] = s[2]
 
         #return extents.values()
 
@@ -131,8 +140,7 @@ if __name__ == "__main__":
         yaml = open(argv[2],'w')
 
 
-        yaml.write("""
----
+        yaml.write("""---
 key: BGPCOUNTER_ORIGINAL
 encoding: binary
 ---
@@ -143,7 +151,12 @@ encoding: binary
         
         yaml.write('...\n')
 
-        yaml.write(data.dumps())
+        for line in data:
+            for i,n in enumerate(data.dtype.names):
+                yaml.write(str(line[i]))
+                yaml.write(" ")
+            yaml.write("\n")
+        #yaml.write(data.dumps())
         
         yaml.close()
 
