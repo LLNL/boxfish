@@ -10,10 +10,10 @@ from boxfish.ColorMaps import ColorMap, ColorMapWidget, drawGLColorBar
 class Torus3dAgent(GLAgent):
     """This is an agent for all 3D Torus based modules."""
 
-    # shape, node->coords, coords->node, link->coords, coords->link
-    torusUpdateSignal   = Signal(list, dict, dict, dict, dict)
+    # shape, node->coords, coords->node, link->coords, coords->link, link flag
+    torusUpdateSignal   = Signal(list, dict, dict, dict, dict, bool)
 
-    # shape, ids, values, id->coords dict, coords->id dict
+    # ids values
     nodeUpdateSignal = Signal(list, list)
     linkUpdateSignal = Signal(list, list)
 
@@ -40,6 +40,7 @@ class Torus3dAgent(GLAgent):
         self.coords_link_dict = dict()
         self.run = None
         self.shape = [0, 0, 0]
+        self.has_links = False
         self.requestUpdatedSignal.connect(self.requestUpdated)
         self.highlightSceneChangeSignal.connect(self.processHighlights)
         self.attributeSceneUpdateSignal.connect(self.processAttributeScenes)
@@ -69,18 +70,25 @@ class Torus3dAgent(GLAgent):
             node_coords_dict, coords_node_dict = \
                 self.coords_table.createIdAttributeMaps(coords)
 
+            if "link_coords_table" in hardware:
+                link_coords = [hardware["source_coords"][coord]
+                    for coord in coords]
+                link_coords.extend([hardware["destination_coords"][coord]
+                    for coord in coords])
+                self.link_coords_table = run.getTable(hardware["link_coords_table"])
+                link_coords_dict, coords_link_dict = \
+                    self.link_coords_table.createIdAttributeMaps(link_coords)
+                self.has_links = True
 
-            link_coords = [hardware["source_coords"][coord]
-                for coord in coords]
-            link_coords.extend([hardware["destination_coords"][coord]
-                for coord in coords])
-            self.link_coords_table = run.getTable(hardware["link_coords_table"])
-            link_coords_dict, coords_link_dict = \
-                self.link_coords_table.createIdAttributeMaps(link_coords)
+                self.torusUpdateSignal.emit(shape,
+                    node_coords_dict, coords_node_dict,
+                    link_coords_dict, coords_link_dict, self.has_links)
 
-            self.torusUpdateSignal.emit(shape,
-                node_coords_dict, coords_node_dict,
-                link_coords_dict, coords_link_dict)
+            else:
+                self.has_links = False
+                self.torusUpdateSignal.emit(shape,
+                    node_coords_dict, coords_node_dict,
+                    None, None, self.has_links)
 
             self.runNameUpdateSignal.emit(self.run.name)
 
@@ -193,6 +201,7 @@ class Torus3dFrameDataModel(object):
         self.pos_link_range = (0,0)
         self.neg_link_range = (0,0)
         self.avg_link_range = (0,0)
+        self.has_links = False
 
     def clearNodes(self):
         # The first is the actual value, the second is a flag
@@ -213,14 +222,16 @@ class Torus3dFrameDataModel(object):
     # enforce that shape always looks like a tuple externally
     shape = property(lambda self: tuple(self._shape), setShape)
 
-    @Slot(list, dict, dict, dict, dict)
-    def updateTorus(self, shape, node_coord, coord_node, link_coord, coord_link):
+    @Slot(list, dict, dict, dict, dict, bool)
+    def updateTorus(self, shape, node_coord, coord_node, link_coord, coord_link,
+        has_links):
         """Updates the shape and id maps of this model to a new torus."""
         self.node_to_coord = node_coord
         self.coord_to_node = coord_node
         self.link_to_coord = link_coord
         self.coord_to_link = coord_link
         self.shape = shape
+        self.has_links = has_links
 
     def _notifyListeners(self):
         for listener in self.listeners:
@@ -257,6 +268,7 @@ class Torus3dFrameDataModel(object):
 
         self.node_range = range_tuple(vals)
         cval = cmap_range(vals)
+        print self.node_to_coord.keys()
         for node_id, val in zip(nodes, vals):
             x, y, z = self.node_to_coord[node_id]
             self.node_values[x, y, z] = [cval(val), 1]
@@ -265,7 +277,7 @@ class Torus3dFrameDataModel(object):
 
     @Slot(list, list)
     def updateLinkData(self, links, vals):
-        if not vals:
+        if not vals or not self.has_links:
             return
 
         self.clearLinks() # when only some values are given
