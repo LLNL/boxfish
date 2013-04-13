@@ -97,8 +97,19 @@ class GLTorus3dView(Torus3dGLWidget):
         self.axisList = DisplayList(self.drawAxis)
 
 
+        self.change_background_color(\
+            self.parent.agent.module_scene.background_color)
+
+
+
     def setDrawLinks(self, draw_links):
         self.draw_links = draw_links
+        if not self.draw_links:
+            if self.drawLinkColorBar in self.legendCalls:
+                self.legendCalls.remove(self.drawLinkColorBar)
+        else:
+            if not self.drawLinkColorBar in self.legendCalls:
+                self.legendCalls.append(self.drawLinkCoorBar)
         self.updateGL()
 
     def setNodeSize(self, node_size):

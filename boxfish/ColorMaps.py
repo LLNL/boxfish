@@ -303,6 +303,7 @@ class ColorBarImage(QImage):
                 self.setPixel(w + 1, h + 1, color_rgba)
 
 
+# TODO: Make the selector much slicker
 class ColorMapWidget(QWidget):
     """Interface for changing ColorMap information. It shows the current
        color map selection, a selector for other colormaps, and the option
@@ -431,6 +432,19 @@ class ColorMapWidget(QWidget):
             self.color_step = 0
             self.changeSignal.emit(ColorMap(self.color_map_name,
                 self.color_step, self.step_size), self.tag)
+
+
+def gl_to_rgb(color):
+    """Switch from gl colors to rgb colors."""
+    if color is None:
+        return [0, 0, 0, 0]
+
+    return [int(255 * x) for x in color]
+
+def rgbStylesheetString(color):
+    """Creates a stylesheet style string out of an rgb color."""
+    return "rgb(" + str(color[0]) + "," +  str(color[1]) + ","\
+        + str(color[2]) + ")"
 
 
 def drawGLColorBar(colors, bar_x, bar_y, bar_width, bar_height, label = ""):

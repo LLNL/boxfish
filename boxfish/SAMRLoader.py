@@ -83,7 +83,7 @@ def loadSAMR(file_name):
     # This is the list of patches
     mapping = extents['patch_map']
 
-    dt = [('patch-id','i8'),('patch-center-x','f4'),
+    dt = [('patch-id','i8'),('level', 'i8'), ('patch-center-x','f4'),
         ('patch-center-y', 'f4'), ('patch-center-z', 'f4'),
         ('patch-size-x','f4'), ('patch-size-y', 'f4'),
         ('patch-size-z', 'f4')]
@@ -107,17 +107,19 @@ def loadSAMR(file_name):
 
         # Now we stuff a structure [id, [center_x.center_y,center_z],
         # [size_x,size_y, size_z]] into the list of patches
-        # The unique id is created by the level_id << 3 + level
+        # OLD: The unique id is created by the level_id << 3 + level
+        # NEW: Also state the level separately
         data[i][0] = (m[3] << 3) + m[2]
+        data[i][1] = m[2]
         c = 0.5*(location[i][2]+location[i][3])
         s = location[i][3] - location[i][2]
 
-        data[i][1] = c[0]
-        data[i][2] = c[1]
-        data[i][3] = c[2]
-        data[i][4] = s[0]
-        data[i][5] = s[1]
-        data[i][6] = s[2]
+        data[i][2] = c[0]
+        data[i][3] = c[1]
+        data[i][4] = c[2]
+        data[i][5] = s[0]
+        data[i][6] = s[1]
+        data[i][7] = s[2]
 
         #return extents.values()
 
@@ -142,7 +144,6 @@ if __name__ == "__main__":
 
         yaml.write("""---
 key: BGPCOUNTER_ORIGINAL
-encoding: binary
 ---
 """)
 

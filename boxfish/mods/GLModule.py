@@ -7,6 +7,7 @@ from PySide.QtCore import *
 from boxfish.ModuleAgent import *
 from boxfish.ModuleFrame import *
 from boxfish.SceneInfo import ModuleScene
+import boxfish.ColorMaps as ColorMaps
 
 class GLAgent(ModuleAgent):
     """This is an agent for all GL based modules."""
@@ -106,7 +107,9 @@ class GLModuleScene(ModuleScene):
 
         self.rotation = rotation
         self.translation = translation
-        self.background_color = background_color
+        self.background_color = np.array([.94, .94, .94, 1.0])
+        if background_color is not None:
+            self.background_color = background_color
 
     def __eq__(self, other):
         if self.rotation == other.rotation \
@@ -154,19 +157,8 @@ class GLColorTab(QWidget):
         """Adds the elements (e.g. widgets, items) to the Tab's layout."""
         self.layout.addWidget(self.buildBGColorWidget())
 
-
-    def gl_to_rgb(self, color):
-        """Switch from gl colors to rgb colors."""
-        if color is None:
-            return [0, 0, 0, 0]
-
-        return [int(255 * x) for x in color]
-
-    def rgbString(self, color):
-        """Creates a stylesheet style string out of an rgb color."""
-        return "rgb(" + str(color[0]) + "," + str(color[1]) + ","\
-            + str(color[2]) + ")"
-
+    # TODO: Factor out this color widget builder to something reusable 
+    # like the ColorMapWidget
     def buildBGColorWidget(self):
         """Creates the controls for altering the GL background colors."""
         widget = QWidget()
@@ -178,9 +170,11 @@ class GLColorTab(QWidget):
         self.bgColorBox.setMinimumWidth(36)
         self.bgColorBox.clicked.connect(self.bgColorChange)
 
-        self.bgcolor = self.gl_to_rgb(self.mframe.agent.module_scene.background_color)
-        self.bgColorBox.setStyleSheet("QFrame { background-color: "\
-            + self.rgbString(self.bgcolor) + " }")
+        self.bgcolor = ColorMaps.gl_to_rgb(
+            self.mframe.agent.module_scene.background_color)
+        self.bgColorBox.setStyleSheet("QFrame {\n background-color: "\
+            + ColorMaps.rgbStylesheetString(self.bgcolor) + ";\n"
+            + "border: 1px solid black;\n border-radius: 2px;\n }")
 
         layout.addWidget(label)
         layout.addItem(QSpacerItem(5,5))
@@ -194,8 +188,9 @@ class GLColorTab(QWidget):
         color = QColorDialog.getColor(QColor(*self.bgcolor), self)
 
         self.bgcolor = [color.red(), color.green(), color.blue(), self.bgcolor[3]]
-        self.bgColorBox.setStyleSheet("QFrame { background-color: "\
-            + self.rgbString(self.bgcolor) + " }")
+        self.bgColorBox.setStyleSheet("QFrame {\n background-color: "\
+            + ColorMaps.rgbStylesheetString(self.bgcolor) + ";\n"
+            + "border: 1px solid black;\n border-radius: 2px;\n }")
         self.mframe.agent.module_scene.background_color = np.array(
             [x / 255.0 for x in self.bgcolor])
         self.mframe.agent.module_scene.announceChange()

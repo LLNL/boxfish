@@ -268,7 +268,6 @@ class Torus3dFrameDataModel(object):
 
         self.node_range = range_tuple(vals)
         cval = cmap_range(vals)
-        print self.node_to_coord.keys()
         for node_id, val in zip(nodes, vals):
             x, y, z = self.node_to_coord[node_id]
             self.node_values[x, y, z] = [cval(val), 1]
@@ -361,6 +360,9 @@ class Torus3dFrame(GLFrame):
     def newRun(self, name):
         self.parent().setWindowTitle(name + "  |  " + self.base_title)
 
+    def updateNodeDefaultColor(self, color):
+        self.view.updateNodeDefaultColor(color)
+
 
 class Torus3dGLWidget(GLWidget):
 
@@ -441,6 +443,11 @@ class Torus3dGLWidget(GLWidget):
         """Sets the links to the default color."""
         self.avg_link_colors = np.tile(self.default_link_color,
             list(self.dataModel.shape) + [3, 1])
+
+    def updateNodeDefaultColor(self, color):
+        self.default_node_color = color
+        self.updateCubeColors()
+        self.updateGL()
 
     def updateCubeColors(self):
         """Updates the node colors from the dataModel."""
@@ -601,6 +608,8 @@ class Torus3dColorTab(GLColorTab):
         super(Torus3dColorTab, self).createContent()
 
         self.layout.addSpacerItem(QSpacerItem(5,5))
+        self.layout.addWidget(self.buildNodeDefaultColorWidget())
+        self.layout.addSpacerItem(QSpacerItem(5,5))
         self.layout.addWidget(self.buildColorMapWidget("Node Colors",
             self.colorMapChanged, "nodes"))
         self.layout.addSpacerItem(QSpacerItem(5,5))
@@ -627,3 +636,63 @@ class Torus3dColorTab(GLColorTab):
         layout.addWidget(color_widget)
         groupBox.setLayout(layout)
         return groupBox
+
+    # Copied mostly from GLModule
+    # TODO: Factor out this color widget builder to something reusable 
+    # like the ColorMapWidget
+    def buildNodeDefaultColorWidget(self):
+        """Creates the controls for altering the node default color
+           (when there is no node data).
+        """
+        widget = QWidget()
+        layout = QHBoxLayout()
+        label = QLabel("Default (no data) Node Color")
+        self.nodeDefaultBox = ClickFrame(self, QFrame.Panel | QFrame.Sunken)
+        self.nodeDefaultBox.setLineWidth(0)
+        self.nodeDefaultBox.setMinimumHeight(12)
+        self.nodeDefaultBox.setMinimumWidth(36)
+        self.nodeDefaultBox.clicked.connect(self.nodeDefaultColorChange)
+
+        #self.default_color = ColorMaps.gl_to_rgb(
+        #    self.mframe.agent.module_scene.node_default_color)
+        self.default_color = ColorMaps.gl_to_rgb(
+            self.mframe.view.default_node_color)
+        self.nodeDefaultBox.setStyleSheet("QFrame {\n background-color: "\
+            + ColorMaps.rgbStylesheetString(self.default_color) + ";\n"
+            + "border: 1px solid black;\n border-radius: 2px;\n }")
+
+        layout.addWidget(label)
+        layout.addItem(QSpacerItem(5,5))
+        layout.addWidget(self.nodeDefaultBox)
+
+        widget.setLayout(layout)
+        return widget
+
+    def nodeDefaultColorChange(self):
+        """Handles change events to the background color."""
+        color = QColorDialog.getColor(QColor(*self.default_color), self,
+            "Default Node Color", QColorDialog.ShowAlphaChannel)
+
+        self.default_color = [color.red(), color.green(), color.blue(),
+            color.alpha()]
+        self.nodeDefaultBox.setStyleSheet("QFrame {\n background-color: "\
+            + ColorMaps.rgbStylesheetString(self.default_color) + ";\n"
+            + "border: 1px solid black;\n border-radius: 2px;\n }")
+        #self.mframe.agent.module_scene.node_default_color = np.array(
+        #    [x / 255.0 for x in self.default_color])
+        #self.mframe.agent.module_scene.announceChange()
+        self.mframe.view.default_node_color = np.array(
+            [x / 255.0 for x in self.default_color])
+        self.mframe.updateNodeDefaultColor(self.mframe.view.default_node_color)
+
+        # Normally we shouldn't have to do this but when I try opening the 
+        # TabDialog with show() which gives back control, unfortunate things
+        # can happen, so I use .exec_() which halts processing events
+        # outside the dialog, so I force this color change here
+        # Sadly this appears to only solve the problem for modules created
+        # after this one. Will need to fix some other time...
+        #self.mframe.updateNodeDefaultColor(
+        #    self.mframe.agent.module_scene.node_default_color)
+
+        #QApplication.processEvents()
+

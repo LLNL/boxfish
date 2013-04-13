@@ -137,6 +137,11 @@ class GLTorus2dView(Torus3dGLWidget):
         self.resizeSignal.connect(self.miniMapList.update)
         self.updateMiniMapValues()
 
+        # Take background color from Scene
+        self.change_background_color(
+            self.parent.agent.module_scene.background_color)
+
+
     # Convenience property for color model's shape
     shape = property(fget = lambda self: self.dataModel.shape)
 
