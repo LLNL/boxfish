@@ -71,11 +71,12 @@ class Torus3dView3d(Torus3dFrame):
         super(Torus3dView3d, self).__init__(parent, parent_frame, title)
 
         self.draw_links = True
-        self.agent.drawLinksUpdateSignal.connect(self.view.setDrawLinks)
-        self.agent.nodeSizeUpdateSignal.connect(self.view.setNodeSize)
+        self.agent.drawLinksUpdateSignal.connect(self.glview.setDrawLinks)
+        self.agent.nodeSizeUpdateSignal.connect(self.glview.setNodeSize)
 
     def createView(self):
-        return GLTorus3dView(self, self.dataModel)
+        self.glview = GLTorus3dView(self, self.dataModel)
+        return self.glview
 
     def buildTabDialog(self):
         super(Torus3dView3d, self).buildTabDialog()
@@ -109,7 +110,7 @@ class GLTorus3dView(Torus3dGLWidget):
                 self.legendCalls.remove(self.drawLinkColorBar)
         else:
             if not self.drawLinkColorBar in self.legendCalls:
-                self.legendCalls.append(self.drawLinkCoorBar)
+                self.legendCalls.append(self.drawLinkColorBar)
         self.updateGL()
 
     def setNodeSize(self, node_size):
@@ -353,7 +354,7 @@ class Torus3dView3dRenderTab(QWidget):
         self.mframe.agent.module_scene.draw_links \
             = self.drawLinksCheckbox.isChecked()
         self.mframe.agent.module_scene.announceChange()
-        self.mframe.view.setDrawLinks(self.drawLinksCheckbox.isChecked())
+        self.mframe.glview.setDrawLinks(self.drawLinksCheckbox.isChecked())
 
         QApplication.processEvents()
 
@@ -368,7 +369,7 @@ class Torus3dView3dRenderTab(QWidget):
         self.boxslider.setRange(0,self.number_of_ticks)
         self.boxslider.setTickInterval(1)
         self.boxslider.setSliderPosition(
-            int(self.number_of_ticks * self.mframe.view.box_size))
+            int(self.number_of_ticks * self.mframe.glview.box_size))
         self.boxslider.valueChanged.connect(self.boxSliderChanged)
 
         layout.addWidget(self.boxslider)
@@ -380,6 +381,6 @@ class Torus3dView3dRenderTab(QWidget):
         node_size = value / float(self.number_of_ticks)
         self.mframe.agent.module_scene.node_size = node_size
         self.mframe.agent.module_scene.announceChange()
-        self.mframe.view.setNodeSize(node_size)
+        self.mframe.glview.setNodeSize(node_size)
 
         QApplication.processEvents()

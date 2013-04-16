@@ -61,7 +61,7 @@ class GLFrame(ModuleFrame):
         self.agent.transformUpdateSignal.connect(self.updateTransform)
         self.agent.bgColorUpdateSignal.connect(self.updateBGColor)
 
-        self.view.transformChangeSignal.connect(self.transformChanged)
+        self.glview.transformChangeSignal.connect(self.transformChanged)
 
         self.color_tab_type = GLColorTab
 
@@ -74,14 +74,14 @@ class GLFrame(ModuleFrame):
     @Slot(np.ndarray, np.ndarray)
     def updateTransform(self, rotation, translation):
         """Slot for transform changes coming from ModuleScene information."""
-        self.view.set_transform(rotation, translation)
+        self.glview.set_transform(rotation, translation)
 
     @Slot(np.ndarray)
     def updateBGColor(self, color):
         """Slot for background color changes coming from ModuleScene
            information.
         """
-        self.view.change_background_color(color)
+        self.glview.change_background_color(color)
 
     def buildTabDialog(self):
         """Adds a tab for colors (e.g. background color) to the Tab Dialog.

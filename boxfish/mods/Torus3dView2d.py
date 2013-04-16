@@ -65,11 +65,12 @@ class Torus3dView2d(Torus3dFrame):
     def __init__(self, parent, parent_frame = None, title = None):
         super(Torus3dView2d, self).__init__(parent, parent_frame, title)
 
-        self.view.axisUpdateSignal.connect(self.axisChanged)
-        self.agent.axisUpdateSignal.connect(self.view.setAxis)
+        self.glview.axisUpdateSignal.connect(self.axisChanged)
+        self.agent.axisUpdateSignal.connect(self.glview.setAxis)
 
     def createView(self):
-        return GLTorus2dView(self, self.dataModel)
+        self.glview = GLTorus2dView(self, self.dataModel)
+        return self.glview
 
     @Slot(int)
     def axisChanged(self, axis):

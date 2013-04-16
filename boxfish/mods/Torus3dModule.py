@@ -336,8 +336,8 @@ class Torus3dFrame(GLFrame):
         self.agent.torusUpdateSignal.connect(self.dataModel.updateTorus)
         self.agent.nodeUpdateSignal.connect(self.dataModel.updateNodeData)
         self.agent.linkUpdateSignal.connect(self.dataModel.updateLinkData)
-        self.agent.highlightUpdateSignal.connect(self.view.updateHighlights)
-        self.agent.nodelinkSceneUpdateSignal.connect(self.view.updateScene)
+        self.agent.highlightUpdateSignal.connect(self.glview.updateHighlights)
+        self.agent.nodelinkSceneUpdateSignal.connect(self.glview.updateScene)
 
 
         self.base_title = parent.windowTitle()
@@ -361,7 +361,7 @@ class Torus3dFrame(GLFrame):
         self.parent().setWindowTitle(name + "  |  " + self.base_title)
 
     def updateNodeDefaultColor(self, color):
-        self.view.updateNodeDefaultColor(color)
+        self.glview.updateNodeDefaultColor(color)
 
 
 class Torus3dGLWidget(GLWidget):
@@ -656,7 +656,7 @@ class Torus3dColorTab(GLColorTab):
         #self.default_color = ColorMaps.gl_to_rgb(
         #    self.mframe.agent.module_scene.node_default_color)
         self.default_color = ColorMaps.gl_to_rgb(
-            self.mframe.view.default_node_color)
+            self.mframe.glview.default_node_color)
         self.nodeDefaultBox.setStyleSheet("QFrame {\n background-color: "\
             + ColorMaps.rgbStylesheetString(self.default_color) + ";\n"
             + "border: 1px solid black;\n border-radius: 2px;\n }")
@@ -681,9 +681,9 @@ class Torus3dColorTab(GLColorTab):
         #self.mframe.agent.module_scene.node_default_color = np.array(
         #    [x / 255.0 for x in self.default_color])
         #self.mframe.agent.module_scene.announceChange()
-        self.mframe.view.default_node_color = np.array(
+        self.mframe.glview.default_node_color = np.array(
             [x / 255.0 for x in self.default_color])
-        self.mframe.updateNodeDefaultColor(self.mframe.view.default_node_color)
+        self.mframe.updateNodeDefaultColor(self.mframe.glview.default_node_color)
 
         # Normally we shouldn't have to do this but when I try opening the 
         # TabDialog with show() which gives back control, unfortunate things
