@@ -481,8 +481,10 @@ class Torus5dGLWidget(GLWidget):
 
         # Color map bound changing
         self.delta = 0.05
-        self.lowerBound = 0
-        self.upperBound = 1
+        self.lowerBoundLinks = 0.
+        self.upperBoundLinks = 1.
+        self.lowerBoundNodes = 0.
+        self.upperBoundNodes = 1.
 
         # Directions in which coords are laid out on the axes
         self.axis_directions = np.array([1, -1, -1])
@@ -527,7 +529,6 @@ class Torus5dGLWidget(GLWidget):
 
     def updateCubeColors(self):
         """Updates the node colors from the dataModel."""
-        #print 'UPDATING CUBE COLORS:  self.dataModel.shape = ' + str(self.dataModel.shape)
         self.clearNodes()
         node_range = self.dataModel.node_range[1] - self.dataModel.node_range[0]
         for node in np.ndindex(*self.dataModel.shape):
@@ -543,7 +544,6 @@ class Torus5dGLWidget(GLWidget):
         """Updates the link colors from the dataModel."""
         self.clearLinks()
         link_range = self.dataModel.avg_link_range[1] - self.dataModel.avg_link_range[0]
-        #print '\n\nUPDATE_LINK_COLORS &&&&&&&&&&&&&&&&&&&, this =',str(self),', lower_bound =',self.lowerBound,', upper_bound =',self.upperBound
         for node in np.ndindex(*self.dataModel.shape):
             for dim in range(5):
                 #print 'avg_link_values = ' + str(self.dataModel.avg_link_values[node][dim][0]) + ', link_range = ' + str(link_range)
@@ -601,20 +601,20 @@ class Torus5dGLWidget(GLWidget):
         """Turns a color value in [0,1] into a 4-tuple RGBA color.
            Used to map nodes.
         """
-        return self.node_cmap.getColor(val, preempt_range)
+        if val < self.lowerBoundNodes-1e-8 or val > self.upperBoundNodes+1e-8:
+            color = self.node_cmap.getColor(val, preempt_range)
+            return [color[0], color[1], color[2], self.outOfRangeOpacity]
+        else:
+            return self.node_cmap.getColor(val, preempt_range)
 
     def map_link_color(self, val, preempt_range = 0):
         """Turns a color value in [0,1] into a 4-tuple RGBA color.
            Used to map links.
         """
-        #print 'val =',val,', lower_bound =',self.lowerBound,', upper_bound =',self.upperBound
-        if val < self.lowerBound-1e-8 or val > self.upperBound+1e-8:
-            #print '\n***** Bad val = ' + str(val) + ', preempt_range = ' + str(preempt_range) + ' ******'
+        if val < self.lowerBoundLinks-1e-8 or val > self.upperBoundLinks+1e-8:
             color = self.link_cmap.getColor(val, preempt_range)
             return [color[0], color[1], color[2], self.outOfRangeOpacity]
-            #return [1,1,1,0]
         else:
-            #print 'Good val = ' + str(val) + ', preempt_range = ' + str(preempt_range)
             return self.link_cmap.getColor(val, preempt_range)
 
     def set_all_alphas(self, alpha):

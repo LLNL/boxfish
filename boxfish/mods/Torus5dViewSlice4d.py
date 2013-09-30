@@ -1096,9 +1096,13 @@ class Torus5dViewSlice4d(Torus5dGLWidget):
         glLineWidth(self.link_width)
         self.updateDrawing()
 
-    def changeNodeLinkBounds(self, lower, upper):
-        self.lowerBound = lower
-        self.upperBound = upper
+    def changeNodeLinkBounds(self, lower, upper, links = True):
+        if links:
+            self.lowerBoundLinks = lower
+            self.upperBoundLinks = upper
+        else: 
+            self.lowerBoundNodes = lower
+            self.upperBoundNodes = upper
 
     def changeNodeSize(self, inc):
         val = 0.025 if inc else -0.025

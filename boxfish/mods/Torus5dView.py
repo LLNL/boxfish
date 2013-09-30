@@ -105,15 +105,15 @@ class Torus5dViewFrame(Torus5dFrame):
     def colorMapChanged(self):
         self.agent.processAttributeScenes()
 
-    @Slot(int, int)
-    def boundsChanged(self, lower, upper):
-        self.glview.overview.changeNodeLinkBounds(lower, upper)
+    @Slot(float, float, bool)
+    def boundsChanged(self, lower, upper, links):
+        self.glview.overview.changeNodeLinkBounds(lower, upper, links)
         self.glview.overview.update()
-        self.glview.minimaps.changeNodeLinkBounds(lower, upper)
+        self.glview.minimaps.changeNodeLinkBounds(lower, upper, links)
         self.glview.minimaps.update()
-        self.glview.slice3d.changeNodeLinkBounds(lower, upper)
+        self.glview.slice3d.changeNodeLinkBounds(lower, upper, links)
         self.glview.slice3d.update()
-        self.glview.slice4d.changeNodeLinkBounds(lower, upper)
+        self.glview.slice4d.changeNodeLinkBounds(lower, upper, links)
         self.glview.slice4d.update()
 
     @Slot(dict)

@@ -922,10 +922,13 @@ class Torus5dViewOverview(Torus5dGLWidget):
 
     # **************************        I/O       ******************************
 
-    def changeNodeLinkBounds(self, lower, upper):
-        self.lowerBound = lower
-        self.upperBound = upper
-        #print '########### CHANGE NODE LINK BOUNDS, OVERVIEW: lower =',lower,', upper =',upper
+    def changeNodeLinkBounds(self, lower, upper, links = True):
+        if links:
+            self.lowerBoundLinks = lower
+            self.upperBoundLinks = upper
+        else: 
+            self.lowerBoundNodes = lower
+            self.upperBoundNodes = upper
 
     def changeView(self, inc = True):
         '''Changes the 4th dimension value, keeping axis the same when possible.

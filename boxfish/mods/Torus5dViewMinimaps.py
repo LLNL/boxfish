@@ -1409,9 +1409,13 @@ class Torus5dViewMinimaps(Torus5dGLWidget):
         if self.reverseDrag: self.reverseDrag = False
         else: self.reverseDrag = True        
 
-    def changeNodeLinkBounds(self, lower, upper):
-        self.lowerBound = lower
-        self.upperBound = upper
+    def changeNodeLinkBounds(self, lower, upper, links = True):
+        if links:
+            self.lowerBoundLinks = lower
+            self.upperBoundLinks = upper
+        else: 
+            self.lowerBoundNodes = lower
+            self.upperBoundNodes = upper
 
     def changePlaneVarianceType(self):
         if self.showTotalVariance:

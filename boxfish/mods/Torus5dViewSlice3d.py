@@ -54,7 +54,7 @@ class Torus5dViewSlice3d(Torus5dGLWidget):
    
         self.update() # necessary?
 
-    boundsUpdateSignal = Signal(float, float)
+    boundsUpdateSignal = Signal(float, float, bool)
     shape = property(fget = lambda self: self.dataModel.shape)
     current_planes = property(fget = lambda self: self.dataModel.current_planes)
     
@@ -843,10 +843,13 @@ class Torus5dViewSlice3d(Torus5dGLWidget):
         glLineWidth(self.link_width)
         self.updateDrawing()
 
-    def changeNodeLinkBounds(self, lower, upper):
-        self.lowerBound = lower
-        self.upperBound = upper
-        #print '########### CHANGE NODE LINK BOUNDS, SLICE 3D: lower =',lower,', upper =',upper
+    def changeNodeLinkBounds(self, lower, upper, links = True):
+        if links:
+            self.lowerBoundLinks = lower
+            self.upperBoundLinks = upper
+        else: 
+            self.lowerBoundNodes = lower
+            self.upperBoundNodes = upper
 
     def changeNodeSize(self, inc):
         val = 0.025 if inc else -0.025
@@ -921,7 +924,6 @@ class Torus5dViewSlice3d(Torus5dGLWidget):
                   and y >= self.iconHitBoxes[i][1][0] and y <= self.iconHitBoxes[i][1][1]:
                     found = True
                     self.iconSelected[i] = True
-                    self.clickedOffset = self.sliderOffsets[i]
                     #print 'HIT, icon ',i,', iconSelected =',self.iconSelected
 
             # next check if clicking outside an icon but inside the toolbar area
@@ -951,14 +953,15 @@ class Torus5dViewSlice3d(Torus5dGLWidget):
             self.toolBarSelected = False
             self.updateDrawing(nodes = False, links = False, grid = False)
 
-        for i in range(self.numIcons):
-            if self.iconSelected[i] and self.sliderOffsets[i] != self.clickedOffset:
-                if i%2 == 0: # even, even+1 for lower, upper bounds, respectively
-                    self.boundsUpdateSignal.emit(self.sliderOffsets[i],
-                        self.sliderOffsets[i+1]) 
+        for i in [0, 1]: # i = 0 for Links color bar, i = 1 for Nodes
+            if self.iconSelected[2*i] or self.iconSelected[2*i+1]:
+                if i == 0: # links
+                    self.boundsUpdateSignal.emit(self.sliderOffsets[2*i],
+                      self.sliderOffsets[2*i+1], True)
                 else:
-                    self.boundsUpdateSignal.emit(self.sliderOffsets[i-1],
-                        self.sliderOffsets[i])
+                    self.boundsUpdateSignal.emit(self.sliderOffsets[2*i],
+                      self.sliderOffsets[2*i+1], False) # update node bounds
+
 
     def mouseMoveEvent(self, event):
         x = event.x()
@@ -1023,8 +1026,8 @@ class Torus5dViewSlice3d(Torus5dGLWidget):
             #print 'i =',i,', lower_slider =',lower_slider,', upper_slider =',upper_slider
             if lower_slider > sys.float_info.epsilon or upper_slider < \
               1-sys.float_info.epsilon:
-                self.boundsUpdateSignal.emit(0,
-                    1)
+                self.boundsUpdateSignal.emit(0., 1., True) # update links
+                self.boundsUpdateSignal.emit(0., 1., False) # update nodes
         self.sliderOffsets = [0 if i%2==0 else 1 for i in range(self.numIcons)]
         self.updateDrawing()
 
