@@ -2,7 +2,9 @@
 import PlotModule
 import GLModule
 import Torus3dModule
-import Torus3dView3d
 import Torus3dView2d
+import Torus3dView3d
 import TableModule
 import Patch3dModule
+import Torus5dModule
+import Torus5dView
