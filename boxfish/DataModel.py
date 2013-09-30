@@ -534,11 +534,16 @@ class TableItem(DataObjectItem):
         attribute_groups, ids = self._table.group_attributes_by_attributes(
             self._table.identifiers(), attributes, [self['field']], aggregator)
 
+        print 'CREATE_ID_ATTR_MAPS: desired_attr =',[self['field']],', aggregator =',aggregator
+
         id_dict = dict()
         attr_dict = dict()
         for group, id in zip(attribute_groups, ids[0]):
             id_dict[id] = group
-            attr_dict[group] = id
+            if group in attr_dict:
+                attr_dict[group] = list(np.array([attr_dict[group], id]).flatten())
+            else:
+                attr_dict[group] = id
 
         return id_dict, attr_dict
 
