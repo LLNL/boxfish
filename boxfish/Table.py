@@ -248,10 +248,12 @@ class Table(object):
 
     for group_tuple in group_dict:
         if len(group_dict[group_tuple][0]) > 0:
-            group_list.append(group_tuple)
             for i, attr_list in enumerate(desired_list):
-                attr_list.append(self.operator[aggregator](
-                    group_dict[group_tuple][i]))
+                aggr_values = np.array(self.operator[aggregator](
+                  group_dict[group_tuple][i])).flatten()
+                for i in aggr_values:
+                    attr_list.append(i)
+                    group_list.append(group_tuple)
 
     return group_list, desired_list
 
