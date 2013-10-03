@@ -4,22 +4,22 @@ hardware: {
  network: torus,
  nodes: 1728,
  coords: [a, b, c, d, e],
- coords_table: bgq_nodes.yaml,
- dim: {a: 6, b: 4, c: 6, d: 6, e: 2},
+ coords_table: bgq_synthetic_nodes.yaml,
+ dim: {a: 6, b: 5, c: 4, d: 3, e: 2},
  source_coords: {a: sa, b: sb, c: sc, d: sd, e: se},
  destination_coords: {a: ta, b: tb, c: tc, d: td, e: te},
- link_coords_table: bgq_links.yaml,
+ link_coords_table: bgq_synthetic_links.yaml,
 }
 ---
 filetype: table
-filename: bgq_nodes.yaml
+filename: bgq_synthetic_nodes.yaml
 domain: HW
 type: NODE
 field: nodeid
 flags: 0
 ---
 filetype: table
-filename: bgq_links.yaml
+filename: bgq_synthetic_links.yaml
 domain: HW
 type: LINK
 field: linkid

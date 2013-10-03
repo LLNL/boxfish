@@ -1,7 +1,7 @@
 import numpy as np
 
-link_data_file = open('bgq_links.yaml', 'w')
-node_data_file = open('bgq_nodes.yaml', 'w')
+link_data_file = open('bgq_synthetic_links.yaml', 'w')
+node_data_file = open('bgq_synthetic_nodes.yaml', 'w')
 
 def next(current, max, forward):
 	if current == max-1:
@@ -15,7 +15,6 @@ def linkVal(e, d, c, b, a):
 	return a * 10000 + b * 1000 + c * 100 + d * 10 + e
 	
 # Write node data to an intermediate file
-	
 node_data_file.write('---\n')
 node_data_file.write('key: TEST_5D_TORUS\n')
 node_data_file.write('---\n')
