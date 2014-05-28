@@ -210,8 +210,8 @@ class DataConverter():
             + '[linkid, int32]\n- [sa, int32]\n- [sb, int32]\n- [sc, int32]\n' \
             + '- [sd, int32]\n- [se, int32]\n- [ta, int32]\n- [tb, int32]\n' \
             + '- [tc, int32]\n- [td, int32]\n- [te, int32]\n- [sent_chunks, ' \
-            + 'int32]\n- [dynamic_chunks, int32]\n- [deterministic_chunks, ' \
-            + 'int32]\n- [recv_packets, int32]\n- [fifo_length, int32]\n...\n'
+            + 'int64]\n- [dynamic_chunks, int64]\n- [deterministic_chunks, ' \
+            + 'int64]\n- [recv_packets, int64]\n- [fifo_length, int64]\n...\n'
          oLinksFile.write(key_string)
          rev_shape = list(self.shape)
          rev_shape.reverse()
