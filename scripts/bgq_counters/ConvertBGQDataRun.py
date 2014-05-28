@@ -86,15 +86,19 @@ class DataConverter():
       # to get size/dimensions of numpy array, get max a, b, c, d, e, t - as of
       #     now this is just last line of iMap, but that may change so find max
 
-      with open(self.iMap) as iMapFile:
+      #with open(self.iMap) as iMapFile:
+      with open(self.iData) as iMapFile:
          max_a = max_b = max_c = max_d = max_e = max_t = 0
          # iMap = <a b c d e t>, line_number = mpi_rank
          # find max node dimensions to set up numpy array
          for line in iMapFile:
-            split_line = line.split(' ', 5)
-            for i in range(len(split_line)):
+            split_line = line.split(' ', 8)
+            #split_line = line.split(' ', 5)
+            #for i in range(len(split_line)):
+            for i in range(len(split_line) - 1):
                split_line[i] = int(split_line[i])
-            a, b, c, d, e, t = split_line
+            ignore, rank, a, b, c, d, e, t, cruft = split_line
+            #a, b, c, d, e, t = split_line
             max_a = max(a, max_a)
             max_b = max(b, max_b)
             max_c = max(c, max_c)
@@ -108,14 +112,18 @@ class DataConverter():
          iMapFile.seek(0)
          line_num = 0
          for line in iMapFile:
-            split_line = line.split(' ', 5)
-            for i in range(len(split_line)):
+            split_line = line.split(' ', 8)
+            #split_line = line.split(' ', 5)
+            #for i in range(len(split_line)):
+            for i in range(len(split_line) - 1):
                split_line[i] = int(split_line[i])
-            a, b, c, d, e, t = split_line
-            self.mpiRank[(a, b, c, d, e, t)] = line_num
+            ignore, rank, a, b, c, d, e, t, cruft = split_line
+            #a, b, c, d, e, t = split_line
+            self.mpiRank[(a, b, c, d, e, t)] = rank
+            #self.mpiRank[(a, b, c, d, e, t)] = line_num
             #if self.debugMode:
             #   print 'mpiRank(',a,b,c,d,e,t,') = ', self.mpiRank[(a, b, c, d, e, t)]
-            line_num += 1
+            #line_num += 1
          
       # for input data file, store link data for each node (a, b, c, d, e)
       # link data stored as [a-, a+, b-, b+, c-, c+, d-, d+, e-, e+], where

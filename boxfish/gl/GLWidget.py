@@ -69,6 +69,7 @@ class GLWidget(QGLWidget):
         self.translation = np.zeros(3)
         self.rotation = np.identity(4)
 
+        self.init = False
 
     def set_translation(self, t):
         """Ensure that translation is always a numpy array."""
@@ -157,6 +158,8 @@ class GLWidget(QGLWidget):
         glEnable(GL_COLOR_MATERIAL)
         glEnable(GL_LINE_SMOOTH)
         #glEnable(GL_POLYGON_SMOOTH) # Looks terrible on Quadro cards
+
+        self.init = True
 
     def resizeGL(self, width, height):
         if (height == 0):

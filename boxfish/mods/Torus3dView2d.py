@@ -259,6 +259,9 @@ class GLTorus2dView(Torus3dGLWidget):
 
 
     def paintGL(self):
+        if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
+            return
+        print glCheckFramebufferStatus(GL_FRAMEBUFFER), GL_FRAMEBUFFER_COMPLETE
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.orient_scene()
         self.cubeList()
@@ -308,6 +311,7 @@ class GLTorus2dView(Torus3dGLWidget):
 
 
     def drawCubes(self):
+        print "Drawing Cubes"
         glPushMatrix()
         self.centerView(self.shape, self.axis, self.gap)
 
