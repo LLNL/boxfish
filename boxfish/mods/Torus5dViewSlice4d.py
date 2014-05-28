@@ -358,6 +358,7 @@ class Torus5dViewSlice4d(Torus5dGLWidget):
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glGetError()
         self.orient_scene()
         self.draw()
         super(Torus5dViewSlice4d, self).paintGL()

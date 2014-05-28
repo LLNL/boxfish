@@ -644,6 +644,7 @@ class Torus5dViewMinimaps(Torus5dGLWidget):
     def paintGL(self):
         ''' How the QGLWidget is supposed to render the scene.'''
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glGetError()
         self.orient_scene()
         self.draw()
         super(Torus5dViewMinimaps, self).paintGL()

@@ -432,6 +432,7 @@ class Torus5dViewOverview(Torus5dGLWidget):
     def paintGL(self):
         ''' How the QGLWidget is supposed to render the scene.'''
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glGetError()
         self.orient_scene() # push the view back to get behind front clip plane
         self.draw()
         super(Torus5dViewOverview, self).paintGL()
