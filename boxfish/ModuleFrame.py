@@ -76,7 +76,7 @@ class ModuleFrame(QMainWindow):
         # If we have a parent, set the height hint to be tall
         self.heightHint = self.size().height()
         if self.parent_frame is not None:
-            self.heightHint = self.parent_frame.height() - 100
+            self.heightHint = self.parent_frame.height() - 20
 
         self.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, \
             QSizePolicy.Preferred))

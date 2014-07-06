@@ -59,7 +59,7 @@ class FilterBoxFrame(ModuleFrame):
         self.filter_label = QLabel("")
         layout.addWidget(self.filter_label, 0, 0, 1, 1)
         view.setLayout(layout)
-        view.resize(200, 100)
+        view.resize(20, 20)
         return view
 
     # Not currently in use

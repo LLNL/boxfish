@@ -459,13 +459,14 @@ class ModuleAgent(QObject):
 
     @Slot(Scene, QObject)
     def requestAttributesChanged(self, scene, request):
-        """When the attribute set of a request changes, it should take the
+        """When the attribute set of a request changes, it should merge with
            existing scene information. If no scene information is found, it
            should add itself to the scene dict for this hierarchy.
         """
         if scene.attributes in self.attribute_scenes_dict:
-            request.receiveAttributeScene(
-                self.attribute_scenes_dict[scene.attributes])
+            if request.receiveAttributeScene(
+                    self.attribute_scenes_dict[scene.attributes]):
+                self.attributeSceneUpdateSignal.emit()
         else:
             self.sceneChanged(scene)
 
@@ -497,7 +498,7 @@ class ModuleAgent(QObject):
 
         for request in self.requests.values():
             if request.scene.attributes == attributes:
-                range_list.append(request.scene.total_range)
+                range_list.append(request.scene.local_max_range)
 
         return range_list
 
@@ -570,8 +571,12 @@ class ModuleAgent(QObject):
                 # subtree. We cannot simply union this one and the existing one
                 # because the existing one may have been based on what the one 
                 # we received used to be.
-                range_union = source_agent.unionRanges(scene.attributes)
-                scene.total_range = range_union
+                if scene.use_max_range:
+                    range_union = source_agent.unionRanges(scene.attributes)
+                    scene.total_range = range_union
+                # If we're not using the max range, we just use 
+                # the given total range in this scene. This is 
+                # very magical.
 
                 # Give back to child
                 source_agent.receiveSceneFromParent(scene)
@@ -693,7 +698,7 @@ class ModuleRequest(QObject):
     def receiveAttributeScene(self, scene):
         """Process received scene. If the received scene has the same set
            of attributes and is different than the existing one, the
-           ModuleRequest's scene will copy it and return True. Otherwise,
+           ModuleRequest's scene will make changes and return True. Otherwise,
            this function returns False.
         """
         if self.scene.attributes != scene.attributes: # Does not apply
@@ -702,9 +707,13 @@ class ModuleRequest(QObject):
         if self.scene == scene: # No change
             return False
 
-        self.scene.causeChangeSignal.disconnect(self.sceneChanged)
-        self.scene = scene.copy()
-        self.scene.causeChangeSignal.connect(self.sceneChanged)
+
+        self.scene.merge(scene)
+        # Don't do copy like other Scenes, we want to save local 
+        # information. 
+        #self.scene.causeChangeSignal.disconnect(self.sceneChanged)
+        #self.scene = scene.copy()
+        #self.scene.causeChangeSignal.connect(self.sceneChanged)
 
         if self.scene.attributes == frozenset([]):
             # We've accepted the scene info but since we don't have any

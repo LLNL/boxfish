@@ -162,7 +162,6 @@ class GLTorus3dView(Torus3dGLWidget):
             glPushMatrix()
             self.centerNode(node)
             glColor4f(*self.node_colors[node])
-            print "Drawing Cube"
             glutSolidCube(self.box_size)
             glPopMatrix()
 

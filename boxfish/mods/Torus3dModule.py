@@ -45,6 +45,13 @@ class Torus3dAgent(GLAgent):
         self.highlightSceneChangeSignal.connect(self.processHighlights)
         self.attributeSceneUpdateSignal.connect(self.processAttributeScenes)
 
+        self.linkids = list()
+        self.nodeids = list()
+        self.linkvals = list()
+        self.nodevals = list()
+        self.linkrange = (0.0,1.0)
+        self.noderange = (0.0,1.0)
+
     def registerNodeAttributes(self, indices):
         self.registerRun(self.datatree.getItem(indices[0]).getRun())
         self.requestAddIndices("nodes", indices)
@@ -106,6 +113,19 @@ class Torus3dAgent(GLAgent):
         node_ids, values = self.requestOnDomain("nodes",
             domain_table = self.coords_table,
             row_aggregator = "mean", attribute_aggregator = "mean")
+
+        # Handle if color range has changed
+        scene = self.requestScene("nodes")
+        if values:
+            scene.local_max_range = (min(values), max(values))
+            if scene.use_max_range \
+                and (scene.local_max_range[0] < scene.total_range[0] \
+                     or scene.local_max_range[1] > scene.total_range[0]):
+                scene.announceChange()
+
+        self.noderange = scene.total_range
+        self.nodeids = node_ids
+        self.nodevals = values
         self.nodeUpdateSignal.emit(node_ids, values)
 
 
@@ -116,6 +136,19 @@ class Torus3dAgent(GLAgent):
         link_ids, values = self.requestOnDomain("links",
             domain_table = self.link_coords_table,
             row_aggregator = "mean", attribute_aggregator = "mean")
+
+
+        scene = self.requestScene("links")
+        if values:
+            scene.local_max_range = (min(values), max(values))
+            if scene.use_max_range \
+                and (scene.local_max_range[0] < scene.total_range[0] \
+                     or scene.local_max_range[1] > scene.total_range[0]):
+                scene.announceChange()
+
+        self.linkrange = scene.total_range
+        self.linkids = link_ids
+        self.linkvals = values
         self.linkUpdateSignal.emit(link_ids, values)
 
     @Slot()
@@ -150,6 +183,13 @@ class Torus3dAgent(GLAgent):
     def processAttributeScenes(self):
         nodeScene = self.requestScene("nodes")
         linkScene = self.requestScene("links")
+        if (nodeScene.total_range != self.noderange):
+            self.noderange = nodeScene.total_range
+            self.nodeUpdateSignal.emit(self.nodeids, self.nodevals)
+        if (linkScene.total_range != self.linkrange):
+            self.linkrange = linkScene.total_range
+            self.linkUpdateSignal.emit(self.linkids, self.linkvals)
+
         self.nodelinkSceneUpdateSignal.emit(
             nodeScene.color_map, nodeScene.total_range,
             linkScene.color_map, linkScene.total_range)
@@ -194,13 +234,10 @@ class Torus3dFrameDataModel(object):
     # to go with the data model.
 
     def __init__(self, **keywords):
+        self.agent = None
         self.listeners = set()
         self._shape = None
         self.shape = [0, 0, 0]
-        self.node_range = (0,0)
-        self.pos_link_range = (0,0)
-        self.neg_link_range = (0,0)
-        self.avg_link_range = (0,0)
         self.has_links = False
 
     def clearNodes(self):
@@ -266,8 +303,8 @@ class Torus3dFrameDataModel(object):
 
         self.clearNodes() # when only some values are given
 
-        self.node_range = range_tuple(vals)
-        cval = cmap_range(vals)
+        print self.agent.requestScene("nodes").total_range, "is total range for nodes"
+        cval = self.agent.requestScene("nodes").cmap_range()
         for node_id, val in zip(nodes, vals):
             x, y, z = self.node_to_coord[node_id]
             self.node_values[x, y, z] = [cval(val), 1]
@@ -290,22 +327,20 @@ class Torus3dFrameDataModel(object):
 
         avg_link_values = np.zeros(self._shape + [3, 1])
 
-        self.pos_link_range = range_tuple(vals)
-        self.neg_link_range = self.pos_link_range
         cval = cmap_range(vals)
         for link_id, val in zip(links, vals):
             x, y, z, axis, direction = self.link_coord_to_index(
                 self.link_to_coord[link_id])
 
-            avg_link_values[x,y,z,axis] += val
+            avg_link_values[x,y,z,axis] += val / 2.0
             c = cval(val)
             if direction > 0:
                 self.pos_link_values[x,y,z,axis] = [c, 1]
             else:
                 self.neg_link_values[x,y,z,axis] = [c, 1]
 
-        self.avg_link_range = range_tuple(avg_link_values)
-        cval = cmap_range(avg_link_values)
+        print self.agent.requestScene("links").total_range, "is total range"
+        cval = self.agent.requestScene("links").cmap_range()
         for index in np.ndindex(self.shape):
             x, y, z = index
             for axis in range(3):
@@ -332,6 +367,7 @@ class Torus3dFrame(GLFrame):
         self.dataModel = Torus3dFrameDataModel()
         super(Torus3dFrame, self).__init__(parent, parent_frame, title)
 
+        self.dataModel.agent = self.agent
         self.droppedDataSignal.connect(self.droppedData)
         self.agent.torusUpdateSignal.connect(self.dataModel.updateTorus)
         self.agent.nodeUpdateSignal.connect(self.dataModel.updateNodeData)
@@ -362,6 +398,16 @@ class Torus3dFrame(GLFrame):
 
     def updateNodeDefaultColor(self, color):
         self.glview.updateNodeDefaultColor(color)
+
+    def buildTabDialog(self):
+        """Adds a tab for ranges to the Tab Dialog.
+
+           This tab will have controls for both nodes and links attributes.
+           Note if these attributes are the same, they will affect each other.
+
+        """
+        super(Torus3dFrame, self).buildTabDialog()
+        self.tab_dialog.addTab(Torus3dRangeTab(self.tab_dialog, self), "Data Range")
 
 
 class Torus3dGLWidget(GLWidget):
@@ -452,10 +498,9 @@ class Torus3dGLWidget(GLWidget):
     def updateCubeColors(self):
         """Updates the node colors from the dataModel."""
         self.clearNodes()
-        node_range = self.dataModel.node_range[1] - self.dataModel.node_range[0]
         for node in np.ndindex(*self.dataModel.shape):
             self.node_colors[node] = self.map_node_color(
-                self.dataModel.node_values[node][0], node_range) \
+                self.dataModel.node_values[node][0]) \
                 if (self.dataModel.node_values[node][1] \
                 > sys.float_info.epsilon) else self.default_node_color
         self.nodeColorChangeSignal.emit()
@@ -463,11 +508,17 @@ class Torus3dGLWidget(GLWidget):
     def updateLinkColors(self):
         """Updates the link colors from the dataModel."""
         self.clearLinks()
-        link_range = self.dataModel.avg_link_range[1] - self.dataModel.avg_link_range[0]
+        #link_range = self.dataModel.avg_link_range[1] - self.dataModel.avg_link_range[0]
+        #for node in np.ndindex(*self.dataModel.shape):
+        #    for dim in range(3):
+        #        self.avg_link_colors[node][dim] = self.map_link_color(
+        #            self.dataModel.avg_link_values[node][dim][0], link_range) \
+        #            if (self.dataModel.avg_link_values[node][dim][1] \
+        #            > sys.float_info.epsilon) else self.default_link_color
         for node in np.ndindex(*self.dataModel.shape):
             for dim in range(3):
                 self.avg_link_colors[node][dim] = self.map_link_color(
-                    self.dataModel.avg_link_values[node][dim][0], link_range) \
+                    self.dataModel.avg_link_values[node][dim][0]) \
                     if (self.dataModel.avg_link_values[node][dim][1] \
                     > sys.float_info.epsilon) else self.default_link_color
         self.linkColorChangeSignal.emit()
@@ -603,7 +654,7 @@ class Torus3dColorTab(GLColorTab):
 
     def createContent(self):
         """Overriden createContent adds the node and link color controls
-           to any existing ones in hte superclass.
+           to any existing ones in the superclass.
         """
         super(Torus3dColorTab, self).createContent()
 
@@ -696,3 +747,57 @@ class Torus3dColorTab(GLColorTab):
 
         #QApplication.processEvents()
 
+
+class Torus3dRangeTab(QWidget):
+    """Range controls for Torus views."""
+
+    def __init__(self, parent, mframe):
+        """Create the Torus3dColorTab."""
+        super(Torus3dRangeTab, self).__init__(parent)
+
+        self.mframe = mframe
+        self.layout = QVBoxLayout()
+        self.layout.setAlignment(Qt.AlignCenter)
+
+        self.createContent()
+
+        self.setLayout(self.layout)
+
+    def createContent(self):
+        """Overriden createContent adds the node and link range controls.
+        """
+
+        self.layout.addItem(QSpacerItem(5,5))
+
+        self.layout.addWidget(self.buildRangeWidget("Node Range",
+            self.rangeChanged, "nodes"))
+        self.layout.addItem(QSpacerItem(5,5))
+        self.layout.addWidget(self.buildRangeWidget("Link Range",
+            self.rangeChanged, "links"))
+
+
+    @Slot(bool, float, float, str)
+    def rangeChanged(self, use_max, use_range_min, use_range_max, tag):
+        """Handles change events from the node and link range controls."""
+        print "Changing range to", use_range_min, use_range_max, use_max
+        scene = self.mframe.agent.requestScene(tag)
+        scene.total_range = (use_range_min, use_range_max)
+        scene.use_max_range = use_max
+        self.mframe.agent.processAttributeScenes()
+        scene.announceChange()
+
+
+    def buildRangeWidget(self, title, fxn, tag):
+        """Integrates Range Widgets into this Tab."""
+        current_range = self.mframe.agent.requestScene(tag).total_range
+        max_range = self.mframe.agent.requestScene(tag).local_max_range
+        use_max = self.mframe.agent.requestScene(tag).use_max_range
+
+        groupBox = QGroupBox(title, self)
+        layout = QVBoxLayout()
+        range_widget = RangeWidget(self, use_max, current_range,
+                max_range, tag)
+        range_widget.changeSignal.connect(fxn)
+        layout.addWidget(range_widget)
+        groupBox.setLayout(layout)
+        return groupBox

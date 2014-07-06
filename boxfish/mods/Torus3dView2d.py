@@ -201,10 +201,10 @@ class GLTorus2dView(Torus3dGLWidget):
                     "z" : lambda :  self.setAxis(2),
                     "+" : lambda :  self.increaseLinkWidth(),
                     "-" : lambda :  self.decreaseLinkWidth(),
-                    "<" : lambda :  self.lowerLowerBound(),
-                    ">" : lambda :  self.raiseLowerBound(),
-                    "," : lambda :  self.lowerUpperBound(),
-                    "." : lambda :  self.raiseUpperBound(),
+                    # "<" : lambda :  self.lowerLowerBound(),
+                    # ">" : lambda :  self.raiseLowerBound(),
+                    # "," : lambda :  self.lowerUpperBound(),
+                    # "." : lambda :  self.raiseUpperBound(),
                     }
         if event.text() in key_map:
             key_map[event.text()]()
