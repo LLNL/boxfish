@@ -327,7 +327,7 @@ class Torus3dFrameDataModel(object):
 
         avg_link_values = np.zeros(self._shape + [3, 1])
 
-        cval = cmap_range(vals)
+        cval = self.agent.requestScene("links").cmap_range()
         for link_id, val in zip(links, vals):
             x, y, z, axis, direction = self.link_coord_to_index(
                 self.link_to_coord[link_id])
@@ -340,7 +340,6 @@ class Torus3dFrameDataModel(object):
                 self.neg_link_values[x,y,z,axis] = [c, 1]
 
         print self.agent.requestScene("links").total_range, "is total range"
-        cval = self.agent.requestScene("links").cmap_range()
         for index in np.ndindex(self.shape):
             x, y, z = index
             for axis in range(3):
