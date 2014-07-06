@@ -65,7 +65,7 @@ class GLWidget(QGLWidget):
 
         # contentious background color
         #kwarg("bg_color", [.94, .94, .94, 1.0])
-        kwarg("bg_color", [.58, .58, .58, 1.0])
+        kwarg("bg_color", [1.0, 1.0, 1.0, 1.0])
 
         self.translation = np.zeros(3)
         self.rotation = np.identity(4)

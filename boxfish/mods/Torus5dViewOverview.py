@@ -664,11 +664,13 @@ class Torus5dViewOverview(Torus5dGLWidget):
             with glMatrix():
                 dist_x = (self.miniSpanX-label_width*0.8)/2.
                 glTranslatef(dist_x, -2*label_height, -self.miniSpanY)
-                self.drawLabel(label_height*0.8, label_width*0.8, d_val, e_val, draw_dim_d = False)
+                self.drawLabel(label_height*0.8, self.miniSpanX*.75, d_val, e_val, draw_dim_d = False)
+                #self.drawLabel(label_height*0.8, label_width*0.8, d_val, e_val, draw_dim_d = False)
 
         # second draw the labels on the sides (4th dim)
         glTranslatef(offset_x, -label_height/2., -self.miniSpanY) # move to the side of minimap
-        self.drawLabel(label_height, label_width, d_val, e_val, draw_dim_d = True)    
+        self.drawLabel(label_height, self.miniSpanX, d_val, e_val, draw_dim_d = True)    
+        #self.drawLabel(label_height, label_width, d_val, e_val, draw_dim_d = True)    
 
     # ------------------------    Render, Level 3    ---------------------------  
 
@@ -732,6 +734,22 @@ class Torus5dViewOverview(Torus5dGLWidget):
             #scale_factor = 0.02
             scale_factor = 0.025
         
+        
+        if len(str(dim_val)) > 1: # 2 digit dimension value
+            if draw_dim_d:
+                offset_x = self.miniSpanX/10.
+            else:
+                offset_x = self.miniSpanX/40.
+            two_digit_val = True
+            scale_factor -= 0.005
+        else:
+            if draw_dim_d:
+                offset_x = self.miniSpanX/6.
+            else:
+                offset_x = self.miniSpanX/20.
+            two_digit_val = False
+
+        
         # draw a border and filled in box to hold label
         # 0 for no border, just rectangle, and 0.5 for slightly larger rectangle,
         #   creating a border of 0.5
@@ -749,6 +767,13 @@ class Torus5dViewOverview(Torus5dGLWidget):
                 glLoadName(e_val*self.shape[d] + d_val)
                 glPushMatrix()
 
+            #with glSection(GL_TRIANGLES):
+            #    glVertex3f(-border, -border, offset_z)
+            #    glVertex3f(label_width+border, -border, offset_z)
+            #    glVertex3f(label_width+border, label_height+border, offset_z)
+            #    glVertex3f(label_width+border, label_height+border, offset_z)
+            #    glVertex3f(-border, label_height+border, offset_z)
+            #    glVertex3f(-border, -border, offset_z)
             with glSection(GL_TRIANGLES):
                 glVertex3f(-border, -border, offset_z)
                 glVertex3f(label_width+border, -border, offset_z)
@@ -759,20 +784,6 @@ class Torus5dViewOverview(Torus5dGLWidget):
 
             if draw_dim_d and border == 0:
                 glPopMatrix()
-
-        if len(str(dim_val)) > 1: # 2 digit dimension value
-            if draw_dim_d:
-                offset_x = self.miniSpanX/10.
-            else:
-                offset_x = self.miniSpanX/40.
-            two_digit_val = True
-            scale_factor -= 0.005
-        else:
-            if draw_dim_d:
-                offset_x = self.miniSpanX/6.
-            else:
-                offset_x = self.miniSpanX/20.
-            two_digit_val = False
 
         glColor4f(*text_color)
         glLineWidth(2.)

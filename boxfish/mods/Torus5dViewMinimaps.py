@@ -986,7 +986,11 @@ class Torus5dViewMinimaps(Torus5dGLWidget):
                 glColor4f(*border_color)
                 with glMatrix():
                     glScalef(w*0.00025, w*0.00025, 1) # should be based on box_width, but leave as is
-                    glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(str(d_val)))
+                    if d_val > 9:
+                        glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(str(1)))
+                        glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(str(d_val - 10)))
+                    else:
+                        glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(str(d_val)))
                 glTranslatef(circle_gap, 0, 0)
                 with glMatrix():
                     glTranslatef(0, w*0.00001, 0)

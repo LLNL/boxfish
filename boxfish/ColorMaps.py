@@ -200,7 +200,7 @@ class ColorMap(object):
        Note that all colormaps in here are normalized on [0.0, 1.0].
     """
 
-    def __init__(self, base_color_map = 'Purples',
+    def __init__(self, base_color_map = 'RdYlBu',
         color_step = 0, step_size = 0.1):
         """Create a ColorMap object.
 

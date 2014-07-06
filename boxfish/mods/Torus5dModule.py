@@ -22,6 +22,7 @@ colors of the nodes and links.  Heirarchy is:
     QWidget -> GLColorTab -> Torus5dColorTab
 '''
 
+import math
 from PySide.QtCore import *
 
 from GLModule import *
@@ -165,9 +166,11 @@ class Torus5dFrameDataModel(object):
 
         avg_link_values = np.zeros(self._shape + [5, 1])
 
-        self.pos_link_range = self.range_tuple(vals)
+        self.pos_link_range = (0, 3) #self.range_tuple(vals)
+        #self.pos_link_range = self.range_tuple(vals)
+        #self.neg_link_range = self.pos_link_range
         self.neg_link_range = self.pos_link_range
-        cval = self.cmap_range(vals) # cval will return normalized, [0,1]
+        cval = self.cmap_range([0, 3]) # cval will return normalized, [0,1]
 
         for link_id, val in zip(links, vals):
             a, b, c, d, e, axis, direction = self.link_coord_to_index(
@@ -180,11 +183,22 @@ class Torus5dFrameDataModel(object):
             else:
                 self.neg_link_values[a,b,c,d,e,axis] = [clamped_val, 1]
 
+        # 42 billion for 4096, 42 billion for 2048, 12 billion for 1024 MILC
+        #self.avg_link_range = (0, 42000000000)
         self.avg_link_range = self.range_tuple(avg_link_values)
         cval = self.cmap_range(avg_link_values)
+        #cval = self.cmap_range([0,42000000000])
+        #self.avg_link_range = (0, 20)
+        #cval = self.cmap_range([0,20])
         for index in np.ndindex(self.shape):
             a, b, c, d, e = index
             for axis in range(5):
+                #if avg_link_values[a,b,c,d,e,axis] > 30000000000:
+                #    print avg_link_values[a,b,c,d,e,axis], a, b, c, d, e, axis
+                #if avg_link_values[a,b,c,d,e,axis] > 0:
+                    #   color_val = cval(math.log(avg_link_values[a,b,c,d,e,axis]))
+                #else:
+                    #   color_val = 0
                 color_val = cval(avg_link_values[a, b, c, d, e, axis])
                 self.avg_link_values[a, b, c, d, e, axis] = [color_val, 1]
 

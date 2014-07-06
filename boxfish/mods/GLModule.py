@@ -107,7 +107,7 @@ class GLModuleScene(ModuleScene):
 
         self.rotation = rotation
         self.translation = translation
-        self.background_color = np.array([.58, .58, .58, 1.0])
+        self.background_color = np.array([1.0, 1.0, 1.0, 1.0])
         if background_color is not None:
             self.background_color = background_color
 
