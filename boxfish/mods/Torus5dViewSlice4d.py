@@ -427,7 +427,7 @@ class Torus5dViewSlice4d(Torus5dGLWidget):
         #print 'slice_span =',slice_span        
 
     def drawLinks(self):
-        self.drawLinks3d(self.avg_link_colors)
+        self.drawLinks3d(self.link_colors)
 
     def drawNodes(self):
         # to avoid error when dataModel is set but Torus5dModule.updateColors hasn't been called yet
@@ -778,7 +778,7 @@ class Torus5dViewSlice4d(Torus5dGLWidget):
 
     def drawLinks3d(self, link_colors):
         # to avoid error when dataModel is set but Torus5dModule.updateColors hasn't been called yet
-        if self.avg_link_colors.shape[0] == 0:
+        if self.link_colors.shape[0] == 0:
             return
 
         glPushMatrix()

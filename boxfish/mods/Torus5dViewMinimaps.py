@@ -317,7 +317,7 @@ class Torus5dViewMinimaps(Torus5dGLWidget):
                                     subNode[axis] = i
                                     subNode[non_slice_indicies[0]] = j
                                     subNode[non_slice_indicies[1]] = k
-                                    current = self.dataModel.avg_link_values[
+                                    current = self.dataModel.link_values[
                                             tuple(subNode)][dim][0]
                                     if current > self.globalMaxLinkValue:
                                         self.globalMaxLinkValue = current
@@ -337,7 +337,7 @@ class Torus5dViewMinimaps(Torus5dGLWidget):
                                         #print 'link_value = ' + str(link_values[len(link_values)-1])
                                         val += current
                                         val_added_count += 1
-                                        count += self.dataModel.avg_link_values[
+                                        count += self.dataModel.link_values[
                                             tuple(subNode)][dim][1] # TODO : Ask Kate why this is necessary / when it's used?   
 
                         if shape[axis] != 0:

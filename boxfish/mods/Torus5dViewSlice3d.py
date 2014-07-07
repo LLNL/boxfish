@@ -330,7 +330,7 @@ class Torus5dViewSlice3d(Torus5dGLWidget):
             if self.current_planes[d] == node[d] and self.current_planes[4] == node[4]:
                 glPushMatrix()
                 glTranslatef(*self.getNodePos3d(self.getSliceNode(node)))
-                colors = self.avg_link_colors[node]
+                colors = self.link_colors[node]
 
                 # Draw links for each dim as poly cylinders
                 polyDim = 0

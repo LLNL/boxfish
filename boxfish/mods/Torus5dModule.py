@@ -55,6 +55,7 @@ class Torus5dFrameDataModel(object):
         self._shape = None
         self.shape = [0, 0, 0, 0, 0]
         self.agent = None
+        self.link_direction = 0
 
     def clearNodes(self):
         # The first is the actual value, the second is a flag
@@ -65,6 +66,18 @@ class Torus5dFrameDataModel(object):
         self.pos_link_values = np.tile(0.0, self._shape + [5, 2])
         self.neg_link_values = np.tile(0.0, self._shape + [5, 2])
         self.avg_link_values = np.tile(0.0, self._shape + [5, 2])
+        self.link_values = np.tile(0.0, self._shape + [5, 2])
+
+    def changeLinkDirection(self, direction):
+        self.link_direction = direction
+        if direction == 0:
+            self.link_values = self.avg_link_values
+        elif direction > 0:
+            self.link_values = self.pos_link_values
+        else:
+            self.link_values = self.neg_link_values
+
+        self._notifyListeners()
 
     def setShape(self, shape):
         if self._shape != shape:
@@ -189,7 +202,9 @@ class Torus5dFrameDataModel(object):
                 color_val = cval(avg_link_values[a, b, c, d, e, axis])
                 self.avg_link_values[a, b, c, d, e, axis] = [color_val, 1]
 
-        self._notifyListeners()
+        self.changeLinkDirection(self.link_direction)
+
+        #self._notifyListeners()
 
 
 class Torus5dFrame(GLFrame):
@@ -562,7 +577,7 @@ class Torus5dGLWidget(GLWidget):
 
     def clearLinks(self):
         """Sets the links to the default color."""
-        self.avg_link_colors = np.tile(self.default_link_color,
+        self.link_colors = np.tile(self.default_link_color,
             list(self.dataModel.shape) + [5, 1])
 
     # ------------------------------------------------------------------------
@@ -598,9 +613,9 @@ class Torus5dGLWidget(GLWidget):
         for node in np.ndindex(*self.dataModel.shape):
             for dim in range(5):
                 #print 'avg_link_values = ' + str(self.dataModel.avg_link_values[node][dim][0]) + ', link_range = ' + str(link_range)
-                self.avg_link_colors[node][dim] = self.map_link_color(
-                    self.dataModel.avg_link_values[node][dim][0]) \
-                    if (self.dataModel.avg_link_values[node][dim][1] \
+                self.link_colors[node][dim] = self.map_link_color(
+                    self.dataModel.link_values[node][dim][0]) \
+                    if (self.dataModel.link_values[node][dim][1] \
                     > sys.float_info.epsilon) else self.default_link_color
         #self.updateView(nodes = False, links = True)
         #TODO #self.linkColorChangeSignal.emit()
@@ -628,14 +643,14 @@ class Torus5dGLWidget(GLWidget):
                 a, b, c, d, e, axis, direction = self.dataModel.link_coord_to_index(
                     self.dataModel.link_to_coord[link])
                 #print 'link:  a, b, c, d, e, axis =',a,b,c,d,e,axis
-                self.avg_link_colors[a,b,c,d,e,axis,3] = 1.0
+                self.link_colors[a,b,c,d,e,axis,3] = 1.0
         else: # Alpha based on data-present value in dataModel
             for node in np.ndindex(*self.dataModel.shape):
                 self.node_colors[node][3] = 1.0 \
                     if self.dataModel.node_values[node][1] > 0 else 0.2
-                vals = self.dataModel.avg_link_values[node]
+                vals = self.dataModel.link_values[node]
                 for dim in range(5):
-                    self.avg_link_colors[node][dim][3] = 1.0 \
+                    self.link_colors[node][dim][3] = 1.0 \
                         if (vals[dim][1] > 0) else 0.2
 
         self.updateDrawing()
@@ -671,8 +686,21 @@ class Torus5dGLWidget(GLWidget):
     def set_all_alphas(self, alpha):
         """Set all nodes and links to the same given alpha value."""
         self.node_colors[:,:,:,:,:,3] = alpha
-        self.avg_link_colors[:,:,:,:,:,:,3] = alpha
+        self.link_colors[:,:,:,:,:,:,3] = alpha
 
+
+    def keyPressEvent(self, event):
+
+        key_map = { 
+                    "1" : lambda :  self.dataModel.changeLinkDirection(0),
+                    "2" : lambda :  self.dataModel.changeLinkDirection(1),
+                    "3" : lambda :  self.dataModel.changeLinkDirection(-1),
+                   }
+
+        if event.text() in key_map:
+            key_map[event.text()]()
+        else:
+            super(Torus5dGLWidget, self).keyPressEvent(event)
     
 class Torus5dColorTab(GLColorTab):
     """Color controls for Torus views."""

@@ -192,14 +192,14 @@ class Torus5dViewOverview(Torus5dGLWidget):
                                     subNode[axis] = i
                                     subNode[non_slice_indicies[0]] = j
                                     subNode[non_slice_indicies[1]] = k
-                                    current = self.dataModel.avg_link_values[
+                                    current = self.dataModel.link_values[
                                             tuple(subNode)][dim][0]
                                     
                                     # TODO:  Check what happens if this is +=current instead of =current
                                     plane_link_values[j][k][tuple([node[w], node[h], 0])][dim_count][i] = current
                                     val[j][k] += current
                                     #val_added_count[j][k] += 1 
-                                    count[j][k] += self.dataModel.avg_link_values[
+                                    count[j][k] += self.dataModel.link_values[
                                         tuple(subNode)][dim][1] # TODO : Ask Kate why this is necessary / when it's used?   
 
                         if shape[axis] != 0:
