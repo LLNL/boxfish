@@ -182,7 +182,7 @@ class GLTorus3dView(Torus3dGLWidget):
         for node in np.ndindex(*self.dataModel.shape):
             glPushMatrix()
             self.centerNode(node)
-            colors = self.avg_link_colors[node]
+            colors = self.link_colors[node]
 
             # Draw links for each dim as poly cylinders
             for dim in range(3):

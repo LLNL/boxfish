@@ -239,6 +239,7 @@ class Torus3dFrameDataModel(object):
         self._shape = None
         self.shape = [0, 0, 0]
         self.has_links = False
+        self.link_direction = 0
 
     def clearNodes(self):
         # The first is the actual value, the second is a flag
@@ -249,6 +250,19 @@ class Torus3dFrameDataModel(object):
         self.pos_link_values = np.tile(0.0, self._shape + [3, 2])
         self.neg_link_values = np.tile(0.0, self._shape + [3, 2])
         self.avg_link_values = np.tile(0.0, self._shape + [3, 2])
+        self.link_values = np.tile(0.0, self._shape + [5, 2])
+
+    def changeLinkDirection(self, direction):
+        self.link_direction = direction
+        if direction == 0:
+            self.link_values = self.avg_link_values
+        elif direction > 0:
+            self.link_values = self.pos_link_values
+        else:
+            self.link_values = self.neg_link_values
+
+        self._notifyListeners()
+
 
     def setShape(self, shape):
         if self._shape != shape:
@@ -346,7 +360,7 @@ class Torus3dFrameDataModel(object):
                 color_val = cval(avg_link_values[x, y, z, axis])
                 self.avg_link_values[x, y, z, axis] = [color_val, 1]
 
-        self._notifyListeners()
+        self.changeLinkDirection(self.link_direction)
 
 
 
@@ -486,8 +500,20 @@ class Torus3dGLWidget(GLWidget):
 
     def clearLinks(self):
         """Sets the links to the default color."""
-        self.avg_link_colors = np.tile(self.default_link_color,
+        self.link_colors = np.tile(self.default_link_color,
             list(self.dataModel.shape) + [3, 1])
+
+    def keyPressEvent(self, event):
+        key_map = { 
+                    "1" : lambda :  self.dataModel.changeLinkDirection(0),
+                    "2" : lambda :  self.dataModel.changeLinkDirection(1),
+                    "3" : lambda :  self.dataModel.changeLinkDirection(-1),
+                   }
+
+        if event.text() in key_map:
+            key_map[event.text()]()
+        else:
+            super(TorusedGLWidget, self).keyPressEvent(event)
 
     def updateNodeDefaultColor(self, color):
         self.default_node_color = color
@@ -510,15 +536,15 @@ class Torus3dGLWidget(GLWidget):
         #link_range = self.dataModel.avg_link_range[1] - self.dataModel.avg_link_range[0]
         #for node in np.ndindex(*self.dataModel.shape):
         #    for dim in range(3):
-        #        self.avg_link_colors[node][dim] = self.map_link_color(
+        #        self.link_colors[node][dim] = self.map_link_color(
         #            self.dataModel.avg_link_values[node][dim][0], link_range) \
         #            if (self.dataModel.avg_link_values[node][dim][1] \
         #            > sys.float_info.epsilon) else self.default_link_color
         for node in np.ndindex(*self.dataModel.shape):
             for dim in range(3):
-                self.avg_link_colors[node][dim] = self.map_link_color(
-                    self.dataModel.avg_link_values[node][dim][0]) \
-                    if (self.dataModel.avg_link_values[node][dim][1] \
+                self.link_colors[node][dim] = self.map_link_color(
+                    self.dataModel.link_values[node][dim][0]) \
+                    if (self.dataModel.link_values[node][dim][1] \
                     > sys.float_info.epsilon) else self.default_link_color
         self.linkColorChangeSignal.emit()
 
@@ -577,7 +603,7 @@ class Torus3dGLWidget(GLWidget):
     def set_all_alphas(self, alpha):
         """Set all nodes and links to the same given alpha value."""
         self.node_colors[:,:,:,3] = alpha
-        self.avg_link_colors[:,:,:,:,3] = alpha
+        self.link_colors[:,:,:,:,3] = alpha
 
     @Slot(list, list)
     def updateHighlights(self, node_ids, link_ids):
@@ -595,14 +621,14 @@ class Torus3dGLWidget(GLWidget):
             for link in link_ids:
                 x, y, z, axis, direction = self.dataModel.link_coord_to_index(
                     self.dataModel.link_to_coord[link])
-                self.avg_link_colors[x,y,z,axis,3] = 1.0
+                self.link_colors[x,y,z,axis,3] = 1.0
         else: # Alpha based on data-present value in dataModel
             for node in np.ndindex(*self.dataModel.shape):
                 self.node_colors[node][3] = 1.0 \
                     if self.dataModel.node_values[node][1] > 0 else 0.2
-                vals = self.dataModel.avg_link_values[node]
+                vals = self.dataModel.link_values[node]
                 for dim in range(3):
-                    self.avg_link_colors[node][dim][3] = 1.0 \
+                    self.link_colors[node][dim][3] = 1.0 \
                         if (vals[dim][1] > 0) else 0.2
 
         self.updateDrawing()

@@ -209,7 +209,7 @@ class GLTorus2dView(Torus3dGLWidget):
         if event.text() in key_map:
             key_map[event.text()]()
         else:
-            GLWidget.keyPressEvent(self,event)
+            super(GLTorus2dView, self).keyPressEvent(event)
 
     def width_height(self):
         """Get the dimensions that span width and height of screen"""
@@ -311,7 +311,6 @@ class GLTorus2dView(Torus3dGLWidget):
 
 
     def drawCubes(self):
-        print "Drawing Cubes"
         glPushMatrix()
         self.centerView(self.shape, self.axis, self.gap)
 
@@ -352,7 +351,7 @@ class GLTorus2dView(Torus3dGLWidget):
 
 
     def drawLinks(self):
-        self.layoutLinks(self.shape, self.axis, self.gap, self.avg_link_colors)
+        self.layoutLinks(self.shape, self.axis, self.gap, self.link_colors)
 
     def layoutLinks(self, shape, axis, gap, link_colors, scale = 1):
         glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,[1.0, 1.0, 1.0, 1.0])
@@ -444,9 +443,9 @@ class GLTorus2dView(Torus3dGLWidget):
                     subNode = list(node)
                     for i in range(self.shape[axis]):
                         subNode[axis] = i
-                        val += self.dataModel.avg_link_values[
+                        val += self.dataModel.link_values[
                             tuple(subNode)][dim][0]
-                        count += self.dataModel.avg_link_values[
+                        count += self.dataModel.link_values[
                             tuple(subNode)][dim][1]
                     link_colors[node][dim] = self.map_link_color(
                         val / float(self.shape[axis]), 1.0) \
