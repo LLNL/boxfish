@@ -215,7 +215,7 @@ class TableTab(QTableWidget):
            headers
                The column names.
 
-           value
+           values
                List of lists of values for each column
         """
         super(TableTab, self).__init__(min(100, len(values[0])), len(headers))

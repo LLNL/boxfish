@@ -5,6 +5,7 @@ import sys
 from PySide.QtCore import *
 from PySide.QtGui import *
 from FilterBox import *
+from FilterSpin import *
 from DataModel import *
 from ModuleAgent import *
 

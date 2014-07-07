@@ -28,13 +28,13 @@ class FilterBoxAgent(ModuleAgent):
         """
         self.filters = list()
         if conditions is None:
-            for coupler in self.requests:
+            for coupler in self.requests.values():
                 coupler.modifier = None
             for coupler in self.child_requests:
                 coupler.modifier = None
         else:
             self.filters.append(SimpleWhereFilter(conditions))
-            for coupler in self.requests:
+            for coupler in self.requests.values():
                 coupler.modifier = self.filters[0]
             for coupler in self.child_requests:
                 coupler.modifier = self.filters[0]
