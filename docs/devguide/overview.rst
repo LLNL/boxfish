@@ -18,8 +18,8 @@ Scene Propagation Policy
 ------------------------
 There are three main types of scene information in Boxfish. HighlightScenes
 represent selected (and therefore highlighted) entities. AttributeScenes
-contain coloring information for specific groups of attributes. ModuleScenes
-are module-specific (e.g. rotation for a 3D view module).
+contain coloring and range information for specific groups of attributes.
+ModuleScenes are module-specific (e.g. rotation for a 3D view module).
 
 There are two options for each module instance for HighlightScenes and
 ModuleScenes. The options are apply/accept and propagate. The apply/accept
@@ -33,9 +33,8 @@ subtree behaves the same.
 
 For AttributeScenes, the two options apply to each requested group of
 attributes in each module. Some modules may make multiple disparate requests
-(e.g. a set of attributes for nodes and a set for links). Note: currently this
-is implemented globally like HighlightScenes and ModuleScenes rather than
-request-by-request.
+(e.g. a set of attributes for nodes and a set for links) but both will be
+governed by the same propagation option. 
 
 More explanation and examples are in the user guide under the :ref:`Scene
 Policy <policies-label>` section of :ref:`bfmodules`.  Instructions on

@@ -27,9 +27,14 @@ information:
   }
   ---
 
-Attributes may be used to color either the nodes or the links. Multiple
-processes/threads on each node will be aggregated. Forward and backward data
-on the links will similarly be aggregated.
+Attributes may be used to color either the nodes or the links. The tab dialog
+has color and range controls for nodes and links separately. 
+
+Multiple processes/threads on each node will be aggregated. Forward and
+backward data on the links is aggregated by default, but the user can switch
+to showing just the positive links (those increasing in a Cartesian direction)
+or just the negative links. This feature may be useful when the domain
+decomposition follows the torus coordinates.
 
 .. figure:: ../../images/dragoverlay_1.png
    :align: center
@@ -47,6 +52,9 @@ Action     Control
 zoom       scroll wheel
 translate  meta-key + click-drag
 tab dialog double-click
+avg. links press "1" (default)
+pos. links press "2"
+neg. links press "3"
 ========== ======================
 
 Both modules allow separate color maps for nodes and links. The default option
@@ -82,7 +90,8 @@ first, second and third coordinates respectively with the zero coordinates at
 the join and the extent coordinates at the end.
 
 Nodes and links in the 3D View that are not displaying data will be drawn
-translucently.
+translucently. The tab dialog offers the option of turning off links entirely,
+when only the node placement is of interest, and adjusting the node size.
 
 The 3D View specific controls are: 
 
@@ -125,8 +134,4 @@ Action                Control
 change axis           click a minimap
 increase edge width   \+
 decrease edge width   \-
-increase top range    .
-decrease top range    ,
-increase bottom range >
-decrease bottom range <
 ===================== ======================

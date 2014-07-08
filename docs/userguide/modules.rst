@@ -120,8 +120,10 @@ the same attribute.
    Torus module is not beneath that Filter Box and thus does not have linked
    rotation and colors.
 
-In the future, attribute scene information will be able to propagate data
-range information along with the color map.
+Data range information is also propagated by attribute. The default
+propagation behavior is using a range which covers data from all modules
+displaying those attributes. Some modules may allow setting the range
+explicitly.
 
 Note that these propagations will only occur for modules for which these
 features are supported. It is up to the module designer to determine which
@@ -131,6 +133,7 @@ propagations to support and how to display them.
    :maxdepth: 2
 
    mods/filterbox
+   mods/filterspin
    mods/3dtorus
    mods/table
    mods/plotter
