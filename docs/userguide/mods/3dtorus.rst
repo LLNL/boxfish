@@ -57,11 +57,12 @@ pos. links press "2"
 neg. links press "3"
 ========== ======================
 
-Both modules allow separate color maps for nodes and links. The default option
-will apply the color map linearly to the attribute values. Selecting "cycle
-colors" will sample the color map in the given number of equally spaced places
-and then apply that reduced color set to the attribute values in sequence.
-This is useful when the values represent discrete groupings or clusterings.
+Both modules allow separate color maps and data ranges for nodes and links.
+The default option will apply the color map linearly to the attribute values.
+Selecting "cycle colors" will sample the color map in the given number of
+equally spaced places and then apply that reduced color set to the attribute
+values in sequence.  This is useful when the values represent discrete
+groupings or clusterings.
 
 Note: If attribute propagation is on and nodes and links share the same
 attributes, then one color map will be coerced to the other.
@@ -76,6 +77,21 @@ attributes, then one color map will be coerced to the other.
 The background color can also be changed. If the modules are set to accept and
 propagate module scene information, changing the background color will
 propagate to all types of 3D Torus modules.
+
+There are two data range options available. The default option will
+automatically set the range to the maximum data extents. If attribute
+propagation is on, this will find the maximum extents of all data of the same
+attributes within the propagation subtree. The user can also set the data
+range manually. Nodes or links with values falling outside the given data
+range will not be drawn.
+
+.. figure:: ../../images/datarange_1.png
+   :align: center
+   :alt: Data range dialog for the 3D Torus modules.
+
+   Data range policy for the nodes and links,
+   can be changed through the data range tab in each module.
+
 
 3D View
 -------
