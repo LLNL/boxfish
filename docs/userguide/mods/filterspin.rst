@@ -2,12 +2,18 @@ Filter Spin
 ===========
 
 The Filter Spin module adds a simple spinnable filter of the form [attribute]
-= [value]. It allows only a single table field as an attribute. The [value]
-portion in the spin control, set to allow every value the [attribute] takes
-(under the current filters). The user can then user the mouse or arrows to
-manipulate the spin control. They can also type an existing value to jump
-ahead. This is useful for attributes like time where users may want to step
-through the values of the attribute in order.
+= [value]. This is useful for attributes like time where users may want to
+step through the values of the attribute in order.
+
+It allows only a single table field as an attribute. The [value] portion in
+the spin control, set to allow every value the [attribute] takes (under the
+current filters). These values are taken from the Run of the attribute --
+values of attributes of the same name but other Runs will not be in the spin
+control.
+
+When the spin control is selected (e.g., clicked), the mouse wheel can be used
+to change the value. The value may also be manipulated using the spin control
+arrows or by typing an existing value.
 
 .. figure:: ../../images/filterspin_1.png
    :align: center
