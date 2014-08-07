@@ -259,8 +259,6 @@ class GLTorus2dView(Torus3dGLWidget):
 
 
     def paintGL(self):
-        if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
-            return
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glGetError()
         self.orient_scene()
