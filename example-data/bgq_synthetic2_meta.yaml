@@ -1,0 +1,36 @@
+---
+key: TEST_5D_TORUS
+hardware: {
+ network: torus,
+ nodes: 1728,
+ coords: [a, b, c, d, e],
+ coords_table: bgq_synthetic2_nodes.yaml,
+ dim: {a: 6, b: 5, c: 4, d: 3, e: 2},
+ source_coords: {a: sa, b: sb, c: sc, d: sd, e: se},
+ destination_coords: {a: ta, b: tb, c: tc, d: td, e: te},
+ link_coords_table: bgq_synthetic2_links.yaml,
+}
+---
+filetype: table
+filename: bgq_synthetic2_nodes.yaml
+domain: HW
+type: NODE
+field: nodeid
+flags: 0
+---
+filetype: table
+filename: bgq_synthetic2_links.yaml
+domain: HW
+type: LINK
+field: linkid
+flags: 0
+---
+filetype: projection
+type: node link
+node_policy: Source
+link_policy: Source
+subdomain:
+- { domain: HW, type: NODE, field: nodeid }
+- { domain: HW, type: LINK, field: linkid }
+flags: 0
+...

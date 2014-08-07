@@ -21,6 +21,22 @@ boxfish_maps = dict()
 #So (0.5, 1.0, 1.0) in the red list means "At normalized value 0.5, the red
 # value of the color is 1.0 (=xFF)".
 # Unspecified values will be interpolated between the given values
+ 
+#   Dark Blue [0.0] = (0, 70, 195), Light Blue [0.4] = (0, 175, 225), Orange [0.6] = (225, 150, 0), Red [1.0] = (255, 60, 0)
+bdict = {'red':   ((0.0, 0.0, 0.0), 
+    (0.4, 0.0, 0.0),
+    (0.6, 225.0/255.0, 225.0/255.0),
+    (1.0, 255.0/255.0, 255.0/255.0)),
+    'green': ((0.0, 70.0/255.0, 70.0/255.0), 
+    (0.4, 175.0/255.0, 175.0/255.0),
+    (0.6, 150.0/255.0, 150.0/255.0),
+    (1.0, 60.0/255.0, 60.0/255.0)),
+    'blue':  ((0.0, 195.0/255.0, 195.0/255.0), 
+    (0.4, 225.0/255.0, 225.0/255.0),
+    (0.6, 0.0, 0.0),
+    (1.0, 0.0, 0.0))}
+BlGrOrRdmap = matplotlib.colors.LinearSegmentedColormap('BlGrOrRdmap',bdict,256)
+boxfish_maps['BlGrOrRd'] = BlGrOrRdmap
 
 # Goes from purple to green
 bdict = {'red':   ((0.0, 0.686,    0.686),

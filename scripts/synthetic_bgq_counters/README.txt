@@ -8,3 +8,7 @@ The synthetic data is for a 5d torus of dimensions [a, b, c, d, e] = [6, 5, 4, 3
 link_traffic = a * 10000 + b * 1000 + c * 100 + d * 10 + e .  
 
 If any modifications are desired, see the method linkVal() in 'generate_bgq_synthetic_data.py'.
+
+Update:  8/6/2014
+
+Changed the linkVal() to have values increase moving away from the center node (3, 2, 2, 1, 0), for the paper figure showing the 2-dimensional projection.  
