@@ -13,8 +13,7 @@ def next(current, max, forward):
 
 def linkVal(e, d, c, b, a):
 	# return a * 10000 + b * 1000 + c * 100 + d * 10 + e   # standard bg/q synthetic data
-	#return (abs(a-2.5) + abs(c-1.5)) * 10000  # increasing outwards from the center when looking down the b-direction of a 3-d torus
-	return abs(a-2.5) * 10000
+	return (abs(a-2.5) + abs(c-1.5)) * 10000  # increasing outwards from the center when looking down the b-direction of a 3-d torus
 
 # Write node data to an intermediate file
 node_data_file.write('---\n')
