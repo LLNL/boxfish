@@ -53,12 +53,12 @@ class Torus3dAgent(GLAgent):
         self.noderange = (0.0,1.0)
 
     def registerNodeAttributes(self, indices):
-        self.registerRun(self.datatree.getItem(indices[0]).getRun())
-        self.requestAddIndices("nodes", indices)
+        if self.registerRun(self.datatree.getItem(indices[0]).getRun()):
+            self.requestAddIndices("nodes", indices)
 
     def registerLinkAttributes(self, indices):
-        self.registerRun(self.datatree.getItem(indices[0]).getRun())
-        self.requestAddIndices("links", indices)
+        if self.registerRun(self.datatree.getItem(indices[0]).getRun()):
+            self.requestAddIndices("links", indices)
 
     def registerRun(self, run):
         """Grab the hardware information from this run, verifying it is
@@ -68,8 +68,23 @@ class Torus3dAgent(GLAgent):
         """
         if run is not self.run:
             self.run = run
+
             hardware = run["hardware"]
+
+            if "coords" not in hardware:
+                QMessageBox.warning(None, "Missing Information",
+                    "Only runs done on 3D tori/mesh may use this module.\n"
+                    + "Run meta file missing coords field.")
+                return False
+
             coords = hardware["coords"]
+
+            if len(coords) != 3:
+                QMessageBox.warning(None, "Incorrect Shape",
+                    "Only runs done on 3D tori/mesh may use this module.\n"
+                    + "Run meta file coords field must be of three dimensions.")
+                return False
+
             self.coords = coords
             self.coords_table = run.getTable(hardware["coords_table"])
             shape = [hardware["dim"][coord] for coord in coords]
@@ -98,6 +113,8 @@ class Torus3dAgent(GLAgent):
                     None, None, self.has_links)
 
             self.runNameUpdateSignal.emit(self.run.name)
+
+        return True
 
     @Slot(str)
     def requestUpdated(self, name):

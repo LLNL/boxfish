@@ -124,7 +124,8 @@ class Torus5dFrameDataModel(object):
         if diff[axis] == 1 or diff[axis] < -1:   # positive direction link
             return sa, sb, sc, sd, se, axis, 1
         elif diff[axis] == -1 or diff[axis] > 1: # negative direction link
-            return ta, tb, tc, td, te, axis, -1
+            return sa, sb, sc, sd, se, axis, -1
+            #return ta, tb, tc, td, te, axis, -1
 
     def cmap_range(self, vals):
         """Use to normalize ranges for color maps.  Given a set of values,
@@ -355,12 +356,12 @@ class Torus5dAgent(GLAgent):
         self.noderange = (0.0,1.0)
 
     def registerNodeAttributes(self, indices):
-        self.registerRun(self.datatree.getItem(indices[0]).getRun())
-        self.requestAddIndices("nodes", indices)
+        if self.registerRun(self.datatree.getItem(indices[0]).getRun()):
+            self.requestAddIndices("nodes", indices)
 
     def registerLinkAttributes(self, indices):
-        self.registerRun(self.datatree.getItem(indices[0]).getRun())
-        self.requestAddIndices("links", indices)
+        if self.registerRun(self.datatree.getItem(indices[0]).getRun()):
+            self.requestAddIndices("links", indices)
 
     def registerRun(self, run):
         """Grab the hardware information from this run, verifying it is
@@ -371,7 +372,22 @@ class Torus5dAgent(GLAgent):
         if run is not self.run:
             self.run = run
             hardware = run["hardware"]
+
+            if "coords" not in hardware:
+                QMessageBox.warning(None, "Missing Information",
+                    "Only runs done on 5D tori/mesh may use this module.\n"
+                    + "Run meta file missing coords field.")
+                return False
+
             coords = hardware["coords"]
+
+            if len(coords) != 5:
+                QMessageBox.warning(None, "Incorrect Shape",
+                    "Only runs done on 5D tori/mesh may use this module.\n"
+                    + "Run meta file coords field must be of five dimensions.")
+                return False
+
+
             self.coords = coords
             self.coords_table = run.getTable(hardware["coords_table"])
             shape = [hardware["dim"][coord] for coord in coords]
@@ -393,6 +409,7 @@ class Torus5dAgent(GLAgent):
                 link_coords_dict, coords_link_dict)
 
             self.runNameUpdateSignal.emit(self.run.name)
+        return True
 
     @Slot(str)
     def requestUpdated(self, name):

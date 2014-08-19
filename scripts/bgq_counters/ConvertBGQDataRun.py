@@ -180,7 +180,7 @@ class DataConverter():
             node.reverse()
             # since the link data for each node is for the t = 0 thread, use 0
             mpi_rank = self.mpiRank[tuple(node)][0]
-            oMapFile.write(str(node_id) + ' ' + str(mpi_rank) + ' \n')
+            oMapFile.write(str(mpi_rank) + ' ' + str(node_id) + ' \n')
             node_id += 1
 
       with open(self.oNodes, 'w') as oNodesFile:
