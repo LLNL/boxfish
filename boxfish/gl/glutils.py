@@ -86,6 +86,171 @@ def setup_overlay2D(x, y, width, height):
     glOrtho(x, x + width, y, y + height, -1, 1)
     glMatrixMode(GL_MODELVIEW)
 
+# Precalculated for polycylinder with 10 faces
+# sin 36, cos 36, cos 18, sin 18, two midpoints
+# away from axes
+cyltrigs = [ 0.587785, 0.809017, 0.951057, 0.309017 ];
+
+# Braindead replacement
+# Not that color is not used by us
+# and we only use middle two values of points
+def notGlePolyCylinder(points, color, radius):
+
+    trigs = [radius * x for x in cyltrigs];
+
+    # Different per radius of cylinder
+    if points[1][0] != points[2][0]:
+        with glSection(GL_QUAD_STRIP):
+            glNormal3f(0, 0, 1.)
+            glVertex(points[1][0], 0, radius)
+            glVertex(points[2][0], 0, radius)
+            glNormal3f(0, cyltrigs[0], cyltrigs[1])
+            glVertex(points[1][0], trigs[0], trigs[1])
+            glVertex(points[2][0], trigs[0], trigs[1])
+            glNormal3f(0, cyltrigs[2], cyltrigs[3])
+            glVertex(points[1][0], trigs[2], trigs[3])
+            glVertex(points[2][0], trigs[2], trigs[3])
+            glNormal3f(0, cyltrigs[2], -cyltrigs[3])
+            glVertex(points[1][0], trigs[2], -trigs[3])
+            glVertex(points[2][0], trigs[2], -trigs[3])
+            glNormal3f(0, cyltrigs[0], -cyltrigs[1])
+            glVertex(points[1][0], trigs[0], -trigs[1])
+            glVertex(points[2][0], trigs[0], -trigs[1])
+            glNormal3f(0, 0, -1.)
+            glVertex(points[1][0], 0, -radius)
+            glVertex(points[2][0], 0, -radius)
+            glNormal3f(0, -cyltrigs[0], -cyltrigs[1])
+            glVertex(points[1][0], -trigs[0], -trigs[1])
+            glVertex(points[2][0], -trigs[0], -trigs[1])
+            glNormal3f(0, -cyltrigs[2], -cyltrigs[3])
+            glVertex(points[1][0], -trigs[2], -trigs[3])
+            glVertex(points[2][0], -trigs[2], -trigs[3])
+            glNormal3f(0, -cyltrigs[2], cyltrigs[3])
+            glVertex(points[1][0], -trigs[2], trigs[3])
+            glVertex(points[2][0], -trigs[2], trigs[3])
+            glNormal3f(0, -cyltrigs[0], cyltrigs[1])
+            glVertex(points[1][0], -trigs[0], trigs[1])
+            glVertex(points[2][0], -trigs[0], trigs[1])
+            glNormal3f(0, 0, 1.)
+            glVertex(points[1][0], 0, radius)
+            glVertex(points[2][0], 0, radius)
+    elif points[1][1] != points[2][1]:
+        p1 = points[1][1]
+        p2 = points[2][1]
+        with glSection(GL_QUAD_STRIP):
+            glNormal3f(0, 0, 1.)
+            glVertex(0, p1, radius)
+            glVertex(0, p2, radius)
+            glNormal3f(cyltrigs[0], 0, cyltrigs[1])
+            glVertex(trigs[0], p1, trigs[1])
+            glVertex(trigs[0], p2, trigs[1])
+            glNormal3f(cyltrigs[2], 0, cyltrigs[3])
+            glVertex(trigs[2], p1, trigs[3])
+            glVertex(trigs[2], p2, trigs[3])
+            glNormal3f(cyltrigs[2], 0, -cyltrigs[3])
+            glVertex(trigs[2], p1, -trigs[3])
+            glVertex(trigs[2], p2, -trigs[3])
+            glNormal3f(cyltrigs[0], 0, -cyltrigs[1])
+            glVertex(trigs[0], p1, -trigs[1])
+            glVertex(trigs[0], p2, -trigs[1])
+            glNormal3f(0, 0, -1.)
+            glVertex(0, p1, -radius)
+            glVertex(0, p2, -radius)
+            glNormal3f(-cyltrigs[0], 0, -cyltrigs[1])
+            glVertex(-trigs[0], p1, -trigs[1])
+            glVertex(-trigs[0], p2, -trigs[1])
+            glNormal3f(-cyltrigs[2], 0, -cyltrigs[3])
+            glVertex(-trigs[2], p1, -trigs[3])
+            glVertex(-trigs[2], p2, -trigs[3])
+            glNormal3f(-cyltrigs[2], 0, cyltrigs[3])
+            glVertex(-trigs[2], p1, trigs[3])
+            glVertex(-trigs[2], p2, trigs[3])
+            glNormal3f(-cyltrigs[0], 0, cyltrigs[1])
+            glVertex(-trigs[0], p1, trigs[1])
+            glVertex(-trigs[0], p2, trigs[1])
+            glNormal3f(0, 0, 1.)
+            glVertex(0, p1, radius)
+            glVertex(0, p2, radius)
+    else:
+        p1 = points[1][2]
+        p2 = points[2][2]
+        with glSection(GL_QUAD_STRIP):
+            glNormal3f(0, 1., 0)
+            glVertex(0, radius, p1)
+            glVertex(0, radius, p2)
+            glNormal3f(cyltrigs[0], cyltrigs[1], 0)
+            glVertex(trigs[0], trigs[1], p1)
+            glVertex(trigs[0], trigs[1], p2)
+            glNormal3f(cyltrigs[2], cyltrigs[3], 0)
+            glVertex(trigs[2], trigs[3], p1)
+            glVertex(trigs[2], trigs[3], p2)
+            glNormal3f(cyltrigs[2], -cyltrigs[3], 0)
+            glVertex(trigs[2], -trigs[3], p1)
+            glVertex(trigs[2], -trigs[3], p2)
+            glNormal3f(cyltrigs[0], -cyltrigs[1], 0)
+            glVertex(trigs[0], -trigs[1], p1)
+            glVertex(trigs[0], -trigs[1], p2)
+            glNormal3f(0, -1., 0)
+            glVertex(0, -radius, p1)
+            glVertex(0, -radius, p2)
+            glNormal3f(-cyltrigs[0], -cyltrigs[1], 0)
+            glVertex(-trigs[0], -trigs[1], p1)
+            glVertex(-trigs[0], -trigs[1], p2)
+            glNormal3f(-cyltrigs[2], -cyltrigs[3], 0)
+            glVertex(-trigs[2], -trigs[3], p1)
+            glVertex(-trigs[2], -trigs[3], p2)
+            glNormal3f(-cyltrigs[2], cyltrigs[3], 0)
+            glVertex(-trigs[2], trigs[3], p1)
+            glVertex(-trigs[2], trigs[3], p2)
+            glNormal3f(-cyltrigs[0], cyltrigs[1], 0)
+            glVertex(-trigs[0], trigs[1], p1)
+            glVertex(-trigs[0], trigs[1], p2)
+            glNormal3f(0, 1., 0)
+            glVertex(0, radius, p1)
+            glVertex(0, radius, p2)
+
+
+# Braindead replacement 
+def notGlutSolidCube(size):
+    p = size / 2
+    n = -1 * p
+    with glSection(GL_QUADS): # front
+        glNormal3f(0, 0, 1.)
+        glVertex(n, p, n)
+        glVertex(n, n, n)
+        glVertex(p, n, n)
+        glVertex(p, p, n)
+    with glSection(GL_QUADS): # top
+        glNormal3f(0, 1., 0)
+        glVertex(n, p, p)
+        glVertex(n, p, n)
+        glVertex(p, p, n)
+        glVertex(p, p, p)
+    with glSection(GL_QUADS): # right
+        glNormal3f(1., 0, 0)
+        glVertex(p, p, n)
+        glVertex(p, n, n)
+        glVertex(p, n, p)
+        glVertex(p, p, p)
+    with glSection(GL_QUADS): # back
+        glNormal3f(0, 0, -1.)
+        glVertex(p, p, p)
+        glVertex(p, n, p)
+        glVertex(n, n, p)
+        glVertex(n, p, p)
+    with glSection(GL_QUADS): # bottom
+        glNormal3f(0, -1., 0)
+        glVertex(p, n, p)
+        glVertex(p, n, n)
+        glVertex(n, n, n)
+        glVertex(n, n, p)
+    with glSection(GL_QUADS): # left
+        glNormal3f(-1., 0, 0)
+        glVertex(n, p, p)
+        glVertex(n, n, p)
+        glVertex(n, n, n)
+        glVertex(n, p, n)
+
 
 class DisplayList(object):
     """Use this to turn some rendering function of yours into a DisplayList,

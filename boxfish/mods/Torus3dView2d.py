@@ -2,8 +2,6 @@ import sys, math
 import numpy as np
 
 from OpenGL.GL import *
-from OpenGL.GLUT import *
-from OpenGL.GLE import *
 
 from Torus3dModule import *
 from boxfish.gl.GLWidget import GLWidget
@@ -321,7 +319,7 @@ class GLTorus2dView(Torus3dGLWidget):
 
             # Draw cube with node color from the model
             glColor4f(*self.node_colors[x,y,z])
-            glutSolidCube(self.box_size)
+            notGlutSolidCube(self.box_size)
 
             glPopMatrix()
 
@@ -525,11 +523,11 @@ class GLTorus2dView(Torus3dGLWidget):
 
 
             # Draw Label based on given coords
-            glLineWidth(1.0)
-            if coords is not None and len(coords[axis]) > 0:
-                with glMatrix():
-                    glTranslate(5, 5, 0.2)
-                    glScalef(0.12, 0.12, 0.12)
-                    for c in coords[axis]:
-                        glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
-            glLineWidth(self.link_width)
+            #glLineWidth(1.0)
+            #if coords is not None and len(coords[axis]) > 0:
+            #    with glMatrix():
+            #        glTranslate(5, 5, 0.2)
+            #        glScalef(0.12, 0.12, 0.12)
+            #        for c in coords[axis]:
+            #            glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
+            #glLineWidth(self.link_width)

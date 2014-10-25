@@ -1,10 +1,10 @@
 import math
 import numpy as np
 from OpenGL.GL import *
-from OpenGL.GLUT import *
-from OpenGL.GLE import *
 from Torus5dModule import *
 from boxfish.gl.GLWidget import set_perspective
+from boxfish.gl.glutils import *
+from OpenGL.GLUT import *
 
 class Torus5dViewMinimaps(Torus5dGLWidget):
     ''' Draws a view which shows the average link values bundled together. Every

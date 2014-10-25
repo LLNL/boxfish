@@ -1,9 +1,9 @@
 import math
 import numpy as np
 from OpenGL.GL import *
-from OpenGL.GLUT import *
-from OpenGL.GLE import *
 from OpenGL.GLU import *
+from OpenGL.GLUT import *
+from boxfish.gl.glutils import *
 from Torus5dModule import *
 
 class Torus5dViewOverview(Torus5dGLWidget):

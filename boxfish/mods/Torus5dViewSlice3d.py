@@ -2,10 +2,10 @@ import math
 import numpy as np
 import operator
 from OpenGL.GL import *
-from OpenGL.GLUT import *
-from OpenGL.GLE import *
 from OpenGL.GLU import *
 from Torus5dModule import *
+from boxfish.gl.glutils import *
+from OpenGL.GLUT import *
 
 class Torus5dViewSlice3d(Torus5dGLWidget):
     ''' Draws a view of a 3d torus.  The 3d torus is selected as a subset of the
@@ -355,7 +355,7 @@ class Torus5dViewSlice3d(Torus5dGLWidget):
                 glPushMatrix()
                 glTranslatef(*self.getNodePos3d(self.getSliceNode(node)))
                 glColor4f(*self.node_colors[node])
-                glutSolidCube(self.node_size)
+                notGlutSolidCube(self.node_size)
                 glPopMatrix()
 
         # Get rid of the grid_span translation
@@ -1104,7 +1104,7 @@ class Torus5dViewSlice3d(Torus5dGLWidget):
             glPushMatrix()
             if node[d] == self.current_planes[d] and node[4] == self.current_planes[4]:
                 glTranslatef(*self.getNodePos3d(self.getSliceNode(node)))
-                glutSolidCube(box_size)
+                notGlutSolidCube(box_size)
             glPopMatrix()
 
         glPopMatrix()

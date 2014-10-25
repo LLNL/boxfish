@@ -9,7 +9,7 @@ from PySide.QtGui import QWidget,QLabel,QPixmap,QLineEdit,QHBoxLayout,qRgba,\
 from OpenGL.GL import *
 from OpenGL.GL.glget import *
 from boxfish.gl.glutils import *
-from OpenGL.GLUT import glutStrokeCharacter, GLUT_STROKE_ROMAN
+#from OpenGL.GLUT import glutStrokeCharacter, GLUT_STROKE_ROMAN
 
 # maybe instead of separate we should use register_cmap()
 boxfish_maps = dict()
@@ -508,13 +508,13 @@ def drawGLColorBar(colors, bar_x, bar_y, bar_width, bar_height, label = ""):
                 glVertex3f(0.01, 0.01, 0.01)
 
         # TODO: Make this whole section much less magical
-        default_text_height = 152.38
-        scale_factor = 1.0 / default_text_height * segment_size
-        scale_factor = 0.08
-        if len(label) > 0:
-            with glMatrix():
-                glTranslatef(7, bar_height + 3, 0.2)
-                glScalef(scale_factor, scale_factor, scale_factor)
-                for c in label:
-                    glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
-        glLineWidth(prev_lineWidth)
+        #default_text_height = 152.38
+        #scale_factor = 1.0 / default_text_height * segment_size
+        #scale_factor = 0.08
+        #if len(label) > 0:
+        #    with glMatrix():
+        #        glTranslatef(7, bar_height + 3, 0.2)
+        #        glScalef(scale_factor, scale_factor, scale_factor)
+        #        for c in label:
+        #            glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
+        #glLineWidth(prev_lineWidth)

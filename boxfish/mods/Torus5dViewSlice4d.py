@@ -1,9 +1,9 @@
 import math
 import numpy as np
 from OpenGL.GL import *
-from OpenGL.GLUT import *
-from OpenGL.GLE import *
 from Torus5dModule import *
+from boxfish.gl.glutils import *
+from OpenGL.GLUT import *
 
 class Torus5dViewSlice4d(Torus5dGLWidget):
     ''' Draws a view of the 5d torus.  For each combination of fourth and fifth
@@ -459,7 +459,7 @@ class Torus5dViewSlice4d(Torus5dGLWidget):
                 index = [node5d[i] for i in range(len(self.shape))]
                 #print '\tindex = ' + str(index)
                 glColor4f(*self.node_colors[index[0], index[1], index[2], index[3], index[4]])
-                glutSolidCube(self.node_size)
+                notGlutSolidCube(self.node_size)
 
             glPopMatrix()
 

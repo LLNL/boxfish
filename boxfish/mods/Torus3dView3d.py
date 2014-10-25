@@ -3,8 +3,6 @@ import operator
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from OpenGL.GLUT import *
-from OpenGL.GLE import *
 
 from boxfish.gl.GLWidget import GLWidget, set_perspective
 from boxfish.gl.glutils import *
@@ -162,7 +160,7 @@ class GLTorus3dView(Torus3dGLWidget):
             glPushMatrix()
             self.centerNode(node)
             glColor4f(*self.node_colors[node])
-            glutSolidCube(self.box_size)
+            notGlutSolidCube(self.box_size)
             glPopMatrix()
 
         # Get rid of the grid_span translation
@@ -187,7 +185,7 @@ class GLTorus3dView(Torus3dGLWidget):
             # Draw links for each dim as poly cylinders
             for dim in range(3):
                 glColor4f(*colors[dim])
-                glePolyCylinder(poly_cylinders[dim], None, self.link_radius)
+                notGlePolyCylinder(poly_cylinders[dim], None, self.link_radius)
 
             glPopMatrix()
         glPopMatrix()
@@ -285,7 +283,7 @@ class GLTorus3dView(Torus3dGLWidget):
             glLoadName(self.dataModel.coord_to_node[node])
             glPushMatrix()
             self.centerNode(node)
-            glutSolidCube(box_size)
+            notGlutSolidCube(box_size)
             glPopMatrix()
 
         glPopMatrix()
