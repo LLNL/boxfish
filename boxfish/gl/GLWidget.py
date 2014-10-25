@@ -17,7 +17,6 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 from PySide.QtOpenGL import *
 from OpenGL.GL import *
-from OpenGL.GLUT import *
 
 from glutils import *
 

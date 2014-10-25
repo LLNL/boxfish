@@ -1,6 +1,6 @@
 
 import sys
-from OpenGL.GLUT import glutInit
+#from OpenGL.GLUT import glutInit
 from MainWindow import *
 
 
@@ -10,7 +10,7 @@ def run():
 
     # May be called on some systems, not on others and the latter
     # will crash without it if GLUT stuff is used.
-    glutInit(sys.argv)
+    #glutInit(sys.argv)
 
     app = QApplication(sys.argv)
     #app.setStyle('plastique')
