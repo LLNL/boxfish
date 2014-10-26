@@ -1388,7 +1388,7 @@ class Torus5dViewMinimaps(Torus5dGLWidget):
 
         # Draw link
         #print 'Drawing cylinder of width = ' + str(self.cylinder_width)
-        glePolyCylinder(cyl_points, None, self.cylinder_width )    
+        notGlePolyCylinder(cyl_points, None, self.cylinder_width )    
 
 
     # **************************        I/O       ******************************

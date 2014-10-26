@@ -4,6 +4,7 @@ from OpenGL.GL import *
 from Torus5dModule import *
 from boxfish.gl.glutils import *
 from OpenGL.GLUT import *
+from OpenGL.GLE import glePolyCylinder
 
 class Torus5dViewSlice4d(Torus5dGLWidget):
     ''' Draws a view of the 5d torus.  For each combination of fourth and fifth
@@ -930,7 +931,7 @@ class Torus5dViewSlice4d(Torus5dGLWidget):
 
         # interpolate cylinder points
         cyl_points = [tuple(p) for p in [start - v, start, end, end + v]]
-
+        
         # Draw link
         glePolyCylinder(cyl_points, None, self.link_width / 50.0)
 

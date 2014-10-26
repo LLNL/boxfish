@@ -30,7 +30,6 @@ from boxfish.gl.GLWidget import GLWidget, set_perspective, \
     boxfish_glut_initialized, TextDraw, setupPaintEvent
 from boxfish.gl.glutils import *
 from OpenGL.GLUT import glutInit
-from OpenGL.GLE import glePolyCylinder
 
 import TorusIcons
 from boxfish.ColorMaps import ColorMap, ColorMapWidget, drawGLColorBar
@@ -127,8 +126,8 @@ class Torus5dFrameDataModel(object):
         if diff[axis] == 1 or diff[axis] < -1:   # positive direction link
             return sa, sb, sc, sd, se, axis, 1
         elif diff[axis] == -1 or diff[axis] > 1: # negative direction link
-            return sa, sb, sc, sd, se, axis, -1
-            #return ta, tb, tc, td, te, axis, -1
+            #return sa, sb, sc, sd, se, axis, -1
+            return ta, tb, tc, td, te, axis, -1
 
     def cmap_range(self, vals):
         """Use to normalize ranges for color maps.  Given a set of values,

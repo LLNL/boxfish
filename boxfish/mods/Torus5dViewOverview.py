@@ -5,6 +5,7 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 from boxfish.gl.glutils import *
 from Torus5dModule import *
+from OpenGL.GLE import glePolyCylinder
 
 class Torus5dViewOverview(Torus5dGLWidget):
     ''' Draws an overview which shows all the planes for a selected axis and

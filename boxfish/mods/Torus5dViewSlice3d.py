@@ -345,7 +345,7 @@ class Torus5dViewSlice3d(Torus5dGLWidget):
                 polyDim = 0
                 for dim in w, h, self.axis:
                     glColor4f(*colors[dim])
-                    glePolyCylinder(poly_cylinders[polyDim], None, self.link_width)
+                    notGlePolyCylinder(poly_cylinders[polyDim], None, self.link_width)
                     polyDim += 1
 
                 glPopMatrix()

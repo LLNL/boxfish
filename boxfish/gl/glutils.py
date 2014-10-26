@@ -99,7 +99,7 @@ def notGlePolyCylinder(points, color, radius):
     trigs = [radius * x for x in cyltrigs];
 
     # Different per radius of cylinder
-    if points[1][0] != points[2][0]:
+    if abs(points[1][0] - points[2][0]) > 1e-6:
         with glSection(GL_QUAD_STRIP):
             glNormal3f(0, 0, 1.)
             glVertex(points[1][0], 0, radius)
@@ -134,7 +134,7 @@ def notGlePolyCylinder(points, color, radius):
             glNormal3f(0, 0, 1.)
             glVertex(points[1][0], 0, radius)
             glVertex(points[2][0], 0, radius)
-    elif points[1][1] != points[2][1]:
+    elif abs(points[1][1] - points[2][1]) > 1e-6:
         p1 = points[1][1]
         p2 = points[2][1]
         with glSection(GL_QUAD_STRIP):
