@@ -586,9 +586,6 @@ class Torus5dGLWidget(GLWidget):
         self.clearNodes()
         self.clearLinks()
 
-    def doLegend(self):
-        pass
-
     def setDataModel(self, dataModel):
         # unregister with any old model
         if self.dataModel:

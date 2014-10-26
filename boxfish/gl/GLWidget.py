@@ -271,12 +271,12 @@ class GLWidget(QGLWidget):
             glRotatef(0.5*tb_angle, tb_axis[0] , tb_axis[1], tb_axis[2])
             glMultMatrixd(self.rotation)
             self.rotation = glGetDouble(GL_MODELVIEW_MATRIX)
-            self.doLegend()
+            #self.doLegend()
 
-            self.transformChangeSignal.emit(self.rotation, self.translation)
 
             #self.updateGL()
             self.paintEvent(event)
+            self.transformChangeSignal.emit(self.rotation, self.translation)
 
     def wheelEvent(self, event):
         """Does translation in response to wheel events.  Within paintGL(),

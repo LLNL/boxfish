@@ -115,7 +115,8 @@ class Torus5dViewMinimaps(Torus5dGLWidget):
 
         self.updateMiniMapSizes()
         self.miniMapList.update()
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
 
     def updateMiniMapBoxPos(self, bl_x, bl_y, tr_x, tr_y, row, col, d_list, 
         e_list):
