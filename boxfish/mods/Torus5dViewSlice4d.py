@@ -131,7 +131,8 @@ class Torus5dViewSlice4d(Torus5dGLWidget):
         if toolBar: 
             self.updateToolBarPos()
             self.toolBarList.update()
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
 
     def updateAxis(self, axis, axis_index = -1):
         ''' Slot for agent.axisUpdateSignal.  Updates the current axis which
@@ -356,12 +357,20 @@ class Torus5dViewSlice4d(Torus5dGLWidget):
 
     # ------------------------    Render, Level 0    ---------------------------
 
-    def paintGL(self):
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glGetError()
-        self.orient_scene()
-        self.draw()
-        super(Torus5dViewSlice4d, self).paintGL()
+    #def paintGL(self):
+    #    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    #    glGetError()
+    #    self.orient_scene()
+    #    self.draw()
+    #    super(Torus5dViewSlice4d, self).paintGL()
+    
+    def paintEvent(self, event):
+        with setupPaintEvent(self):
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+            glGetError()
+            self.orient_scene()
+            self.draw()
+            super(Torus5dViewSlice4d, self).paintEvent(None)
 
     # ------------------------    Render, Level 1    ---------------------------
     

@@ -117,7 +117,8 @@ class Torus5dViewSlice3d(Torus5dGLWidget):
             self.updateToolBarPos()
             self.toolBarList.update()
         if axis: self.axisList.update()
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
 
     def updateIconHitBoxes(self, indicies, vals):
         ''' Increment all hit boxes with index in indicies by the values in vals.'''
@@ -220,12 +221,20 @@ class Torus5dViewSlice3d(Torus5dGLWidget):
 
     # ------------------------    Render, Level 0    ---------------------------
 
-    def paintGL(self):
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glGetError()
-        self.orient_scene()
-        self.draw()
-        super(Torus5dViewSlice3d, self).paintGL()    
+    #def paintGL(self):
+    #    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    #    glGetError()
+    #    self.orient_scene()
+    #    self.draw()
+    #    super(Torus5dViewSlice3d, self).paintGL()    
+
+    def paintEvent(self, event):
+        with setupPaintEvent(self):
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+            glGetError()
+            self.orient_scene()
+            self.draw()
+            super(Torus5dViewSlice3d, self).paintEvent(event)    
 
     # ------------------------    Render, Level 1    ---------------------------
 
@@ -786,7 +795,6 @@ class Torus5dViewSlice3d(Torus5dGLWidget):
                     glVertex3f(0., 0., 0.)
             glLineWidth(prev_lineWidth)
 
-            '''
             # Section copied from Boxfish.ColorBars.drawGLColorBar()
             default_text_height = 152.38
             scale_factor = 1.0 / default_text_height * segment_size
@@ -797,9 +805,8 @@ class Torus5dViewSlice3d(Torus5dGLWidget):
                     glScalef(scale_factor, scale_factor, scale_factor)
                     for c in label:
                         glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
-            
-            '''
-        
+
+
         if not prev_blend_on:
             glDisable(GL_BLEND)
 

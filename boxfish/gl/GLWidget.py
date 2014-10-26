@@ -20,6 +20,8 @@ from OpenGL.GL import *
 
 from glutils import *
 
+boxfish_glut_initialized = False
+
 @contextmanager
 def setupPaintEvent(self):
     painter = QPainter()

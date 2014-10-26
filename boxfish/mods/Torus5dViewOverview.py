@@ -132,7 +132,8 @@ class Torus5dViewOverview(Torus5dGLWidget):
         for disp_list in self.widget2dLists:
             disp_list.update()
 
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
 
     def updateMiniMapValues(self):
         '''Same as updateMiniMapValues, but does all planes.  Not currently doing anything
@@ -429,13 +430,22 @@ class Torus5dViewOverview(Torus5dGLWidget):
 
     # ------------------------    Render, Level 0    ---------------------------
 
-    def paintGL(self):
+    #def paintGL(self):
+    #    ''' How the QGLWidget is supposed to render the scene.'''
+    #    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    #    glGetError()
+    #    self.orient_scene() # push the view back to get behind front clip plane
+    #    self.draw()
+    #    super(Torus5dViewOverview, self).paintGL()
+
+    def paintEvent(self, event):
         ''' How the QGLWidget is supposed to render the scene.'''
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glGetError()
-        self.orient_scene() # push the view back to get behind front clip plane
-        self.draw()
-        super(Torus5dViewOverview, self).paintGL()
+        with setupPaintEvent(self):
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+            glGetError()
+            self.orient_scene() # push the view back to get behind front clip plane
+            self.draw()
+            super(Torus5dViewOverview, self).paintEvent(event)
 
     # ------------------------    Render, Level 1    ---------------------------
 
@@ -1048,7 +1058,8 @@ class Torus5dViewOverview(Torus5dGLWidget):
         #render the scene with labeled nodes
         #find the color of the pixel @self.x, self.y
         #map color back to id and return
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(event)
 
         #disable unneded
         glDisable(GL_LIGHTING)

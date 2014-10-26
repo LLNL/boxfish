@@ -26,8 +26,11 @@ import math
 from PySide.QtCore import *
 
 from GLModule import *
-from boxfish.gl.GLWidget import GLWidget, set_perspective
+from boxfish.gl.GLWidget import GLWidget, set_perspective, \
+    boxfish_glut_initialized, TextDraw, setupPaintEvent
 from boxfish.gl.glutils import *
+from OpenGL.GLUT import glutInit
+from OpenGL.GLE import glePolyCylinder
 
 import TorusIcons
 from boxfish.ColorMaps import ColorMap, ColorMapWidget, drawGLColorBar
@@ -522,6 +525,10 @@ class Torus5dGLWidget(GLWidget):
     def __init__(self, parent, dataModel, rotation = True, **keywords):
         super(Torus5dGLWidget, self).__init__(parent, rotation = rotation)
 
+        if not boxfish_glut_initialized:
+            boxfish_glut_initialzed = True
+            glutInit()
+
         def kwarg(name, default_value):
             setattr(self, name, keywords.get(name, default_value))
 
@@ -578,6 +585,9 @@ class Torus5dGLWidget(GLWidget):
         self.setDataModel(dataModel)
         self.clearNodes()
         self.clearLinks()
+
+    def doLegend(self):
+        pass
 
     def setDataModel(self, dataModel):
         # unregister with any old model
