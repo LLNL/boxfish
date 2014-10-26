@@ -1,7 +1,7 @@
 from PySide.QtCore import *
 
 from GLModule import *
-from boxfish.gl.GLWidget import GLWidget, set_perspective
+from boxfish.gl.GLWidget import GLWidget, set_perspective, setupPaintEvent
 from boxfish.gl.glutils import *
 
 import TorusIcons
@@ -502,13 +502,15 @@ class Torus3dGLWidget(GLWidget):
         """Update the drawing."""
         self.updateCubeColors()
         self.updateLinkColors()
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
 
     def updateDrawing(self):
         """Updates and redraws when the node/link information has changed."""
         self.cubeList.update()
         self.linkList.update()
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
 
     def clearNodes(self):
         """Sets the nodes to the default color."""
@@ -535,7 +537,8 @@ class Torus3dGLWidget(GLWidget):
     def updateNodeDefaultColor(self, color):
         self.default_node_color = color
         self.updateCubeColors()
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
 
     def updateCubeColors(self):
         """Updates the node colors from the dataModel."""
@@ -583,7 +586,7 @@ class Torus3dGLWidget(GLWidget):
         for i in range(11):
             node_bar.append(self.map_node_color(float(i)/10.0))
 
-        drawGLColorBar(node_bar, x, y, w, h, "N")
+        self.textdraws.append(drawGLColorBar(node_bar, x, y, w, h, "N", self.height()))
 
         # I want this extra stuff to take up no more than 1/10 of the
         # screen space. Therefore total width = self.width() / 10
@@ -599,7 +602,7 @@ class Torus3dGLWidget(GLWidget):
         for i in range(11):
             link_bar.append(self.map_link_color(float(i)/10.0))
 
-        drawGLColorBar(link_bar, x, y, w, h, "L")
+        self.textdraws.append(drawGLColorBar(link_bar, x, y, w, h, "L", self.height()))
 
 
     def map_node_color(self, val, preempt_range = 0):
@@ -665,25 +668,29 @@ class Torus3dGLWidget(GLWidget):
     def lowerLowerBound(self):
         self.lowerBound = max(self.lowerBound-self.delta,0)
         self.updateLinkColors()
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
         print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
 
     def raiseLowerBound(self):
         self.lowerBound = min(self.lowerBound+self.delta,1)
         self.updateLinkColors()
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
         print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
 
     def lowerUpperBound(self):
         self.upperBound = max(self.upperBound-self.delta,0)
         self.updateLinkColors()
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
         print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
 
     def raiseUpperBound(self):
         self.upperBound = min(self.upperBound+self.delta,1)
         self.updateLinkColors()
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
         print "New colormap showing links between [%.1f%%,%.1f%%] of the range" % (self.lowerBound*100,self.upperBound*100)
 
 

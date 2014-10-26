@@ -4,7 +4,7 @@ import numpy as np
 from OpenGL.GL import *
 
 from Torus3dModule import *
-from boxfish.gl.GLWidget import GLWidget
+from boxfish.gl.GLWidget import GLWidget, setupPaintEvent, TextDraw
 from boxfish.gl.glutils import *
 
 class T3V2ModuleScene(GLModuleScene):
@@ -175,13 +175,15 @@ class GLTorus2dView(Torus3dGLWidget):
     def increaseLinkWidth(self):
         self.link_width += 1
         glLineWidth(self.link_width)
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
 
     def decreaseLinkWidth(self):
         self.link_width -= 1
         self.link_width = max(1,self.link_width)
         glLineWidth(self.link_width)
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
 
 #    def keyAction(self, key):
 #        axis_map = { int(Qt.Key_X) : lambda : self.setAxis(0),
@@ -256,15 +258,16 @@ class GLTorus2dView(Torus3dGLWidget):
         self.updateDrawing()
 
 
-    def paintGL(self):
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glGetError()
-        self.orient_scene()
-        self.cubeList()
-        self.linkList()
-        self.doLegend()
+    def paintEvent(self, event):
+        with setupPaintEvent(self):
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+            glGetError()
+            self.orient_scene()
+            self.cubeList()
+            self.linkList()
+            self.doLegend()
 
-        super(GLTorus2dView, self).paintGL()
+            super(GLTorus2dView, self).paintEvent(event)
 
 
     def centerView(self, shape, axis, gap, scale = 1):
@@ -531,3 +534,7 @@ class GLTorus2dView(Torus3dGLWidget):
             #        for c in coords[axis]:
             #            glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
             #glLineWidth(self.link_width)
+
+            if coords is not None and len(coords[axis]) > 0:
+                for c in coords[axis]:
+                    self.textdraws.append(TextDraw(c, x + w - 10, self.height() - y - 5))

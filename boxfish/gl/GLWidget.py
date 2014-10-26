@@ -20,6 +20,25 @@ from OpenGL.GL import *
 
 from glutils import *
 
+@contextmanager
+def setupPaintEvent(self):
+    painter = QPainter()
+    painter.begin(self)
+    painter.setRenderHint(QPainter.Antialiasing)
+
+    glPushAttrib(GL_ALL_ATTRIB_BITS)
+    self.initializeGL()
+
+    yield
+
+    glPopAttrib()
+
+    for text in self.textdraws:
+        painter.drawText(text.x, text.y, text.text)
+
+    painter.end()
+
+
 class GLWidget(QGLWidget):
     """ This class implements basic support for interactive OpenGL application
         This includes support for rotation and translation using the mouse.
@@ -70,6 +89,8 @@ class GLWidget(QGLWidget):
         self.rotation = np.identity(4)
 
         self.init = False
+
+        self.textdraws = []
 
     def set_translation(self, t):
         """Ensure that translation is always a numpy array."""
@@ -184,8 +205,13 @@ class GLWidget(QGLWidget):
 
         self.resizeSignal.emit()
 
-    def paintGL(self):
+    #def paintGL(self):
+    #    glFlush()
+
+
+    def paintEvent(self, event):
         glFlush()
+
 
     def mouseDoubleClickEvent(self, event):
         self.parent.mouseDoubleClickEvent(event)
@@ -243,10 +269,12 @@ class GLWidget(QGLWidget):
             glRotatef(0.5*tb_angle, tb_axis[0] , tb_axis[1], tb_axis[2])
             glMultMatrixd(self.rotation)
             self.rotation = glGetDouble(GL_MODELVIEW_MATRIX)
+            self.doLegend()
+
             self.transformChangeSignal.emit(self.rotation, self.translation)
 
-            self.updateGL()
-
+            #self.updateGL()
+            self.paintEvent(event)
 
     def wheelEvent(self, event):
         """Does translation in response to wheel events.  Within paintGL(),
@@ -266,7 +294,8 @@ class GLWidget(QGLWidget):
 
             self.transformChangeSignal.emit(self.rotation, self.translation)
 
-            self.updateGL()
+            #self.updateGL()
+            self.paintEvent(event)
 
     def keyPressEvent(self, event):
         self.pressed_keys.add(event.key())
@@ -304,14 +333,16 @@ class GLWidget(QGLWidget):
             need_update = True
 
         if need_update:
-            self.updateGL()
+            #self.updateGL()
+            self.paintEvent(None)
 
     def change_background_color(self, color):
         """Changes the background color to the given."""
         if color is not None:
             self.bg_color = color
             glClearColor(*color)
-            self.updateGL()
+            #self.updateGL()
+            self.paintEvent(None)
 
 def set_perspective(fovY, aspect, zNear, zFar):
     """NeHe replacement for gluPerspective"""
@@ -323,3 +354,11 @@ def set_ortho(maxdim, aspect):
     halfheight = maxdim
     halfwidth = aspect * halfheight
     glOrtho(-halfwidth, halfwidth, -halfheight, halfheight, -10, 100)
+
+class TextDraw(object):
+    """Holder of text and x and y position for qt painting."""
+
+    def __init__(self, text, x, y):
+        self.text = text
+        self.x = x
+        self.y = y

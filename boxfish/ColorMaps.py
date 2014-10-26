@@ -9,6 +9,7 @@ from PySide.QtGui import QWidget,QLabel,QPixmap,QLineEdit,QHBoxLayout,qRgba,\
 from OpenGL.GL import *
 from OpenGL.GL.glget import *
 from boxfish.gl.glutils import *
+from boxfish.gl.GLWidget import TextDraw
 #from OpenGL.GLUT import glutStrokeCharacter, GLUT_STROKE_ROMAN
 
 # maybe instead of separate we should use register_cmap()
@@ -463,7 +464,7 @@ def rgbStylesheetString(color):
         + str(color[2]) + ")"
 
 
-def drawGLColorBar(colors, bar_x, bar_y, bar_width, bar_height, label = ""):
+def drawGLColorBar(colors, bar_x, bar_y, bar_width, bar_height, label = "", total_height = 0):
     """Draws a single colorbar at bar_x, bar_y with width bar_width
        and height bar_height.
 
@@ -518,3 +519,6 @@ def drawGLColorBar(colors, bar_x, bar_y, bar_width, bar_height, label = ""):
         #        for c in label:
         #            glutStrokeCharacter(GLUT_STROKE_ROMAN, ord(c))
         #glLineWidth(prev_lineWidth)
+
+        if len(label) > 0:
+            return TextDraw(label, bar_x + 6, total_height - (bar_y + bar_height + 3))

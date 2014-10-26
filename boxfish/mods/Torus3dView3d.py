@@ -4,7 +4,7 @@ import operator
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
-from boxfish.gl.GLWidget import GLWidget, set_perspective
+from boxfish.gl.GLWidget import GLWidget, set_perspective, setupPaintEvent
 from boxfish.gl.glutils import *
 
 from Torus3dModule import *
@@ -109,22 +109,25 @@ class GLTorus3dView(Torus3dGLWidget):
         else:
             if not self.drawLinkColorBar in self.legendCalls:
                 self.legendCalls.append(self.drawLinkColorBar)
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
 
     def setNodeSize(self, node_size):
         self.box_size = node_size
         self.cubeList.update()
-        self.updateGL()
+        #self.updateGL()
+        self.paintEvent(None)
 
-    def paintGL(self):
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glGetError()
-        self.orient_scene()
-        self.cubeList()
-        if self.draw_links:
-            self.linkList()
-        self.doAxis()
-        self.doLegend()
+    def paintEvent(self, event):
+        with setupPaintEvent(self):
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+            glGetError()
+            self.orient_scene()
+            self.cubeList()
+            if self.draw_links:
+                self.linkList()
+            self.doAxis()
+            self.doLegend()
 
         super(GLTorus3dView, self).paintGL()
 
