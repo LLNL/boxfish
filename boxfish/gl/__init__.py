@@ -1,3 +1,3 @@
-import glefix
+#import glefix
 import GLWidget
 import glutils

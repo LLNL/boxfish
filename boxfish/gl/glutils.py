@@ -7,7 +7,7 @@ Author:
 """
 from contextlib import contextmanager
 from OpenGL.GL import *
-from glefix import *
+#from glefix import *
 
 @contextmanager
 def glSection(type):

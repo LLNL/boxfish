@@ -31,6 +31,7 @@ from boxfish.gl.GLWidget import GLWidget, set_perspective, \
 from boxfish.gl.glutils import *
 from OpenGL.GLUT import glutInit
 
+
 import TorusIcons
 from boxfish.ColorMaps import ColorMap, ColorMapWidget, drawGLColorBar
 
