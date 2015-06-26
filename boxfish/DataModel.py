@@ -527,9 +527,10 @@ class TableItem(DataObjectItem):
         return self._table.subset_by_conditions(evaluated_identifiers,
             conditions)
 
+    #Unused
     def createIdAttributeMaps(self, attributes, aggregator = 'max'):
-        """Creates a forward and backward dict from the table's ID to
-           a set of attributes, row-aggregated by the given aggreagor.
+        """[UNUSED] Creates a forward and backward dict from the table's ID to
+           a set of attributes, row-aggregated by the given aggregator.
         """
         attribute_groups, ids = self._table.group_attributes_by_attributes(
             self._table.identifiers(), attributes, [self['field']], aggregator)
