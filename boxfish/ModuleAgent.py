@@ -123,10 +123,6 @@ class ModuleAgent(QObject):
         """Returns the attribute scene from the request denoted by tag."""
         return self.requests[tag].scene
 
-
-    # TODO: Maybe instead of having next few functions we should
-    # move the functionality out of ModuleRequest and over here,
-    # leaving the request to just hold the coupler and the indices
     def requestAddIndices(self, name, indices):
         """Associates the given DataTree indices with the named request."""
         if name not in self.requests:

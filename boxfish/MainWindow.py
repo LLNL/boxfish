@@ -94,11 +94,6 @@ class MainWindow(QMainWindow):
         else:
             super(MainWindow, self).dropEvent(e)
 
-    # Unfortunate attempts to determine how to deal with drag overlay
-    # persistance problem
-    #def mouseReleaseEvent(self, e):
-    #    print "release"
-
     def createMenus(self):
         """This defines the menu actions and shortcuts."""
         self.fileMenu = self.menuBar().addMenu("&File")
@@ -129,11 +124,6 @@ class MainWindow(QMainWindow):
         """
         modules = list()
 
-        # Import the modules package
-        #saved_syspath = sys.path[:] # Save true sys.path
-        #sys.path.insert(0, os.path.dirname(__file__)) # Set sys.path to boxfish filedir
-        #__import__("mods") # import!
-        #sys.path = saved_syspath # Revert true sys.path
         import mods
 
         modules = ModuleFrame.subclassList()

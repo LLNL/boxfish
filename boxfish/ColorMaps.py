@@ -22,7 +22,47 @@ boxfish_maps = dict()
 #So (0.5, 1.0, 1.0) in the red list means "At normalized value 0.5, the red
 # value of the color is 1.0 (=xFF)".
 # Unspecified values will be interpolated between the given values
- 
+
+# Example 1
+# Goes from purple to green
+bdict = {'red':   ((0.0, 0.686,    0.686),
+    (1.0, 0.5, 0.5)),
+    'green': ((0.0, 0.55,    0.55),
+    (1.0, 0.75,    0.75)),
+    'blue':  ((0.0, 0.765,    0.765),
+    (1.0, 0.482,    0.483))}
+BFPuGrmap = matplotlib.colors.LinearSegmentedColormap('BFPuGrmap',bdict,256)
+boxfish_maps['BFPuGr'] = BFPuGrmap
+
+# Example 2
+# Goes from blue to red with yellow in the middle
+bdict = {'red':   ((0.0, 145.0/255.0,    145.0/255.0),
+    (0.5, 1.0, 1.0),
+    (1.0, 252.0/255.0, 252.0/255.0)),
+    'green': ((0.0, 191.0/255.0, 191.0/255.0),
+    (0.5, 1.0, 1.0),
+    (1.0, 141.0/255.0,  141.0/255.0)),
+    'blue':  ((0.0, 219.0/255.0,  219.0/255.0),
+    (0.5, 191.0/255.0, 191.0/255.0),
+    (1.0, 89.0/255.0, 89.0/255.0))}
+BFBlYeRdmap = matplotlib.colors.LinearSegmentedColormap('BFBlYeRdmap',bdict,256)
+boxfish_maps['BFBlYeRd'] = BFBlYeRdmap
+
+# Example 3
+# Blue, Red with grey in the middle
+bdict = {'red':   ((0.0, 0.0,    0.0),
+    (0.5, 0.83, 0.83),
+    (1.0, 1.0, 1.0)),
+    'green': ((0.0, 0.0, 0.0),
+    (0.5, 0.83, 0.83),
+    (1.0, 0.0,  0.0)),
+    'blue':  ((0.0, 1.0,  1.0),
+    (0.5, 0.83, 0.83),
+    (1.0, 0.0, 0.0))}
+BFBlGyRdmap = matplotlib.colors.LinearSegmentedColormap('BFBlGyRdmap',bdict,256)
+boxfish_maps['BFBlGyRd'] = BFBlGyRdmap
+
+#   Collin's for VPA
 #   Dark Blue [0.0] = (0, 70, 195), Light Blue [0.4] = (0, 175, 225), Orange [0.6] = (225, 150, 0), Red [1.0] = (255, 60, 0)
 bdict = {'red':   ((0.0, 0.0, 0.0), 
     (0.4, 0.0, 0.0),
@@ -39,41 +79,6 @@ bdict = {'red':   ((0.0, 0.0, 0.0),
 BlGrOrRdmap = matplotlib.colors.LinearSegmentedColormap('BlGrOrRdmap',bdict,256)
 boxfish_maps['BlGrOrRd'] = BlGrOrRdmap
 
-# Goes from purple to green
-bdict = {'red':   ((0.0, 0.686,    0.686),
-    (1.0, 0.5, 0.5)),
-    'green': ((0.0, 0.55,    0.55),
-    (1.0, 0.75,    0.75)),
-    'blue':  ((0.0, 0.765,    0.765),
-    (1.0, 0.482,    0.483))}
-BFPuGrmap = matplotlib.colors.LinearSegmentedColormap('BFPuGrmap',bdict,256)
-boxfish_maps['BFPuGr'] = BFPuGrmap
-
-# Goes from blue to red with yellow in the middle
-bdict = {'red':   ((0.0, 145.0/255.0,    145.0/255.0),
-    (0.5, 1.0, 1.0),
-    (1.0, 252.0/255.0, 252.0/255.0)),
-    'green': ((0.0, 191.0/255.0, 191.0/255.0),
-    (0.5, 1.0, 1.0),
-    (1.0, 141.0/255.0,  141.0/255.0)),
-    'blue':  ((0.0, 219.0/255.0,  219.0/255.0),
-    (0.5, 191.0/255.0, 191.0/255.0),
-    (1.0, 89.0/255.0, 89.0/255.0))}
-BFBlYeRdmap = matplotlib.colors.LinearSegmentedColormap('BFBlYeRdmap',bdict,256)
-boxfish_maps['BFBlYeRd'] = BFBlYeRdmap
-
-# Blue, Red with grey in the middle
-bdict = {'red':   ((0.0, 0.0,    0.0),
-    (0.5, 0.83, 0.83),
-    (1.0, 1.0, 1.0)),
-    'green': ((0.0, 0.0, 0.0),
-    (0.5, 0.83, 0.83),
-    (1.0, 0.0,  0.0)),
-    'blue':  ((0.0, 1.0,  1.0),
-    (0.5, 0.83, 0.83),
-    (1.0, 0.0, 0.0))}
-BFBlGyRdmap = matplotlib.colors.LinearSegmentedColormap('BFBlGyRdmap',bdict,256)
-boxfish_maps['BFBlGyRd'] = BFBlGyRdmap
 
 # Rubik color map
 # Note that we divide the first one between the beginning and the end so color
@@ -292,7 +297,7 @@ class ColorMap(object):
             return self.color_map(1.0 / self.color_step * stepped_value)
 
 class ColorBarImage(QImage):
-    """QImage representing the color bar, will incorporate cycling"""
+    """QImage representing the color bar, will incorporate cycling."""
 
     def __init__(self, color_map, width, height):
         """Creates a QImage of width by height from the given colormap."""
@@ -396,7 +401,11 @@ class ColorMapWidget(QWidget):
 
     @Slot(int)
     def colorbarChange(self, ind):
-        """Handles a selection of a different colormap."""
+        """Handles a selection of a different colormap.
+
+           ind
+               Index of the selected colormap.
+        """
         indx = self.mapCombo.currentIndex()
         self.color_map_name = map_names[indx]
         self.color_map = getMap(self.color_map_name)

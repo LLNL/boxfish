@@ -25,7 +25,7 @@ class FilterSpinAgent(ModuleAgent):
     spinUpdateSignal = Signal(str, list) # field name, values
 
     def __init__(self, parent, datatree):
-        """Constructor for FilterBoxAgent."""
+        """Constructor for FilterSpinAgent."""
         super(FilterSpinAgent, self).__init__(parent, datatree)
 
         self.addRequest("spinfield")
@@ -39,6 +39,9 @@ class FilterSpinAgent(ModuleAgent):
         """This function handles an added list of DataTree indices by
            associated them with the agent's Request. We only accept
            a single index in the Filter Spin so we truncate the list.
+
+           indexList
+               List of indices of attributes in data tree.
         """
 
         if len(indexList) > 1:
@@ -47,6 +50,9 @@ class FilterSpinAgent(ModuleAgent):
 
     @Slot(str)
     def buildSpin(self):
+        """Handles request to re-populate the spin control after
+           attributes have changed.
+        """
         tables, runs, ids, headers, data_lists \
             = self.requestGetRows("spinfield")
         if not data_lists:
@@ -95,7 +101,7 @@ class FilterSpinFrame(ModuleFrame):
         self.droppedDataSignal.connect(self.droppedData)
 
     def createView(self):
-        """Creates the module-specific view for the FilterBox module."""
+        """Creates the module-specific view for the FilterSpin module."""
         view = QWidget()
 
         layout = QHBoxLayout()
@@ -124,11 +130,25 @@ class FilterSpinFrame(ModuleFrame):
 
     @Slot(str, list)
     def updateSpinner(self, field, values):
+        """Update the presented control with new data.
+
+           field
+               Name of the attribute field
+
+           values
+               List of values the field can take on
+        """
+
         self.filter_label.setText(field + " = ")
         self.spinner.true_values = values
 
     @Slot(int)
     def spinnerValueChanged(self, index):
+        """Slot for handling change in spin control.
+
+           index
+               Index of value spin control is set to
+        """
         self.agent.createSimpleFilter(index)
 
 
@@ -173,6 +193,9 @@ class FilterSpinBox(QSpinBox):
             self.valueChanged.emit(index)
 
     def valueFromText(self, text):
+        """Overridden to find true value of spin control
+           from presented text.
+        """
         current = self.value() # Save current
         if int(text) in self.true_values:
             current = self.true_values.index(int(text))
@@ -180,6 +203,9 @@ class FilterSpinBox(QSpinBox):
         return current
 
     def textFromValue(self, value):
+        """Overriden to find text to present from value
+           of spin control.
+        """
         if len(self._true_values) \
             and value in range(len(self._true_values)):
             return str(self._true_values[value])
